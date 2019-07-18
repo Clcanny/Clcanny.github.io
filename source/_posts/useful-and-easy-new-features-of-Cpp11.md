@@ -98,7 +98,7 @@ int main()
 | std::move(t1) |           Test           |     rvalue     |
 |       r       | rvalue reference of Test |     lvalue     |
 
-full type 必须是 non reference type ，rvalue reference of Test 不满足定义，不妨直接删掉
+full type 必须是 non reference type ，rvalue reference of Test 不满足定义，不妨直接删掉 reference 部分
 
 |               |             type             | value category |
 | :-----------: | :--------------------------: | :------------: |
@@ -179,13 +179,49 @@ bool compare(string&& str)
 
 假设推翻 C++11 的设计，右值引用也是右值，compare 函数的 rvalue 版本实现起来比较困难：期望通过拷贝一个右值引用得到一个全新的字符串 `upperCaseStr`
 
-所以 C++11 现在的设计：**右值引用不是右值** 具备一定的合理性
+所以 C++11 现在的设计：**右值引用不是右值**具备一定的合理性
+
+### Why we need xvalue ?
+
+```cpp
+string&& id(string& str)
+{
+    return move(str);
+}
+
+int main()
+{
+    string str = "";
+    id(str) = "string";
+    cout << str << endl; // string
+}
+```
+
+假设推翻 C++11 的设计：只有左值和右值
+
+`id(str)` 表达式不是左值或者右值两者之一：
+
+1. 没有名称，所以不是左值
+2. 可以出现在等号左侧，所以不是右值
+
+这是一个全新的 value category ，命名为 xvalue
+
+xvalue 兼具 lvalue 和 prvalue 的特性：
+
+1. 可以出现在等号左侧
+2. 可以移动（`std::move` 的函数签名是 `string&& move(string&)` ，调用 `std::move` 产生的值在拷贝时会调用移动构造函数）
+
+`std::move` 的真实函数签名是：`typename <T>::type&& move(T&& t) noexpect`
+
+然而 `T&&` 不是右值，是 universal reference （这是 C++11 的另外一个大坑）
 
 ### xvalue 如何产生？
 
 1. a function call whose return type is rvalue reference to object, such as `std::move(x)`
 2. `a[n]`, the built-in [subscript](https://en.cppreference.com/w/cpp/language/operator_member_access#Built-in_subscript_operator) expression, where one operand is an array rvalue
 3. `a.m`, the [member of object](https://en.cppreference.com/w/cpp/language/operator_member_access#Built-in_member_access_operators) expression, where `a` is an rvalue and `m` is a non-static data member of non-reference type
+
+第 2 条和第 3 条规则比较难理解，尤其当 a 是 prvalue 的时候，很难解释对 `a[n]` 或 `a.m` 赋值有什么意义
 
 根据以下两个性质可以判断表达式产生了 xvalue ：
 
