@@ -44,12 +44,16 @@ rvalue = xvalue + prvalue
 |                                      | lvalue | xvalue | prvalue |
 | :----------------------------------: | :----: | :----: | :-----: |
 |                取地址                |   Y    |   N    |    N    |
-|  出现在 built-in assignment 的左侧   |   Y    |   N    |    N    |
+|  出现在 built-in assignment 的左侧   |   Y    |   Y?   |    N    |
 | polymorphic 静态类型与实际类型不一致 |   Y    |   Y    |    N    |
 |    initialize a lvalue reference     |   Y    |   N    |    N    |
 |    initialize an rvalue reference    |   N    |   Y    |    Y    |
 | initialize a const lvalue reference  |   Y    |   Y    |    Y    |
 |        绑定引用会延长生命周期        |   N    |   N    |    Y    |
+
+correspondingly, because a prvalue's static type is guaranteed to be its dynamic type (see answer below), extending its lifetime is meaningful and can be done by the compiler.
+
+On the other hand, for the xvalue, the object is at some unknown, arbitrary location, so the compiler couldn't easily extend its lifetime, especially given that the type could be polymorphic.
 
 根据值支持的操作也可以判断出值类型：
 
@@ -216,13 +220,60 @@ xvalue 兼具 lvalue 和 prvalue 的特性：
 
 然而 `T&&` 不是右值，是 universal reference （这是 C++11 的另外一个大坑）
 
+### prvalue 不支持多态？
+
+[SO](https://stackoverflow.com/questions/15482508/what-is-an-example-of-a-difference-in-allowed-usage-or-behavior-between-an-xvalu) 对 **prvalue 不支持多态** 有一个看似合理的解释：
+
+> Correspondingly, because a prvalue's static type is guaranteed to be its dynamic type, extending its lifetime is meaningful and can be done by the compiler. On the other hand, for the xvalue, the object is at some unknown, arbitrary location, so the compiler couldn't easily extend its lifetime, especially given that the type could be polymorphic.
+
+延长 prvalue 需要确保编译器看到的类型（静态类型）是对象的真实类型（动态类型），否则编译器不知道该如何回收栈空间
+
+![](https://junbin-hexo-img.oss-cn-beijing.aliyuncs.com/useful-and-easy-new-features-of-Cpp11/polymorphic-of-prvalue-reference.jpg)
+
+prvalue reference 延长 prvalue 生命周期在 clang7 的实现方式：
+
+1. 临时变量转正：栈顶指针在函数调用后移动到返回值之上（更低的地址）
+2. 使用多态指针指向转正后的临时变量
+
+至少在 clang 7 的实现方式下，prvalue 是可以使用多态的
+
+严格意义上说，编译器应该在编译期拒绝 polymorphic prvalue reference ，以符合标准
+
+标准没有规定引用必须实现成指针，因而上图斜上方的实现方法在 prvalue 的场景下也是可行的，但这种实现方法就必须拒绝 polymorphic prvalue reference ，否则运行期会出现非预期的行为
+
 ### xvalue 如何产生？
 
 1. a function call whose return type is rvalue reference to object, such as `std::move(x)`
 2. `a[n]`, the built-in [subscript](https://en.cppreference.com/w/cpp/language/operator_member_access#Built-in_subscript_operator) expression, where one operand is an array rvalue
 3. `a.m`, the [member of object](https://en.cppreference.com/w/cpp/language/operator_member_access#Built-in_member_access_operators) expression, where `a` is an rvalue and `m` is a non-static data member of non-reference type
 
-第 2 条和第 3 条规则比较难理解，尤其当 a 是 prvalue 的时候，很难解释对 `a[n]` 或 `a.m` 赋值有什么意义
+|      |                         has identity                         |              can be move from               | value category |
+| :--: | :----------------------------------------------------------: | :-----------------------------------------: | :------------: |
+|  1   | 看上去 function call 没有 identity <br>但函数返回的引用一般来自函数实参或全局变量<br>Y | Y<br>返回右值引用的目的是使得调用者获得右值 |     xvalue     |
+|  2   |                      n 是 identity<br>Y                      |             Y<br>为什么可移动？             |     xvalue     |
+|  3   |                      m 是 identity<br>Y                      |             Y<br>为什么可移动？             |     xvalue     |
+
+为什么 `a[n]` 和 `a.m` 可移动？
+
+> 女朋友常说：”你是我的，所以你的钱也是我的“
+
+```cpp
+struct Money {};
+struct Person { Money m };
+Person you;
+Person ry&& = std::move(you);
+Person yourGirlFriend;
+// you.money 是一个 xvalue
+youGirlFried.money = you.money;
+```
+
+```cpp
+Person getGoodMan() { return Person; }
+Person girlFriend;
+grilFriend.money = getGoodMan.money
+```
+
+> ”你的钱，我要了“
 
 根据以下两个性质可以判断表达式产生了 xvalue ：
 
@@ -335,6 +386,57 @@ bool equal = &(x = 1) == &x;
 has identity 并不是一个优秀的判断原则，因为 has identity 说的是这个值原来是不是具名的
 
 ## copy elision
+
+clang version 7.0.1 (tags/RELEASE_701/final)
+
+Named Return Value Optimization = NRVO
+
+Return Value Optimization = RVO
+
+### RVO
+
+
+
+### RVO & NRVO
+
+```shell
+g++ -std=c++11 -O0 test.cpp -o test
+```
+
+即使不开任何优化 `-O0` ，也会触发 RVO 和 NRVO ，运行 test 程序看不到任何输出
+
+```shell
+g++ -std=c++11 -O0 -fno-elide-constructors test.cpp -o test
+```
+
+将 RVO 和 NRVO 通过选项 `-fno-elide-constructors` 强制关闭，运行程序的输出如下：
+
+```shell
+move constructor of T
+move constructor of T
+move constructor of T
+move constructor of T
+```
+
+调用 `nrvo` 函数没有输出 `copy constructor of T` 的原因是：编译器会优先将其当做右值处理
+
+### Guaranteed copy elision
+
+|                 |                             gcc                              |                    clang                    |
+| :-------------: | :----------------------------------------------------------: | :-----------------------------------------: |
+| support version | [7](https://www.gnu.org/software/gcc/projects/cxx-status.html) | [4](https://clang.llvm.org/cxx_status.html) |
+
+guaranteed copy elision 由 [Wording for guaranteed copy elision through simplified value categories](http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2016/p0135r1.html) 提出：
+
+1. 
+
+### 触发 NRVO 的条件
+
+
+
+### 返回值与 out parameter 同样高效
+
+
 
 多返回值的最小代价 pair move + container move
 
