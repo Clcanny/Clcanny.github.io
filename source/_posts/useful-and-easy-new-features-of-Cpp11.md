@@ -12,7 +12,7 @@ tags:
 
 ## type cast
 
-## move semantics
+## 右值语义
 
 > 如何移动一头大象？在第二个冰箱中启动量子复制系统，克隆一只完全相同的大象，然后启动高能激光将第一个冰箱内的大象气化消失。
 
@@ -51,185 +51,9 @@ rvalue = xvalue + prvalue
 | initialize a const lvalue reference  |   Y    |   Y    |    Y    |
 |        绑定引用会延长生命周期        |   N    |   N    |    Y    |
 
-correspondingly, because a prvalue's static type is guaranteed to be its dynamic type (see answer below), extending its lifetime is meaningful and can be done by the compiler.
+#### Compiler is a liar
 
-On the other hand, for the xvalue, the object is at some unknown, arbitrary location, so the compiler couldn't easily extend its lifetime, especially given that the type could be polymorphic.
-
-根据值支持的操作也可以判断出值类型：
-
-|              | 支持多态 | 不支持多态 |
-| :----------: | :------: | :--------: |
-| 不可以取地址 |  xvalue  |  prvalue   |
-|  可以取地址  |  lvalue  |     -      |
-
-### rvalue reference is a lvalue
-
-> Each expression has some non-reference type, and each expression belongs to exactly one of the three primary value categories.
-
-划重点：non-reference type, value category
-
-不妨定义一个二元组 [non reference type, value category] 来描述表达式分类，取名为 full type
-
-```cpp
-#include <iostream>
-using namespace std;
-
-struct Test
-{
-    Test() = default;
-    Test(Test& other) {
-        cout << "copy constructor" << endl;
-    }
-    Test(Test&& other) {
-        cout << "move constructor" << endl;
-    }
-};
-
-int main()
-{
-    Test t1;
-    Test&& r = std::move(t1);
-    Test t2(r); // copy constructor
-
-    Test t3(std::move(t1)); // move constructor
-    Test t4(std::move(r)); // move constructor
-}
-```
-
-以上代码来自 [SO](https://stackoverflow.com/questions/3601602/what-are-rvalues-lvalues-xvalues-glvalues-and-prvalues/9552880#9552880) ：如何解释 `Test t2(r)` 调用拷贝构造函数而不是移动构造函数？一种合理的解释如下：
-
-|               |           type           | value category |
-| :-----------: | :----------------------: | :------------: |
-| std::move(t1) |           Test           |     rvalue     |
-|       r       | rvalue reference of Test |     lvalue     |
-
-full type 必须是 non reference type ，rvalue reference of Test 不满足定义，不妨直接删掉 reference 部分
-
-|               |             type             | value category |
-| :-----------: | :--------------------------: | :------------: |
-| std::move(t1) |             Test             |     rvalue     |
-|       r       | ~~rvalue reference of~~ Test |     rvalue     |
-
-所以编译器选择拷贝构造函数而不是移动构造函数
-
-```cpp
-int main()
-{
-    Test t1;
-    Test&& r1 = std::move(t1);
-    Test&& r2 = std::move(r1);
-    Test t2(r2); // copy constructor
-}
-```
-
-类似地，编译器在决策 `t2(r3)` 调用哪一个构造函数的时候，也有一个类似的过程：
-
-|               |             type             | value category |
-| :-----------: | :--------------------------: | :------------: |
-| std::move(t1) |             Test             |     rvalue     |
-|      r1       | ~~rvalue reference of~~ Test |     lvalue     |
-| std::move(r1) |             Test             |     rvalue     |
-|      r2       | ~~rvalue reference of~~ Test |     rvalue     |
-
-### Why rvalue reference can't be a rvalue?
-
-```cpp
-#include <algorithm>
-#include <iostream>
-#include <string>
-using namespace std;
-
-void UpperCaseInPlace(string& str)
-{
-    transform(str.begin(), str.end(), str.begin(), ::toupper);
-}
-
-bool compare(string& str)
-{
-    cout << "call lvalue version" << endl;
-    string upperCaseStr(str);
-    UpperCaseInPlace(upperCaseStr);
-    return upperCaseStr == str;
-}
-
-bool compare(string&& str)
-{
-    cout << "call rvalue version" << endl;
-    string upperCaseStr(str);
-    UpperCaseInPlace(upperCaseStr);
-    return upperCaseStr == str;
-}
-
-int main()
-{
-    string str = "a long string";
-    compare(str);
-    compare("a long string");
-}
-```
-
-以上代码能够取得较优的性能：对于为右值的 string ，省去一次拷贝构造（省去一次 memcpy ）
-
-聚焦于 compare 函数的 rvalue 版本：
-
-```cpp
-bool compare(string&& str)
-{
-    cout << "call rvalue version" << endl;
-    string upperCaseStr(str);
-    UpperCaseInPlace(upperCaseStr);
-    return upperCaseStr == str;
-}
-```
-
-假设推翻 C++11 的设计，右值引用也是右值，compare 函数的 rvalue 版本实现起来比较困难：期望通过拷贝一个右值引用得到一个全新的字符串 `upperCaseStr`
-
-所以 C++11 现在的设计：**右值引用不是右值**具备一定的合理性
-
-### return type of function isn't type of function call
-
-|   return type of function    | type of function call |
-| :--------------------------: | :-------------------: |
-|       lvalue reference       |        lvalue         |
-| rvalue reference to function |        lvalue         |
-|  rvalue reference to object  |        xvalue         |
-|        non-reference         |        rvalue         |
-
-### Why we need xvalue ?
-
-```cpp
-string&& id(string& str)
-{
-    return move(str);
-}
-
-int main()
-{
-    string str = "";
-    id(str) = "string";
-    cout << str << endl; // string
-}
-```
-
-假设推翻 C++11 的设计：只有左值和右值
-
-`id(str)` 表达式不是左值或者右值两者之一：
-
-1. 没有名称，所以不是左值
-2. 可以出现在等号左侧，所以不是右值
-
-这是一个全新的 value category ，命名为 xvalue
-
-xvalue 兼具 lvalue 和 prvalue 的特性：
-
-1. 可以出现在等号左侧
-2. 可以移动（`std::move` 的函数签名是 `string&& move(string&)` ，调用 `std::move` 产生的值在拷贝时会调用移动构造函数）
-
-`std::move` 的真实函数签名是：`typename <T>::type&& move(T&& t) noexpect`
-
-然而 `T&&` 不是右值，是 universal reference （这是 C++11 的另外一个大坑）
-
-### prvalue 不支持多态？
+##### prvalue 不支持多态？
 
 [SO](https://stackoverflow.com/questions/15482508/what-is-an-example-of-a-difference-in-allowed-usage-or-behavior-between-an-xvalu) 对 **prvalue 不支持多态** 有一个看似合理的解释：
 
@@ -250,7 +74,7 @@ prvalue reference 延长 prvalue 生命周期在 clang7 的实现方式：
 
 标准没有规定引用必须实现成指针，因而上图斜上方的实现方法在 prvalue 的场景下也是可行的，但这种实现方法就必须拒绝 polymorphic prvalue reference ，否则运行期会出现非预期的行为
 
-### rvalue 不能出现在赋值表达式的左侧？
+##### rvalue 不能出现在赋值表达式的左侧？
 
 xvalue 是具名变量，出现在赋值表达式左侧是可以理解的，那么 prvalue 呢？
 
@@ -330,7 +154,176 @@ operator=
 
 如果自行实现一个严格控制变量声明周期的编译器，`prvalue` 则不能出现在赋值表达式左侧
 
-### xvalue 如何产生？
+#### Some specific rules
+
+##### rvalue reference is a lvalue
+
+> Each expression has some non-reference type, and each expression belongs to exactly one of the three primary value categories.
+
+划重点：non-reference type, value category
+
+不妨定义一个二元组 [non reference type, value category] 来描述表达式分类，取名为 full type
+
+```cpp
+#include <iostream>
+using namespace std;
+
+struct Test
+{
+    Test() = default;
+    Test(Test& other) {
+        cout << "copy constructor" << endl;
+    }
+    Test(Test&& other) {
+        cout << "move constructor" << endl;
+    }
+};
+
+int main()
+{
+    Test t1;
+    Test&& r = std::move(t1);
+    Test t2(r); // copy constructor
+
+    Test t3(std::move(t1)); // move constructor
+    Test t4(std::move(r)); // move constructor
+}
+```
+
+以上代码来自 [SO](https://stackoverflow.com/questions/3601602/what-are-rvalues-lvalues-xvalues-glvalues-and-prvalues/9552880#9552880) ：如何解释 `Test t2(r)` 调用拷贝构造函数而不是移动构造函数？一种合理的解释如下：
+
+|               |           type           | value category |
+| :-----------: | :----------------------: | :------------: |
+| std::move(t1) |           Test           |     rvalue     |
+|       r       | rvalue reference of Test |     lvalue     |
+
+full type 必须是 non reference type ，rvalue reference of Test 不满足定义，不妨直接删掉 reference 部分
+
+|               |             type             | value category |
+| :-----------: | :--------------------------: | :------------: |
+| std::move(t1) |             Test             |     rvalue     |
+|       r       | ~~rvalue reference of~~ Test |     rvalue     |
+
+所以编译器选择拷贝构造函数而不是移动构造函数
+
+```cpp
+int main()
+{
+    Test t1;
+    Test&& r1 = std::move(t1);
+    Test&& r2 = std::move(r1);
+    Test t2(r2); // copy constructor
+}
+```
+
+类似地，编译器在决策 `t2(r3)` 调用哪一个构造函数的时候，也有一个类似的过程：
+
+|               |             type             | value category |
+| :-----------: | :--------------------------: | :------------: |
+| std::move(t1) |             Test             |     rvalue     |
+|      r1       | ~~rvalue reference of~~ Test |     lvalue     |
+| std::move(r1) |             Test             |     rvalue     |
+|      r2       | ~~rvalue reference of~~ Test |     rvalue     |
+
+###### Why rvalue reference can't be a rvalue?
+
+```cpp
+#include <algorithm>
+#include <iostream>
+#include <string>
+using namespace std;
+
+void UpperCaseInPlace(string& str)
+{
+    transform(str.begin(), str.end(), str.begin(), ::toupper);
+}
+
+bool compare(string& str)
+{
+    cout << "call lvalue version" << endl;
+    string upperCaseStr(str);
+    UpperCaseInPlace(upperCaseStr);
+    return upperCaseStr == str;
+}
+
+bool compare(string&& str)
+{
+    cout << "call rvalue version" << endl;
+    string upperCaseStr(str);
+    UpperCaseInPlace(upperCaseStr);
+    return upperCaseStr == str;
+}
+
+int main()
+{
+    string str = "a long string";
+    compare(str);
+    compare("a long string");
+}
+```
+
+以上代码能够取得较优的性能：对于为右值的 string ，省去一次拷贝构造（省去一次 memcpy ）
+
+聚焦于 compare 函数的 rvalue 版本：
+
+```cpp
+bool compare(string&& str)
+{
+    cout << "call rvalue version" << endl;
+    string upperCaseStr(str);
+    UpperCaseInPlace(upperCaseStr);
+    return upperCaseStr == str;
+}
+```
+
+假设推翻 C++11 的设计，右值引用也是右值，compare 函数的 rvalue 版本实现起来比较困难：期望通过拷贝一个右值引用得到一个全新的字符串 `upperCaseStr`
+
+所以 C++11 现在的设计：**右值引用不是右值**具备一定的合理性
+
+##### return type of function isn't type of function call
+
+|   return type of function    | type of function call |
+| :--------------------------: | :-------------------: |
+|       lvalue reference       |        lvalue         |
+| rvalue reference to function |        lvalue         |
+|  rvalue reference to object  |        xvalue         |
+|        non-reference         |        rvalue         |
+
+#### Why we need xvalue ?
+
+```cpp
+string&& id(string& str)
+{
+    return move(str);
+}
+
+int main()
+{
+    string str = "";
+    id(str) = "string";
+    cout << str << endl; // string
+}
+```
+
+假设推翻 C++11 的设计：只有左值和右值
+
+`id(str)` 表达式不是左值或者右值两者之一：
+
+1. 没有名称，所以不是左值
+2. 可以出现在等号左侧，所以不是右值
+
+这是一个全新的 value category ，命名为 xvalue
+
+xvalue 兼具 lvalue 和 prvalue 的特性：
+
+1. 可以出现在等号左侧
+2. 可以移动（`std::move` 的函数签名是 `string&& move(string&)` ，调用 `std::move` 产生的值在拷贝时会调用移动构造函数）
+
+`std::move` 的真实函数签名是：`typename <T>::type&& move(T&& t) noexpect`
+
+然而 `T&&` 不是右值，是 universal reference （这是 C++11 的另外一个大坑）
+
+#### xvalue 如何产生？
 
 1. a function call whose return type is rvalue reference to object, such as `std::move(x)`
 2. `a[n]`, the built-in [subscript](https://en.cppreference.com/w/cpp/language/operator_member_access#Built-in_subscript_operator) expression, where one operand is an array rvalue
@@ -396,83 +389,11 @@ clang++ --version
 clang++ -std=c++11 test.cpp
 ```
 
-### cheatsheet
+### copy constructor & move constructor
 
-> 来做场小测验吧！
+### perfect forward
 
-|    a    | m (non-static data member) |  a.m   |
-| :-----: | :------------------------: | :----: |
-| lvalue  |       reference type       | lvalue |
-| lvalue  |     non-reference type     | lvalue |
-| xvalue  |       reference type       | lvalue |
-| xvalue  |     non-reference type     | xvalue |
-| prvalue |       reference type       | lvalue |
-| prvalue |     non-reference type     | xvalue |
-
-```cpp
-#include <utility>
-
-struct Super {};
-struct Sub : public Super {};
-
-Sub global;
-struct TestNR { Sub sub; };
-struct TestR { Sub &sub = global; };
-
-int main()
-{
-    TestR tr;
-    &(tr.sub);
-
-    TestNR tnr;
-    &(tnr.sub);
-
-    &(std::move(TestR()).sub);
-
-    // &(std::move(TestNR()).sub);
-    static_cast<const Super&>(std::move(TestNR()).sub);
-
-    &(TestR().sub);
-
-    // &(TestNR().sub);
-    static_cast<const Super&>(TestNR().sub);
-}
-```
-
-|                         description                          | can  take address | can be move from | value category |
-| :----------------------------------------------------------: | :---------------: | :--------------: | :------------: |
-|             the name of a variable or a function             |         Y         |        N         |     lvalue     |
-|    a function call whose return type is lvalue reference     |         Y         |        N         |     lvalue     |
-| built-in [assignment and compound assignment](https://en.cppreference.com/w/cpp/language/operator_assignment) expressions |         Y         |        N         |     lvalue     |
-| built-in [pre-increment and pre-decrement](https://en.cppreference.com/w/cpp/language/operator_incdec#Built-in_prefix_operators) expressions |         Y         |        N         |     lvalue     |
-| a [string literal](https://en.cppreference.com/w/cpp/language/string_literal) |         Y         |        N         |     lvalue     |
-| a.m except a is an rvalue and `m` is a non-static data member of non-reference type |                   |                  |     lvalue     |
-|                                                              |                   |                  |                |
-|                                                              |                   |                  |                |
-|                                                              |                   |                  |                |
-
-```cpp
-int& id(int& x) { return x; }
-int x = 1;
-// a function call whose return type is lvalue reference
-&id(x);
-```
-
-```cpp
-int x;
-// built-in assigment expression
-bool equal = &(x = 1) == &x;
-// equal is true
-```
-
-```cpp
-// a string literal
-&"string literal";
-```
-
-
-
-has identity 并不是一个优秀的判断原则，因为 has identity 说的是这个值原来是不是具名的
+### 右值语义如何影响代码
 
 ## copy elision
 
