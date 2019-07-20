@@ -280,48 +280,23 @@ bool compare(string&& str)
 
 所以 C++11 现在的设计：**右值引用不是右值**具备一定的合理性
 
-##### return type of function isn't type of function call
+##### value category of function return value isn't value category of function call
 
-|   return type of function    | type of function call |
-| :--------------------------: | :-------------------: |
-|       lvalue reference       |        lvalue         |
-| rvalue reference to function |        lvalue         |
-|  rvalue reference to object  |        xvalue         |
-|        non-reference         |        rvalue         |
+| value category of function return value | value catrgory of function call |
+| :-------------------------------------: | :-----------------------------: |
+|            lvalue reference             |             lvalue              |
+|      rvalue reference to function       |             lvalue              |
+|       rvalue reference to object        |             xvalue              |
+|              non-reference              |             rvalue              |
 
 #### Why we need xvalue ?
 
-```cpp
-string&& id(string& str)
-{
-    return move(str);
-}
+[SO](https://stackoverflow.com/questions/3601602/what-are-rvalues-lvalues-xvalues-glvalues-and-prvalues/9552880#9552880) 的回答认为 xvalue 和 prvalue 的最大差别是 xvalue 可以出现在赋值表达式左侧而 prvalue 不可以，然而笔者认为这个说法是错的：
 
-int main()
-{
-    string str = "";
-    id(str) = "string";
-    cout << str << endl; // string
-}
-```
+1. [cppreference](https://en.cppreference.com/w/cpp/language/value_category) 明确提到：An rvalue can't be used as the left-hand operand of the built-in assignment or compound assignment operators. xvalue 和 prvalue 按照标准都不允许出现在赋值表达式的左侧
+2. 在 **Compiler is a liar** 一节讨论过 Clang 对非基础类型的 rvalue 出现在赋值表达式左侧的处理方式，非基础类型的 xvalue 和 prvalue 都可以出现在赋值表达式的左侧
 
-假设推翻 C++11 的设计：只有左值和右值
-
-`id(str)` 表达式不是左值或者右值两者之一：
-
-1. 没有名称，所以不是左值
-2. 可以出现在等号左侧，所以不是右值
-
-这是一个全新的 value category ，命名为 xvalue
-
-xvalue 兼具 lvalue 和 prvalue 的特性：
-
-1. 可以出现在等号左侧
-2. 可以移动（`std::move` 的函数签名是 `string&& move(string&)` ，调用 `std::move` 产生的值在拷贝时会调用移动构造函数）
-
-`std::move` 的真实函数签名是：`typename <T>::type&& move(T&& t) noexpect`
-
-然而 `T&&` 不是右值，是 universal reference （这是 C++11 的另外一个大坑）
+需要 xvalue 的原因是它既有名字又可以移动，既不是 lvalue 又不是 prvalue
 
 #### xvalue 如何产生？
 
@@ -334,6 +309,25 @@ xvalue 兼具 lvalue 和 prvalue 的特性：
 |  1   | 看上去 function call 没有 identity <br>但函数返回的引用一般来自函数实参或全局变量<br>Y | Y<br>返回右值引用的目的是使得调用者获得右值 |     xvalue     |
 |  2   |                      n 是 identity<br>Y                      |             Y<br>为什么可移动？             |     xvalue     |
 |  3   |                      m 是 identity<br>Y                      |             Y<br>为什么可移动？             |     xvalue     |
+
+```cpp
+struct Super {};
+struct Sub : public Super { int a; };
+struct Test { Sub sub; };
+
+// cannot take the address of an rvalue of type 'Sub'
+// &((Sub[2]){Sub(), Sub()}[0]);
+Super&& a = ((Sub[1]){Sub()})[0];
+
+// cannot take the address of an rvalue of type 'int'
+// &(Sub().a);
+Super&& b = Test().sub;
+
+Sub c;
+// cannot take the address of an rvalue of type 'Sub'
+// &std::move(c);
+Super&& rC = std::move(c);
+```
 
 为什么 `a[n]` 和 `a.m` 可移动？
 
@@ -357,43 +351,180 @@ grilFriend.money = getGoodMan.money
 
 > ”你的钱，我要了“
 
-根据以下两个性质可以判断表达式产生了 xvalue ：
-
-1. 不可以取地址
-2. 允许 upcast
-
-```cpp
-struct Super {};
-struct Sub : public Super { int a; };
-struct Test { Sub sub; };
-
-// cannot take the address of an rvalue of type 'int'
-// &((int[2]){1, 2}[0]);
-Super&& a = ((Sub[1]){Sub()})[0];
-
-// cannot take the address of an rvalue of type 'int'
-// &(Sub().a);
-Super&& b = Test().sub;
-
-Sub c;
-// cannot take the address of an rvalue of type 'Sub'
-// &std::move(c);
-Super&& rC = std::move(c);
-```
-
-注意：笔者认为 gcc 对右值的实现没有完全参照标准，请使用 clang 测试
-
-```shell
-clang++ --version
-# clang version 7.0.1 (tags/RELEASE_701/final)
-clang++ -std=c++11 test.cpp
-```
-
 ### copy constructor & move constructor
+
+左值匹配拷贝构造函数，右值匹配移动构造函数
+
+识别左值右值的时候注意两条规则：
+
+1. rvalue reference 会被当做 lvalue 处理
+2. 函数调用的值类型不等于函数返回值的值类型
 
 ### perfect forward
 
+```cpp
+#include <iostream>
+#include <utility>
+using namespace std;
+
+struct Test
+{
+    Test() = default;
+    Test(Test& other) {
+        cout << "copy constructor" << endl;
+    }
+    Test(Test&& other) {
+        cout << "move constructor" << endl;
+    }
+};
+
+void f(Test& t)
+{
+    Test t2(t);
+}
+
+void f(Test&& t)
+{
+    Test t2(move(t));
+}
+
+template <typename T>
+void g(T&& t)
+{
+    Test t2(forward<T>(t));
+}
+
+int main()
+{
+    Test t;
+    f(t);
+    f(move(t));
+    g(t);
+    g(move(t));
+}
+```
+
+代码输出：
+
+```shell
+#include <iostream>
+#include <utility>
+using namespace std;
+
+struct Test
+{
+    Test() = default;
+    Test(Test& other) {
+        cout << "copy constructor" << endl;
+    }
+    Test(Test&& other) {
+        cout << "move constructor" << endl;
+    }
+};
+
+void f(Test& t)
+{
+    Test t2(t);
+}
+
+void f(Test&& t)
+{
+    Test t2(move(t));
+}
+
+template <typename T>
+void g(T&& t)
+{
+    Test t2(forward<T>(t));
+}
+
+int main()
+{
+    Test t;
+    f(t);
+    f(move(t));
+    g(t);
+    g(move(t));
+}
+```
+
+代码输出：
+
+```shell
+copy constructor
+move constructor
+copy constructor
+move constructor
+```
+
+函数 `g` 调用的 `forward` 函数即是完美转发，完美转发保证将左值引用当做左值处理，将右值引用当做右值处理
+
+函数 g 的参数类型是 `T&&` ，笔者认为 `&&` 在这里并不代表右值，而是代表 universal reference
+
+`T&&` 不是右值，是 universal reference （这是 C++11 的另外一个大坑）
+
 ### 右值语义如何影响代码
+
+在不考虑 copy elision 的情况下（编译时添加 `-fno-elide-constructors` 选项），右值语义可以大大减小返回复杂类型的成本
+
+```cpp
+void f(vector<int>* output);
+```
+
+```cpp
+vector<int> g() {
+  vector<int> x = {1, 2, 3};
+  return x;
+}
+```
+
+函数 `f` 和 函数 `g` 的性能差距即使在不考虑 copy elision 的情况下，也是非常小的，而函数 `g` 的含义却比函数 `f` 的含义要清晰
+
+顺带提一句：调用返回值不是引用类型的表达式的值类型是右值，代码不必写成 `std::move(x)` 的形式
+
+两个返回值的函数可以写成如下形式：
+
+```cpp
+// clang++-8 -std=c++11 -fno-elide-constructors test.cpp
+#include <utility>
+#include <vector>
+using namespace std;
+
+struct Vec
+{
+    Vec() = default;
+    Vec(Vec& other) = delete;
+    Vec(Vec&& other) = default;
+};
+
+template <typename T, typename U>
+struct Pair
+{
+    Pair(T&& t, U&& u) : first(forward<T>(t)), second(forward<U>(u)) {}
+    Pair(Pair& other) = delete;
+    Pair(Pair&& other) : first(move(other.first)), second(move(other.second)) {}
+
+    T first;
+    U second;
+};
+
+bool f(Vec* v)
+{
+}
+
+Pair<bool, Vec> g()
+{
+    Vec v;
+    return Pair<bool, Vec>(true, move(v));
+}
+
+int main()
+{
+    Pair<bool, Vec> result(g());
+}
+```
+
+相较于函数 `f` ，函数 `g` 最多多调用两次移动构造函数
 
 ## copy elision
 
