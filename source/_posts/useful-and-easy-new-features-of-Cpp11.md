@@ -44,7 +44,7 @@ rvalue = xvalue + prvalue
 |                                      | lvalue | xvalue | prvalue |
 | :----------------------------------: | :----: | :----: | :-----: |
 |                取地址                |   Y    |   N    |    N    |
-|  出现在 built-in assignment 的左侧   |   Y    |   Y?   |    N    |
+|  出现在 built-in assignment 的左侧   |   Y    |   N    |    N    |
 | polymorphic 静态类型与实际类型不一致 |   Y    |   Y    |    N    |
 |    initialize a lvalue reference     |   Y    |   N    |    N    |
 |    initialize an rvalue reference    |   N    |   Y    |    Y    |
@@ -185,6 +185,15 @@ bool compare(string&& str)
 假设推翻 C++11 的设计，右值引用也是右值，compare 函数的 rvalue 版本实现起来比较困难：期望通过拷贝一个右值引用得到一个全新的字符串 `upperCaseStr`
 
 所以 C++11 现在的设计：**右值引用不是右值**具备一定的合理性
+
+### return type of function isn't type of function call
+
+|   return type of function    | type of function call |
+| :--------------------------: | :-------------------: |
+|       lvalue reference       |        lvalue         |
+| rvalue reference to function |        lvalue         |
+|  rvalue reference to object  |        xvalue         |
+|        non-reference         |        rvalue         |
 
 ### Why we need xvalue ?
 
