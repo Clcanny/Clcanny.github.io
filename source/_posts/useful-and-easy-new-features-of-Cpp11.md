@@ -241,6 +241,86 @@ prvalue reference 延长 prvalue 生命周期在 clang7 的实现方式：
 
 标准没有规定引用必须实现成指针，因而上图斜上方的实现方法在 prvalue 的场景下也是可行的，但这种实现方法就必须拒绝 polymorphic prvalue reference ，否则运行期会出现非预期的行为
 
+### rvalue 不能出现在赋值表达式的左侧？
+
+xvalue 是具名变量，出现在赋值表达式左侧是可以理解的，那么 prvalue 呢？
+
+```shell
+clang version 8.0.1-svn363027-1~exp1~20190611210016.75 (branches/release_80)
+Target: x86_64-pc-linux-gnu
+Thread model: posix
+InstalledDir: /usr/bin
+```
+
+```cpp
+// clang++-8 -std=c++11 -emit-llvm -S prvalue.cpp
+struct Test { virtual void f() {} };
+Test Make() {
+    return Test();
+}
+int main() {
+    Make() = Test();
+}
+```
+
+```ll
+define dso_local i32 @main() #2 {
+  %1 = alloca %struct.Test, align 8
+  %2 = alloca %struct.Test, align 8
+  %3 = bitcast %struct.Test* %1 to i8*
+  call void @llvm.memset.p0i8.i64(i8* align 8 %3, i8 0, i64 8, i1 false)
+  call void @_ZN4TestC2Ev(%struct.Test* %1) #3
+  call void @_Z4Makev(%struct.Test* sret %2)
+  %4 = call %struct.Test* @_ZN4TestaSEOS_(%struct.Test* %2, %struct.Test* %1) #3
+  ret i32 0
+}
+```
+
+笔者稍稍修改 `main` 函数，去除掉对理解没有帮助的修饰符 `dereferenceable`
+
+![d](http://junbin-hexo-img.oss-cn-beijing.aliyuncs.com/useful-and-easy-new-features-of-Cpp11/prvalue-left-operand.png)
+
+Clang8 并没有立即消除本应该失去生命周期的变量，因而 prvalue 可以被赋值
+
+再看以下一段更加直观的代码：
+
+```cpp
+include <iostream>
+using namespace std;
+struct Test
+{
+    Test() = default;
+    Test(const Test&) = default;
+    virtual ~Test() {
+        cout << "~Test()" << endl;
+    }
+    Test& operator=(Test&& other) {
+        cout << "operator=" << endl;
+        return *this;
+    }
+};
+Test Make() {
+    return Test();
+}
+int main() {
+    Make() = Test();
+}
+```
+
+输出：
+
+```shell
+operator=
+~Test()
+~Test()
+```
+
+在为 prvalue 赋值的场景下，Clang 8 延长了临时变量的生命周期至函数结束
+
+但对于基础类型（如 `int` ），其右值仍然不可出现在辅助表达式左侧（这是编译器的一个谎言）
+
+如果自行实现一个严格控制变量声明周期的编译器，`prvalue` 则不能出现在赋值表达式左侧
+
 ### xvalue 如何产生？
 
 1. a function call whose return type is rvalue reference to object, such as `std::move(x)`
