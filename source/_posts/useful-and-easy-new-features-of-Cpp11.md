@@ -800,4 +800,143 @@ class EngineWrapper
 }
 ```
 
-<a name="#cheatsheet-function-call-return-lvalue-reference">call function returns lvalue reference</a> 
+### 匹配任何调用的函数
+
+```cpp
+int func(...)
+{
+    return 1;
+}
+```
+
+以任意个数、任意类型（参数类型不需要一致）的参数调用 `func` 都是没问题的 
+
+### 对模板参数的限制
+
+```cpp
+template <typename T, typename R, typename ...Ps>
+class Has_Max_Method
+{
+private:
+    template <typename U>
+    static auto Test(U* u) -> decltype((*u).Max(std::declval<Ps>()...)) {}
+
+    class MarkType {};
+
+    static MarkType Test(...) {}
+
+public:
+    static constexpr bool value = std::is_same<
+        decltype(Test(std::declval<T*>())), R>::value;
+};
+```
+
+以上代码可以检查一个类型是否具备某个函数，举例如下：
+
+```cpp
+template <typename E>
+class Container
+{
+    static_assert(Has_Max_Method<E, int, int, int>::value, "E must have Max method");
+};
+
+struct Test
+{
+    int Max(int a, int b)
+    {
+        return a > b;
+    }
+};
+```
+
+`Container ` 要求其元素类型 `E` 具备函数签名为 `int Max(int, int)` 的成员函数
+
+```cpp
+int main()
+{
+    Container<int> a;
+    Container<Test> b;
+}
+```
+
+编译器报错：`static_assert failed due to requirement 'Has_Max_Method<int, int, int, int>::value' "E must have Max method"`
+
+### 两种报错形式
+
+假设我们不使用 `static_assert` 限制模板参数需要具备的方法：
+
+```cpp
+template <typename E>
+class Container
+{
+public:
+    int Max()
+    {
+        return E().Max(1, 2);
+    }
+};
+
+int main()
+{
+    Container<int> a;
+    a.Max();
+}
+```
+
+编译器报错：`in instantiation of member function 'Container<int>::Max' requested here`
+
+> 想想看 vector 是怎么虐待你的吧！
+>
+> 我们需要一个看得到模板报错的 C++ 工程师！
+
+但一旦使用 `static_assert` ，体验会非常接近支持 interface 的语言
+
+```cpp
+template <typename E>
+class Container
+{
+    static_assert(Has_Max_Method<E, int, int, int>::value, "E must have Max method");
+
+public:
+    int Max()
+    {
+        return E().Max(1, 2);
+    }
+};
+
+int main()
+{
+    Container<int> a;
+    a.Max();
+}
+```
+
+编译器的完整报错如下：
+
+```shell
+test.cpp:22:5: error: static_assert failed due to requirement 'Has_Max_Method<int, int, int, int>::value' "E must have Max method"
+    static_assert(Has_Max_Method<E, int, int, int>::value, "E must have Max method");
+    ^             ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+test.cpp:41:20: note: in instantiation of template class 'Container<int>' requested here
+    Container<int> a;
+                   ^
+1 error generated.
+```
+
+编译器在 `static_assert` 失败之后，并没有继续尝试实例化 `static_assert` 之后的成员函数；同时报错也相当友好——简短而准确
+
+### 编译器反射如何影响代码？
+
+abstract class vs template
+
+1. 不需要付出性能损耗的代价（模板成员函数默认会 inline ？）
+2. 注入更加方便，不需要类似 `SetDependency` 的函数提供注入手段
+
+在将 `Has_Max_Method` 类似的类用宏抽象后，编译期反射用起来的体验如下：
+
+```cpp
+GET_RT_MACRO_SIMPLE(PublicMethod, 0);
+static_assert(std::is_same<Get_PublicMethod_MethodRT0<Test>::type, bool>::value, "");
+```
+
+这不妨成为 `abstract class` 的一种替代选项
