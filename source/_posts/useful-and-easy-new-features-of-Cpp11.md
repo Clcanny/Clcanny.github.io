@@ -754,6 +754,35 @@ int main()
 
 以上程序能正常编译运行，说明 emplace_back 确实如预期运行
 
+## 可打断的线程
+
+```cpp
+#include <unistd.h>
+
+#include <csignal>
+#include <iostream>
+#include <thread>
+
+void onSignalTerm(int sig){
+    pthread_exit(nullptr);
+}
+
+int main()
+{
+    std::signal(SIGTERM, onSignalTerm);
+    std::thread t([]() -> void { while (true) {} });
+    pthread_t tid = t.native_handle();
+    sleep(2);
+    pthread_kill(tid, SIGTERM);
+    t.join();
+    std::cout << "join succeed" <<  std::endl;
+}
+```
+
+利用信号的能力，写一个超时则强制结束的线程池是可能的：杀掉一个线程再创建一个线程放进去
+
+但要根据线程耗的 cpu 时间、当前的调用栈以及调用栈参数等详细信息来决定是否强制杀掉一个线程仍是非常有难度的，检测底层信息不是件容易的事情
+
 ## 编译期反射 + static_assert = concept
 
 concept $\approx$ 接口
