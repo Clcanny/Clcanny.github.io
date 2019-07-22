@@ -46,7 +46,7 @@ glvaue (generalized lvalue) = xvalue + lvalue
 
 rvalue = xvalue + prvalue
 
-根据 [cppreference](https://en.cppreference.com/w/cpp/language/value_category) 的描述及实验，整理出值类型的属性：
+根据 [cppreference](https://en.cppreference.com/w/cpp/language/value_category) 的描述，整理出值类型的属性：
 
 |                                      | lvalue | xvalue | prvalue |
 | :----------------------------------: | :----: | :----: | :-----: |
@@ -68,7 +68,7 @@ rvalue = xvalue + prvalue
 
 延长 prvalue 需要确保编译器看到的类型（静态类型）是对象的真实类型（动态类型），否则编译器不知道该如何回收栈空间
 
-![](https://junbin-hexo-img.oss-cn-beijing.aliyuncs.com/useful-and-easy-new-features-of-Cpp11/polymorphic-of-prvalue-reference.jpg)
+![polymorphic-of-prvalue-reference](https://junbin-hexo-img.oss-cn-beijing.aliyuncs.com/useful-and-easy-new-features-of-Cpp11/polymorphic-of-prvalue-reference.jpg)
 
 prvalue reference 延长 prvalue 生命周期在 clang7 的实现方式：
 
@@ -118,7 +118,7 @@ define dso_local i32 @main() #2 {
 
 笔者稍稍修改 `main` 函数，去除掉对理解没有帮助的修饰符 `dereferenceable`
 
-![d](http://junbin-hexo-img.oss-cn-beijing.aliyuncs.com/useful-and-easy-new-features-of-Cpp11/prvalue-left-operand.png)
+![prvalue-left-operand](http://junbin-hexo-img.oss-cn-beijing.aliyuncs.com/useful-and-easy-new-features-of-Cpp11/prvalue-left-operand.png)
 
 Clang8 并没有立即消除本应该失去生命周期的变量，因而 prvalue 可以被赋值
 
@@ -223,7 +223,7 @@ int main()
 }
 ```
 
-类似地，编译器在决策 `t2(r3)` 调用哪一个构造函数的时候，也有一个类似的过程：
+类似地，编译器在决策 `t2(r2)` 调用哪一个构造函数的时候，也有一个类似的过程：
 
 |               |             type             | value category |
 | :-----------: | :--------------------------: | :------------: |
@@ -487,7 +487,7 @@ vector<int> g() {
 
 函数 `f` 和 函数 `g` 的性能差距即使在不考虑 copy elision 的情况下，也是非常小的，而函数 `g` 的含义却比函数 `f` 的含义要清晰
 
-顺带提一句：调用返回值不是引用类型的表达式的值类型是右值，代码不必写成 `std::move(x)` 的形式
+顺带提一句：调用"返回值不是引用类型的函数"的表达式的值类型是右值，代码不必写成 `std::move(x)` 的形式
 
 两个返回值的函数可以写成如下形式：
 
@@ -631,7 +631,7 @@ e.field = 1;
 // 其它赋值操作
 ```
 
-这段代码是不优雅的：提供专门为容器准备的无参数构造函数、第一次看非常困惑
+这段代码是不优雅的：提供专门为容器准备的无参数构造函数
 
 利用 emplace 之后：
 
@@ -852,7 +852,7 @@ int main()
 
 > 想想看 vector 是怎么虐待你的吧！
 >
-> 我们需要一个看得到模板报错的 C++ 工程师！
+> 我们需要一个看得懂模板报错的 C++ 工程师！
 
 但一旦使用 `static_assert` ，体验会非常接近支持 interface 的语言
 
@@ -888,7 +888,7 @@ test.cpp:41:20: note: in instantiation of template class 'Container<int>' reques
 1 error generated.
 ```
 
-编译器在 `static_assert` 失败之后，并没有继续尝试实例化 `static_assert` 之后的成员函数；同时报错也相当友好——简短而准确
+编译器在 `static_assert` 失败之后，并没有继续尝试实例化 `static_assert` 之后的成员函数；同时报错信息也可以自行定制；模板报错变得简短而准确
 
 ### 编译器反射如何影响代码？
 
