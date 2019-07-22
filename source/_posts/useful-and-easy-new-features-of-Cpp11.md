@@ -535,38 +535,15 @@ int main()
 
 ## copy elision
 
-clang version 7.0.1 (tags/RELEASE_701/final)
-
 Named Return Value Optimization = NRVO
 
 Return Value Optimization = RVO
 
-### RVO
+在 C++11 ，标准只是允许 `copy elision` 而不是强制 `copy elision` ，不过 `copy elision` 在主流编译器已经得到实现 
 
+### 触发 NRVO 的条件
 
-
-### RVO & NRVO
-
-```shell
-g++ -std=c++11 -O0 test.cpp -o test
-```
-
-即使不开任何优化 `-O0` ，也会触发 RVO 和 NRVO ，运行 test 程序看不到任何输出
-
-```shell
-g++ -std=c++11 -O0 -fno-elide-constructors test.cpp -o test
-```
-
-将 RVO 和 NRVO 通过选项 `-fno-elide-constructors` 强制关闭，运行程序的输出如下：
-
-```shell
-move constructor of T
-move constructor of T
-move constructor of T
-move constructor of T
-```
-
-调用 `nrvo` 函数没有输出 `copy constructor of T` 的原因是：编译器会优先将其当做右值处理
+返回相同的具名变量
 
 ### Guaranteed copy elision
 
@@ -574,21 +551,9 @@ move constructor of T
 | :-------------: | :----------------------------------------------------------: | :-----------------------------------------: |
 | support version | [7](https://www.gnu.org/software/gcc/projects/cxx-status.html) | [4](https://clang.llvm.org/cxx_status.html) |
 
-guaranteed copy elision 由 [Wording for guaranteed copy elision through simplified value categories](http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2016/p0135r1.html) 提出：
+guaranteed copy elision 由 [Wording for guaranteed copy elision through simplified value categories](http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2016/p0135r1.html) 提出，在 C++17 可以使用
 
-1. 
-
-### 触发 NRVO 的条件
-
-
-
-### 返回值与 out parameter 同样高效
-
-
-
-多返回值的最小代价 pair move + container move
-
-pair copy elision + container move
+不过在 Guaranteed copy elision 下，临时变量和 prvalue (?) 的语义发生了变化
 
 ## emplace ##
 
