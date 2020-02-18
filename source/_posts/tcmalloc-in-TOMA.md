@@ -54,7 +54,7 @@ make install
 
 # TCMalloc 概述
 
-感谢 wallen 写的[TCMalloc 解密](https://wallenwang.com/2018/11/tcmalloc/#ftoc-heading-62)，这是我认为在网上能找到的关于 TCMalloc 写得最好的中文文章，本小节中的内容大多是对该文章的再次加工，图片更是全来源于这篇文章。
+感谢 wallen 写的[TCMalloc 解密](https://wallenwang.com/2018/11/tcmalloc/#ftoc-heading-62)，这是我认为在网上能找到的、关于 TCMalloc 写得最好的中文文章，本小节中的内容大多是对该文章的再次加工，图片更是全来源于这篇文章。
 
 由于我们更关心如何找出正在使用中的对象，所以省略了 TCMalloc 分配与回收算法的介绍，并且也更加精简数据结构的介绍以突出重点。这一小节介绍的是逻辑概念，一些概念在 TCMalloc 的实现中是没有对应数据结构的。
 
@@ -74,11 +74,11 @@ make install
 
 ### PageMap
 
-PageMap 协助 PageHeap 管理 Span ，回答这样一个问题：给定一个 PageId ，如何确定它属于哪一个 Span ？
+PageMap 协助 PageHeap 管理 Span ，回答这样一个问题：给定一个 Page ，如何确定它属于哪一个 Span ？
 
 不妨将 PageMap 设想成一个长度为 page size 的数组，下标是 PageId ，值是指向 Span 的指针
 
-实际实现中，PageMap 将采用二级或三级 radix tree （多级索引）以节省存储空间：
+在 TCMalloc 的实现中，PageMap 将采用二级或三级 radix tree （多级索引）以节省存储空间：
 
 ![](tcmalloc-PageMap.svg)
 
@@ -106,7 +106,31 @@ ThreadCache 是独属于每一个线程的小对象缓存系统
 
 数据结构相比于原版去除了宏以方便理解，且通过验证（因为力求可以直接使用，所以未做省略，导致稍显详细）
 
+以下会介绍几个关键的类：
+
++ SizeMap 定义了小对象、Page 说明了 PageId 的构成、Span 是 TCMalloc 管理内存页的基本单位
++ PageHeap / CentralCahe / ThreadCache 是计算对象的重要数据结构
+
 ## SizeMap
+
+```cpp
+class SizeMap {
+ private:
+    ClassSize mTable[kNumClasses] = {
+        0,      8,      16,     32,     48,     64,     80,     96,     112,
+        128,    144,    160,    176,    192,    208,    224,    240,    256,
+        288,    320,    352,    384,    416,    448,    480,    512,    576,
+        640,    704,    768,    896,    1024,   1152,   1280,   1408,   1536,
+        1792,   2048,   2304,   2560,   2816,   3072,   3328,   4096,   4608,
+        5120,   6144,   6656,   8192,   9216,   10240,  12288,  13312,  16384,
+        20480,  24576,  26624,  32768,  40960,  49152,  57344,  65536,  73728,
+        81920,  90112,  98304,  106496, 114688, 122880, 131072, 139264, 147456,
+        155648, 163840, 172032, 180224, 188416, 196608, 204800, 212992, 221184,
+        229376, 237568, 245760, 253952, 262144};
+};
+```
+
+SizaMap 提供了一张 Id 到 Size 的对应表，小对象在分配前都要先对齐到上一级大小
 
 ## Page
 
@@ -124,7 +148,7 @@ const int kPageBits = 13;
 
 TCMalloc 的 Page 大小默认是 8K = 2^13 ，低 13 位构成页内偏移
 
-剩下的 35 位构成 radix tree 的三级索引，分别是 12 / 12 / 11
+中间的 35 位构成 radix tree 的三级索引，分别是 12 / 12 / 11
 
 ![](http://junbin-hexo-img.oss-cn-beijing.aliyuncs.com/tcmalloc/page-and-span.jpeg)
 
@@ -150,10 +174,10 @@ struct Span {
 };
 ```
 
-1. mNext / mPrev 用于构建双向环形链表，链表头存放与 CentralFreeList 类型的数组中
-2. mObjects 存储页内空闲对象列表
-3. mNonFreeObjectNum 记录页内非空闲对象数
-4. mLocation 记录页状态：使用中（拆分成小对象缓存或分配给应用程序）、缓存中、已归还给操作系统
++ mNext / mPrev 用于构建双向环形链表，链表头存放与 CentralFreeList 类型的数组中
++ mObjects 存储页内空闲对象列表
++ mNonFreeObjectNum 记录页内非空闲对象数
++ mLocation 记录页状态：使用中（拆分成小对象缓存或分配给应用程序）、缓存中、已归还给操作系统
 
 ## PageHeap
 
@@ -173,9 +197,9 @@ struct PageHeap {
 const int kSmallSpanMaxPage = 128;
 ```
 
-1. mPagemap 记录着 PageId 与 Span 的对应关系（这将是我们找出所有 Span 的重要字段）
-2. mPagemapCache 是 mPagemap 的缓存（我们不使用这个字段）
-3. mLargeFree / mSmallFree 缓存未使用的 Span （分配出去的 Span 不由 PageHeap 管理，Span 指针在 mPagemap 中有记录）
++ mPagemap 记录着 PageId 与 Span 的对应关系（这将是我们找出所有 Span 的重要字段）
++ mPagemapCache 是 mPagemap 的缓存（我们不使用这个字段）
++ mLargeFree / mSmallFree 缓存未使用的 Span （分配出去的 Span 不由 PageHeap 管理，Span 指针在 mPagemap 中有记录）
 
 ### PageMap3
 
@@ -274,10 +298,10 @@ struct CentralFreeList {
 };
 ```
 
-1. mEmptySpan / mNonEmptySpan 分别存储所有对象未被使用的 Span 和有对象被使用的 Span
-2. mUsedSlots 记录使用中 mTcSlots 的大小
-3. mCacheSize 是 mUsedSlots 的上限
-4. mMaxCacheSize 是 mCacheSize 的上限，它对于某一类对象而言是一个固定值
++ mEmptySpan / mNonEmptySpan 分别存储所有对象未被使用的 Span 和有对象被使用的 Span
++ mUsedSlots 记录使用中 mTcSlots 的大小
++ mCacheSize 是 mUsedSlots 的上限
++ mMaxCacheSize 是 mCacheSize 的上限，它对于某一类对象而言是一个固定值
 
 #### TCEntry
 
@@ -307,9 +331,273 @@ struct ThreadCache {
 };
 ```
 
-1. mMaxSize 是 mCacheSizeInByte 的上限？（这一条在实际使用 TOMA 时出现过反例）
++ mMaxSize 是 mCacheSizeInByte 的上限？（这一条在实际使用 TOMA 时出现过反例）
 
-# 寻找使用中的对象
+# 标记 Obejct
+
+## Overview
+
+使用中的对象 = 所有 Span - PageHeap 缓存的 Span - Span 缓存的对象（即 CentralCache 中的对象） - ThreadCache 中的对象 - TCEntry 缓存的对象
+
+我们需要设计两个类来存储所有对象的状态，方便标记及查找：
+
++ SpanManager 存储 SpanWrapper
++ SpanWrapper 存储当前 Span 内的对象的状态
+
+## 辅助类
+
+为方便分析程序的编写，TOMA 新增了一些辅助类
+
+### SpanManager
+
+```cpp
+// This class must be very fast.
+// Don't use any exception.
+class SpanManager {
+ private:
+    using Leaf = std::array<observer_ptr<SpanWrapper>, kLeafLength>;
+    constexpr static int rootLength = 1 << (kInteriorBits + kInteriorBits);
+    using Root = std::array<std::unique_ptr<Leaf>, rootLength>;
+
+ public:
+    SpanManager(const CoredumpReader& coreReader,
+                Address pageHeapAddr,
+                Address centralCacheAddr,
+                Address threadCacheAddr);
+    SpanManager(const SpanManager& other) = delete;
+    SpanManager(SpanManager&& other) = delete;
+    SpanManager& operator=(const SpanManager& other) = delete;
+    SpanManager& operator=(SpanManager&& other) = delete;
+
+    void Run();
+
+    SpanWrapper::iterator FindObj(Address addr);
+    SpanWrapper::const_iterator FindObj(Address addr) const;
+
+    std::set<std::unique_ptr<SpanWrapper>>& operator[](ClassId classId);
+
+ private:
+    void QueryGlobalSpan();
+    void MarkFreeSpan(observer_ptr<SpanWrapper> sw);
+    void MarkSpanCacheObjs(observer_ptr<SpanWrapper> sw);
+    void QueryThreadFreeList();
+    void QueryTcSlotObjs();
+
+    observer_ptr<SpanWrapper> FindSpanWrapperByPageId(Address pageId) const;
+
+ private:
+    static SpanWrapper sEmptySpanWrapper;
+
+ private:
+    const CoredumpReader& mCoreReader;
+
+    Address mPageHeapAddr;
+    Address mCentralCacheAddr;
+    Address mThreadCacheAddr;
+
+    PageHeap mPageHeap;
+    CentralCache mCentralCache;
+
+    // It is used to search spans.
+    Root mRoot;
+    // It is used to iterate spans.
+    std::array<std::set<std::unique_ptr<SpanWrapper>>, kNumClasses> mSpans;
+};
+```
+
++ `mSpans` 拥有 SpanWrapper 的所有权，并提供按照对象大小遍历 SpanWrapper 的能力
++ `mRoot` 是一棵 radix tree ，持有 SpanWrapper 的 observer ptr ，提供按照 PageId 搜索 SpanWrapper 的能力
++ `QueryGlobalSpan` / `MarkFreeSpan` / `MarkSpanCacheObjs` / `QueryThreadFreeList` / `QueryTcSlotObjs` 是寻找并标记 Object 的重要函数
+
+总结：SpanManager 是 SpanWrapper 的拥有者和管理者，还是 Object 计算器
+
+### SpanWrapper
+
+```cpp
+class SpanWrapper : public Span {
+ public:
+    template <typename T>
+    struct Iter;
+
+    template <typename T>
+    class Object;
+
+    template <typename T>
+    struct Iter
+        : public std::iterator<std::forward_iterator_tag,  // iterator_category
+                               Object<T>,                  // value_type
+                               std::size_t,                // difference_type
+                               Object<T>*,                 // pointer
+                               Object<T>>;                 // reference
+
+ public:
+    using iterator = Iter<SpanWrapper>;
+    using const_iterator = Iter<const SpanWrapper>;
+
+ public:
+    explicit SpanWrapper(const Span& span);
+    SpanWrapper(const SpanWrapper& other) = delete;
+    SpanWrapper(SpanWrapper&& other) = delete;
+    SpanWrapper& operator=(const SpanWrapper& other) = delete;
+    SpanWrapper& operator=(SpanWrapper&& other) = delete;
+
+    bool operator<(const SpanWrapper& other) const;
+
+    iterator begin();
+    iterator end();
+    iterator find(Address addr);
+
+    const_iterator begin() const;
+    const_iterator end() const;
+    const_iterator find(Address addr) const;
+
+    std::size_t Size() const;
+
+    bool IsFreeSpan() const;
+    bool IsBigObj() const;
+    std::size_t GetFreeObjectNum() const;
+    std::size_t GetAllObjectNum() const;
+    std::size_t Count(Tag tag) const;
+
+ private:
+    std::size_t GetIndex(Address addr) const;
+
+ public:
+    ClassSize mClassSize;
+    Address mStartAddr;
+    Address mEndAddr;
+
+    std::vector<Tag> mObjTags;
+};
+```
+
+关于 SpanWrapper ：
+
++ 从概念上说，SpanWrapper 是装着 Object 的容器
++ 从实现上说，SpanWrapper 仅仅记录 Object 的状态（`mObjTags` 数组），因为 Object 的起始地址可以从 `mObjTags` 的下标和 `mClassSize` 推断出来，Object 的大小就是 `mClassSize`
++ `GetIndex` 可以根据地址计算出 Object 相对于 Span 的偏移量（即地址属于 Span 的第几个对象）
+
+关于 Object ：
+
++ 从概念上说，Object 应当记录对象的起始地址、大小和状态
++ 从实现上说，Object 只需要记录指向所属 SpanWrapper 的指针和 `mObjTags` 的下标，就可以计算出上述三个属性
+
+总结：SpanWrapper 是 Object 的拥有者和管理者
+
+## 寻找 Span
+
+```cpp
+void SpanManager::QueryGlobalSpan() {
+    for (uint64_t pageId = 0; pageId < kPageIdLength;) {
+        uint64_t nextPageId = 0;
+        auto p = FindSpanByPageId(mCoreReader, mPageHeap, pageId, &nextPageId);
+        if (p != nullptr) {
+            Span span = mCoreReader.Defer<Span>(p);
+            // Insert span to mSpans.
+            // sw is observer ptr of span wrapper in mSpans.
+            if (sw->IsFreeSpan()) {
+                MarkFreeSpan(sw);
+            } else {
+                MarkSpanCacheObjs(sw);
+            }
+            // Insert observer ptr of span wrapper to mRoot.
+            pageId += sw->mPageNum;
+        } else {
+            pageId = nextPageId;
+        }
+    }
+}
+```
+
+QueryGlobalSpan 利用 PageMap3 来找出所有的 Span
+
+注意：不要从 0 到 kPageIdLength 逐个遍历 PageId ，这样做非常慢
+
+正确的做法是根据 radix tree 的特性，直接跳到下一个存在的 PageId
+
+## 标记 PageHeap 缓存的 Span
+
+```cpp
+void SpanManager::MarkFreeSpan(observer_ptr<SpanWrapper> sw) {
+    Assert(sw->mNonFreeObjectNum == 0);
+    if (sw->mLocation == Span::eNormal) {
+        for (auto it = sw->begin(); it != sw->end(); it++) {
+            it->GetTag() = Tag::sNormalFreeSpan;
+        }
+    } else {
+        for (auto it = sw->begin(); it != sw->end(); it++) {
+            it->GetTag() = Tag::sReturnedFreeSpan;
+        }
+    }
+}
+```
+
+被 PageHeap 缓存的 Span 可以通过 `mLocation` 字段识别出来
+
+所谓标记，就是把 `mObjTags` 数组里的每一个元素都置为对应的状态
+
+## 标记 CentralCache 缓存的对象
+
+```cpp
+void SpanManager::MarkSpanCacheObjs(observer_ptr<SpanWrapper> sw) {
+    for (Address freeObj = reinterpret_cast<Address>(sw->mObjects);
+         freeObj != 0;
+         freeObj = mCoreReader.Defer<Address>(freeObj)) {
+        auto it = sw->find(freeObj);
+        it->GetTag() = Tag::sSpanCache;
+    }
+    auto freeObjectNum = sw->Count(Tag::sSpanCache);
+    Assert(freeObjectNum == sw->GetFreeObjectNum());
+}
+```
+
+## 标记 TCEntry 缓存的对象
+
+```cpp
+void SpanManager::QueryTcSlotObjs() {
+    for (auto classId : range(kNumClasses)) {
+        const CentralFreeList& centralFreeList = mCentralCache[classId];
+        Assert(centralFreeList.mClassId == classId);
+        // search tc slots
+        auto usedSlot = centralFreeList.mUsedSlots;
+        for (auto slotIndex : range(usedSlot)) {
+            const TCEntry& entry = centralFreeList.mTcSlots[slotIndex];
+            for (auto freeObj = entry.mHead; freeObj != entry.mTail;
+                 freeObj = mCoreReader.Defer<void*>(freeObj)) {
+                auto it = FindObj(reinterpret_cast<Address>(freeObj));
+                Assert(it);
+                it->GetTag() = Tag::sTcSlot;
+            }
+            auto it = FindObj(reinterpret_cast<Address>(entry.mTail));
+            Assert(it);
+            it->GetTag() = Tag::sTcSlot;
+        }
+    }
+}
+```
+
+## 标记 ThreadCache 缓存的对象
+
+```cpp
+void SpanManager::QueryThreadFreeList() {
+    TraverseDoubleLinkedList<ThreadCache, ThreadCacheIter, bool, false>(
+        mCoreReader,
+        mThreadCacheAddr,
+        [this](const ThreadCache& threadCache, bool isHead) {
+            const auto& freeList = threadCache.mFreeList;
+            for (auto classId : range(kNumClasses)) {
+                for (auto freeObj = freeList[classId].mObject;
+                     freeObj != nullptr;
+                     freeObj = mCoreReader.Defer<void*>(freeObj)) {
+                    auto it = FindObj(reinterpret_cast<Address>(freeObj));
+                    Assert(it);
+                    it->GetTag() = Tag::sThreadCache;
+                }
+            }
+            return true;
+        });
+}
+```
 
 # reference
 
