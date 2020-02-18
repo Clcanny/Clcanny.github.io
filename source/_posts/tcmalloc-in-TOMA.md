@@ -62,7 +62,7 @@ make install
 
 使用中的对象 = PageHeap 中的对象 - CentralCache 中的对象 - ThreadCache 中的对象
 
-![](tcmalloc-Overview.svg)
+![](http://junbin-hexo-img.oss-cn-beijing.aliyuncs.com/tcmalloc-in-TOMA/Overview.svg)
 
 ## PageHeap
 
@@ -70,7 +70,7 @@ make install
 2. Span 由一页或多页连续的 Page 构成，是 PageHeap 管理内存页的基本单位
 3. PageHeap 用于管理 Span
 
-![](tcmalloc-PageHeap.svg)
+![](http://junbin-hexo-img.oss-cn-beijing.aliyuncs.com/tcmalloc-in-TOMA/PageHeap.svg)
 
 ### PageMap
 
@@ -80,7 +80,7 @@ PageMap 协助 PageHeap 管理 Span ，回答这样一个问题：给定一个 P
 
 在 TCMalloc 的实现中，PageMap 将采用二级或三级 radix tree （多级索引）以节省存储空间：
 
-![](tcmalloc-PageMap.svg)
+![](http://junbin-hexo-img.oss-cn-beijing.aliyuncs.com/tcmalloc-in-TOMA/PageMap.svg)
 
 ## CentralCache
 
@@ -90,15 +90,15 @@ PageMap 协助 PageHeap 管理 Span ，回答这样一个问题：给定一个 P
 4. CentralFreeList 真正管理的是 Span ，而小对象被包含在 Span 的空闲对象链表中，所以 CentralCache 实际上由每一个 Span 的空闲对象列表构成
 5. CentralFreeList 的 `empty_` 链表保存了已经没有空闲对象可用的 Span，`nonempty_` 链表保存了还有空闲对象可用的 Span
 
-![](tcmalloc-CentralCache.svg)
+![](http://junbin-hexo-img.oss-cn-beijing.aliyuncs.com/tcmalloc-in-TOMA/CentralCache.svg)
 
-![](tcmalloc-CentralFreeList.svg)
+![](http://junbin-hexo-img.oss-cn-beijing.aliyuncs.com/tcmalloc-in-TOMA/CentralFreeList.svg)
 
 ## ThreadCache
 
 ThreadCache 是独属于每一个线程的小对象缓存系统
 
-![](tcmalloc-ThreadCache.svg)
+![](http://junbin-hexo-img.oss-cn-beijing.aliyuncs.com/tcmalloc-in-TOMA/ThreadCache.svg)
 
 # 探索 TCMalloc 的细节
 
@@ -150,7 +150,7 @@ TCMalloc 的 Page 大小默认是 8K = 2^13 ，低 13 位构成页内偏移
 
 中间的 35 位构成 radix tree 的三级索引，分别是 12 / 12 / 11
 
-![](http://junbin-hexo-img.oss-cn-beijing.aliyuncs.com/tcmalloc/page-and-span.jpeg)
+![](http://junbin-hexo-img.oss-cn-beijing.aliyuncs.com/tcmalloc-in-TOMA/page-and-span.jpeg)
 
 ## Span
 
