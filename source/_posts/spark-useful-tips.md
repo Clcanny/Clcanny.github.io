@@ -45,38 +45,40 @@ Spark 支持 join 静态表，但很多时候我们希望这张静态表每隔�
 
 ```scala
 object Main extends Logging {
-  // 1.
-  @transient var broadcastValue: Option[String] = None
-  val threadPool = new ScheduledThreadPool(1)
-  val updateBroadcastValue = new Runnable {
-    override def run(): Unit = {
-      // Update boardcastValue here.
+  def main(args: Array[String]): Unit = {
+    // 1.
+    @transient var broadcastValue: Option[String] = None
+    val threadPool = new ScheduledThreadPool(1)
+    val updateBroadcastValue = new Runnable {
+      override def run(): Unit = {
+        // Update boardcastValue here.
+      }
     }
-  }
-  threadPool.scheduleAtFixedRate(updateBroadcastValue, 0, 1, TimeUnit.MINUTES)
+    threadPool.scheduleAtFixedRate(updateBroadcastValue, 0, 1, TimeUnit.MINUTES)
 
-  // 2.
-  var broadcast = spark.sparkContext.broadcast("")
-  val broadcastListener = new StreamingQueryListener {
-    override def onQueryStarted(event: QueryStartedEvent): Unit = {}
+    // 2.
+    var broadcast = spark.sparkContext.broadcast("")
+    val broadcastListener = new StreamingQueryListener {
+      override def onQueryStarted(event: QueryStartedEvent): Unit = {}
 
-    override def onQueryProgress(event: QueryProgressEvent): Unit = {
-      broadcast = broadcastValue.flatMap(v => {
-        if (!spark.sparkContext.isStopped) {
-          // Unpersist broadcast blocking.
-          broadcast.unpersist(true)
-          broadcast = spark.sparkContext.broadcast(v)
-          logInfo(s"Update broadcast succeed: $v")
-        }
-      })
+      override def onQueryProgress(event: QueryProgressEvent): Unit = {
+        broadcast = broadcastValue.flatMap(v => {
+          if (!spark.sparkContext.isStopped) {
+            // Unpersist broadcast blocking.
+            broadcast.unpersist(true)
+            broadcast = spark.sparkContext.broadcast(v)
+            logInfo(s"Update broadcast succeed: $v")
+          }
+        })
+      }
     }
-  }
 
-  // 3.
-  val query = spark.readStream.mapPartitions(itPartition => {
-    val value = broadcast.value
-    // Do other things.
-  })
+    // 3.
+    val query = spark.readStream.mapPartitions(itPartition => {
+      val value = broadcast.value
+      // Do other things.
+    })
+  }
 }
 ```
 
