@@ -1,5 +1,5 @@
 ---
-title: useful and easy new features of Cpp11
+title: Spark useful tips
 date: 2020-05-3 12:50:00
 tags:
   - Spark
@@ -59,7 +59,7 @@ object Main extends Logging {
   var broadcast = spark.sparkContext.broadcast("")
   val broadcastListener = new StreamingQueryListener {
     override def onQueryStarted(event: QueryStartedEvent): Unit = {}
-    
+
     override def onQueryProgress(event: QueryProgressEvent): Unit = {
       broadcast = broadcastValue.flatMap(v => {
         if (!spark.sparkContext.isStopped) {
@@ -113,7 +113,7 @@ import org.apache.log4j.AppenderSkeleton
 
 class MyAppender extends AppenderSkeleton {
   override def activateOptions(): Unit = {}
-  
+
   override def append(event: LoggingEvent): Unit = {}
 }
 ```
