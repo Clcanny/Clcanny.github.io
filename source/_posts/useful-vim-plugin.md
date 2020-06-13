@@ -1,7 +1,9 @@
 ---
 title: useful-vim-plugin.md
 date: 2020-06-14 05:01:26
-tags: vim tool
+tags:
+  - vim
+  - tool
 ---
 
 # 常用的 VIM 插件
