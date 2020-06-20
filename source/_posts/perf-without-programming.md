@@ -463,3 +463,17 @@ perf_event_attr:
 ```
 
 > Many other events (like tracepoints) have a default of 1 anyway. You'll encounter a non-1 default for many software and hardware events.
+
+# Reference
+
+[obtain kernel config](https://superuser.com/questions/287371/obtain-kernel-config-from-currently-running-linux-system)
+
+[kprobe documentation](https://www.kernel.org/doc/Documentation/trace/kprobetrace.txt)
+
+[uprobe documentation](https://www.kernel.org/doc/Documentation/trace/uprobetracer.txt)
+
+[Statically Defined Tracing for User Applications](http://dtrace.org/guide/chp-usdt.html#:~:text=Statically%20Defined%20Tracing%20for%20User%20Applications,capabilities%20of%20the%20pid%20provider.)
+
+[X86 Architecture](https://en.wikibooks.org/wiki/X86_Assembly/X86_Architecture)
+
+[Calling Conventions](https://www.agner.org/optimize/calling_conventions.pdf)
