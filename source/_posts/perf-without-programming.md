@@ -466,6 +466,8 @@ perf_event_attr:
 
 # Reference
 
+[perf Examples](http://brendangregg.com/perf.html)
+
 [obtain kernel config](https://superuser.com/questions/287371/obtain-kernel-config-from-currently-running-linux-system)
 
 [kprobe documentation](https://www.kernel.org/doc/Documentation/trace/kprobetrace.txt)
