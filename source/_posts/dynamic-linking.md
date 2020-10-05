@@ -431,7 +431,7 @@ Starting program: /root/test/main
 
 `l_addr` = 进程中 segment 的虚存地址 - ELF 文件中 segment 的虚存地址 = 0x555555554000
 
-### _dl_fixup 
+### _dl_fixup
 
 `_dl_runtime_resolve_xsave` 的核心是位于 elf/dl-runtime.c 的 `_dl_fixup` ，接下来我们会跟着代码一步一步地解析 ELF 文件。
 
@@ -460,6 +460,11 @@ struct link_map
     char *l_name;               /* Absolute file name object was found in.  */
     ElfW(Dyn) *l_ld;            /* Dynamic section of the shared object.  */
     struct link_map *l_next, *l_prev; /* Chain of loaded objects.  */
+    // ...
+    /* Indexed pointers to dynamic section. */
+    ElfW(Dyn) *l_info[DT_NUM + DT_THISPROCNUM + DT_VERSIONTAGNUM
+                      + DT_EXTRANUM + DT_VALNUM + DT_ADDRNUM];
+    // ...
   };
 ```
 
@@ -596,7 +601,7 @@ typedef struct
    wordsize.  `ELFW(R_TYPE)' is used in place of `ELF32_R_TYPE' or
    `ELF64_R_TYPE'.  */
 #define ELFW(type)      _ElfW (ELF, __ELF_NATIVE_CLASS, type)
-#define ELF64_R_SYM(i)			((i) >> 32)
+#define ELF64_R_SYM(i)          ((i) >> 32)
 
 const ElfW(Sym) *const symtab
   = (const void *) D_PTR (l, l_info[DT_SYMTAB]);
@@ -674,4 +679,383 @@ result = _dl_lookup_symbol_x (strtab + sym->st_name, l, &sym, l->l_scope,
 `_dl_lookup_symbol_x` 是怎么根据字符串找到函数地址的？
 
 根据 [Symbol Versioning](https://gcc.gnu.org/wiki/SymbolVersioning) 的说法：In general, this capability exists only on a few platforms. Symbol Versioning 不是一种普遍的做法。
+
+```cpp
+/* Structure to describe a single list of scope elements.  The lookup
+   functions get passed an array of pointers to such structures.  */
+struct r_scope_elem
+{
+  /* Array of maps for the scope.  */
+  struct link_map **r_list;
+  /* Number of entries in the scope.  */
+  unsigned int r_nlist;
+};
+
+struct link_map
+  {
+    // ...
+    /* Size of array allocated for 'l_scope'.  */
+    size_t l_scope_max;
+    /* This is an array defining the lookup scope for this link map.
+       There are initially at most three different scope lists.  */
+    struct r_scope_elem **l_scope;
+    // ...
+  };
+```
+
+##### 构造 l_scope
+
+##### _dl_setup_hash
+
+.gnu.hash 需要有多个导出符号才能较方便地分析，因此我们将使用 test_gnu_hash.cpp 作为待分析的文件：
+
+```cpp
+// test_gnu_hash.cpp
+// g++ -std=c++11 -shared -fPIC test_gnu_hash.cpp -o libtest_gnu_hash.so
+void foo() {}
+void bar() {}
+void test() {}
+void haha() {}
+void more() {}
+```
+
+```cpp
+struct link_map
+  {
+    // ...
+    /* Symbol hash table.  */
+    // The number of hash buckets.
+    Elf_Symndx l_nbuckets;
+    // bitmask_words is the number of __ELF_NATIVE_CLASS sized words
+    // in the Bloom filter portion of the hash table section. This value
+    // must be non-zero, and must be a power of 2.
+    // l_gnu_bitmask_idxbits = bitmask_nwords - 1
+    Elf32_Word l_gnu_bitmask_idxbits;
+    // A shift count used by the Bloom filter.
+    // HashValue_2 = HashValue_1 >> l_gnu_shift.
+    Elf32_Word l_gnu_shift;
+    const ElfW(Addr) *l_gnu_bitmask;
+    union
+    {
+      const Elf32_Word *l_gnu_buckets;
+      const Elf_Symndx *l_chain;
+    };
+    union
+    {
+      const Elf32_Word *l_gnu_chain_zero;
+      const Elf_Symndx *l_buckets;
+    };
+    // ...
+  };
+```
+
+```cpp
+void
+_dl_setup_hash (struct link_map *map)
+{
+  if (__glibc_likely (map->l_info[ADDRIDX (DT_GNU_HASH)] != NULL))
+    {
+      Elf32_Word *hash32
+        = (void *) D_PTR (map, l_info[ADDRIDX (DT_GNU_HASH)]);
+      map->l_nbuckets = *hash32++;
+      Elf32_Word symbias = *hash32++;
+      Elf32_Word bitmask_nwords = *hash32++;
+      /* Must be a power of two.  */
+      assert ((bitmask_nwords & (bitmask_nwords - 1)) == 0);
+      map->l_gnu_bitmask_idxbits = bitmask_nwords - 1;
+      map->l_gnu_shift = *hash32++;
+
+      map->l_gnu_bitmask = (ElfW(Addr) *) hash32;
+      hash32 += __ELF_NATIVE_CLASS / 32 * bitmask_nwords;
+
+      map->l_gnu_buckets = hash32;
+      hash32 += map->l_nbuckets;
+      map->l_gnu_chain_zero = hash32 - symbias;
+      return;
+    }
+  // ...
+}
+```
+
+```bash
+# readelf --dynamic libtest_gnu_hash.so | grep -E "Tag|GNU_HASH"
+  Tag        Type                         Name/Value
+ 0x000000006ffffef5 (GNU_HASH)           0x260
+```
+
+```bash
+# readelf --section-headers libtest_gnu_hash.so | grep -E "Nr|260" -A1 | grep -v "\-\-"
+  [Nr] Name              Type             Address           Offset
+       Size              EntSize          Flags  Link  Info  Align
+  [ 2] .gnu.hash         GNU_HASH         0000000000000260  00000260
+       0000000000000038  0000000000000000   A       3     0     8
+```
+
+```bash
+# export gnu_hash_start_addr=0x260
+# export gnu_hash_size=0x38
+# od --skip-bytes=$gnu_hash_start_addr --read-bytes=$gnu_hash_size --format=xI libtest_gnu_hash.so
+0001140 00000003 00000005 00000001 00000006
+0001160 04200400 18012908 00000005 00000008
+0001200 00000000 b8f7d29a b95a257a b9d35b69
+0001220 6a5ebc3c 6a6128eb
+```
+
+###### l_nbuckets / symbias / bitmask_nwords / l_gnu_shift
+
+从 [GNU Hash ELF Sections](https://blogs.oracle.com/solaris/gnu-hash-elf-sections-v2) 摘抄了一段关于 .gnu.hash section 的描述：
+
+> - **l_nbuckets**
+>   The number of hash buckets
+>
+> - **symbias**
+>   The dynamic symbol table has *dynsymcount* symbols. *symndx* is the index of the first symbol in the dynamic symbol table that is to be accessible via the hash table. This implies that there are (*dynsymcount* - *symndx*) symbols accessible via the hash table.
+>
+> - **bitmask_nwords**
+>
+>   The number of \_\_ELF\_NATIVE\_CLASS sized words in the Bloom filter portion of the hash table section. This value must be non-zero, and must be a power of 2 as explained below.
+>
+>   Note that a value of 0 could be interpreted to mean that no Bloom filter is present in the hash section. However, the GNU linkers do not do this — the GNU hash section always includes at least 1 mask word.
+>
+> - **l_gnu_shift**
+>   A shift count used by the Bloom filter. HashValue_2 = HashValue_1 >> l_gnu_shift.
+
+对照前面的代码：`l_nbuckets` 是 3 ，`symbias` 是 5 ，`bitmask_nwords` 是 1 ，`l_gnu_shift` 是 6 。
+
+```bash
+# readelf --dyn-syms libtest_gnu_hash.so
+Symbol table '.dynsym' contains 10 entries:
+   Num:    Value          Size Type    Bind   Vis      Ndx Name
+     0: 0000000000000000     0 NOTYPE  LOCAL  DEFAULT  UND
+     1: 0000000000000000     0 FUNC    WEAK   DEFAULT  UND __cxa_finalize@GLIBC_2.2.5 (2)
+     2: 0000000000000000     0 NOTYPE  WEAK   DEFAULT  UND _ITM_deregisterTMCloneTab
+     3: 0000000000000000     0 NOTYPE  WEAK   DEFAULT  UND __gmon_start__
+     4: 0000000000000000     0 NOTYPE  WEAK   DEFAULT  UND _ITM_registerTMCloneTable
+     5: 000000000000110a     7 FUNC    GLOBAL DEFAULT   11 _Z4hahav
+     6: 0000000000001111     7 FUNC    GLOBAL DEFAULT   11 _Z4morev
+     7: 0000000000001103     7 FUNC    GLOBAL DEFAULT   11 _Z4testv
+     8: 00000000000010fc     7 FUNC    GLOBAL DEFAULT   11 _Z3barv
+     9: 00000000000010f5     7 FUNC    GLOBAL DEFAULT   11 _Z3foov
+```
+
+`symbias` 表明第一个可以通过 .gnu.hash section 访问的符号（即可以提供给其它库访问的符号），在 `libtest_gnu_hash.so` 中这个符号是 `_Z4hahav` 。
+
+###### l_gnu_bitmask
+
+`l_gnu_bitmask` 是 0x260 + 4 * 4 = 0x270 ，`l_gnu_bitmask` 指向 `libtest_gnu_hash.so` 的布隆过滤器；从这个角度看的话，动态链接库的布隆过滤器是由编译器计算的，不是由链接器计算的。
+
+`l_gnu_bitmask` 的计算方法在《查找哈希表》小节会详细地讲，这里先将算法提前用一下：
+
+```cpp
+// bloom.cpp
+#include <ios>
+#include <iostream>
+
+uint32_t dl_new_hash(const char *s)
+{
+  uint32_t h = 5381;
+  for (unsigned char c = *s; c != '\0'; c = *++s)
+    h = h * 33 + c;
+  return h & 0xffffffff;
+}
+
+const int __ELF_NATIVE_CLASS = 64;
+const int l_gnu_shift = 6;
+const int bitmask_nwords = 1;
+const int l_gnu_bitmask_idxbits = bitmask_nwords - 1;
+
+void new_bitmask(const char* s, uint64_t* bitmask_arr)
+{
+  uint32_t hash_value1 = dl_new_hash(s);
+  uint32_t hash_value2 = hash_value1 >> l_gnu_shift;
+  int n = (hash_value1 / __ELF_NATIVE_CLASS) & l_gnu_bitmask_idxbits;
+  unsigned int hashbit1 = hash_value1 % __ELF_NATIVE_CLASS;
+  unsigned int hashbit2 = hash_value2 % __ELF_NATIVE_CLASS;
+  bitmask_arr[n] |= (1 << hashbit1);
+  bitmask_arr[n] |= (1 << hashbit2);
+}
+
+int main()
+{
+  uint64_t bitmask_arr[bitmask_nwords] = {0};
+  new_bitmask("_Z4hahav", bitmask_arr);
+  new_bitmask("_Z4morev", bitmask_arr);
+  new_bitmask("_Z4testv", bitmask_arr);
+  new_bitmask("_Z3barv", bitmask_arr);
+  new_bitmask("_Z3foov", bitmask_arr);
+  std::cout << std::hex << "0x" << bitmask_arr[0] << std::endl;
+  // 0x1c212d08
+}
+```
+
+我们算出来的 `l_gnu_bitmask` 和编译器算出来的 `l_gnu_bitmask` 有差异，需要深究。
+
+###### l_gnu_buckets / l_gnu_chain_zero
+
+`l_gnu_buckets` 指向的一个数组，数组的 `l_nbuckets` 个元素分别是 5、8 和 0 ；5 代表 0 号桶的第一个元素是 `l_gnu_chain_zero[5]` ，8 代表 1 号桶的第一个元素是 `l_gnu_chain_zero[8]` ，0 代表 2 号桶是一个空桶；这是一种用一维数组实现二维数组的手段。
+
+![](http://junbin-hexo-img.oss-cn-beijing.aliyuncs.com/dynamic-linking/gnu.hash-implementation.jpeg)
+
+.gnu.hash 实现的是一张二维表，X 轴是哈希表的桶号，Y 轴是符号在 .dynsym 表中的下标，如下图所示：
+
+![](http://junbin-hexo-img.oss-cn-beijing.aliyuncs.com/dynamic-linking/gnu.hash-two-dimensional-table.jpeg)
+
+然而，.gnu.hash 为了节省空间，做了两件非常 tricky 的事情：
+
+1. 将 5 个符号排序（可以发现 5 个符号在 .dynsym 表的顺序并非字母序），使得哈希后处在同一个哈希桶的多个符号彼此相邻，从而将二维表化简成一维表；
+2. 将不可导出符号（比如 __cxa_finalize@GLIBC_2.2.5 ）排在可导出符号（比如 _Z3foov）的前面，从而节省掉存储不可导出符号的哈希值的空间；第一个可导出符号在 .dynsym 表的下标记为 `symbias` 。
+
+```cpp
+map->l_gnu_chain_zero = hash32 - symbias;
+```
+
+将 `l_gnu_chain_zero` 减去 `symbias` ，方便后续计算符号在 .dynsym 表的下标。
+
+##### do_lookup_x
+
+```cpp
+// elf/dl-lookup.c
+// do_lookup_x
+// const uint_fast32_t new_hash = dl_new_hash (undef_name);
+const struct link_map *map = list[i]->l_real;
+const ElfW(Addr) *bitmask = map->l_gnu_bitmask;
+if (__glibc_likely (bitmask != NULL))
+{
+  ElfW(Addr) bitmask_word
+    = bitmask[(new_hash / __ELF_NATIVE_CLASS)& map->l_gnu_bitmask_idxbits];
+  unsigned int hashbit1 = new_hash & (__ELF_NATIVE_CLASS - 1);
+  unsigned int hashbit2 = ((new_hash >> map->l_gnu_shift)
+                           & (__ELF_NATIVE_CLASS - 1));
+  if (__glibc_unlikely ((bitmask_word >> hashbit1)
+                        & (bitmask_word >> hashbit2) & 1))
+  {
+    Elf32_Word bucket = map->l_gnu_buckets[new_hash
+                                           % map->l_nbuckets];
+    if (bucket != 0)
+    {
+      const Elf32_Word *hasharr = &map->l_gnu_chain_zero[bucket];
+      do
+        if (((*hasharr ^ new_hash) >> 1) == 0)
+        {
+          symidx = hasharr - map->l_gnu_chain_zero;
+          sym = check_match (undef_name, ref, version, flags,
+                             type_class, &symtab[symidx], symidx,
+                             strtab, map, &versioned_sym,
+                             &num_versions);
+          if (sym != NULL)
+            goto found_it;
+        }
+      while ((*hasharr++ & 1u) == 0);
+    }
+  }
+  else
+  {
+    /* Use the old SysV-style hash table.  Search the appropriate
+       hash bucket in this object's symbol table for a definition
+       for the same symbol name.  */
+    // ...
+  }
+}
+```
+
+参考 [GNU Hash ELF Sections](https://blogs.oracle.com/solaris/gnu-hash-elf-sections-v2) ，我们知道查找符号用的哈希算法有两个特点：
+
+1. 哈希值的长度是 32 位；
+2. 使用布隆过滤器来提升查找效率，布隆过滤器的原理可以参考文章[详解布隆过滤器的原理，使用场景和注意事项](https://zhuanlan.zhihu.com/p/43263751)，简而言之，将数据使用多个不同的哈希函数生成多个哈希值，并将对应比特位置为 1 ，就能判断某个数据肯定不存在。
+
+###### 哈希算法
+
+###### 布隆过滤
+
+```cpp
+const uint_fast32_t new_hash = dl_new_hash (undef_name);
+uint32_t H1 = new_hash;
+uint32_t H2 = new_hash >> map->l_gnu_shift;
+uint32_t N = (H1 / __ELF_NATIVE_CLASS) & map->l_gnu_bitmask_idxbits;
+unsigned int hashbit1 = H1 % __ELF_NATIVE_CLASS;
+unsigned int hashbit2 = H2 % __ELF_NATIVE_CLASS;
+// 构造布隆过滤器
+bloom[N] |= (1 << hashbit1);
+bloom[N] |= (1 << hashbit2);
+// 利用布隆过滤器判断某个哈希值是否存在
+(bloom[N] & (1 << hashbit1)) && (bloom[N] & (1 << hashbit2));
+```
+
+链接器使用的布隆过滤算法与以上代码实现的布隆过滤算法一致。
+
+###### 查找哈希表
+
+
+
+#### 回调 .got.plt 表项
+
+```cpp
+const PLTREL *const reloc
+  = (const void *) (D_PTR (l, l_info[DT_JMPREL]) + reloc_offset);
+void *const rel_addr = (void *)(l->l_addr + reloc->r_offset);
+/* Finally, fix up the plt itself.  */
+if (__glibc_unlikely (GLRO(dl_bind_not)))
+  return value;
+return elf_machine_fixup_plt (l, result, refsym, sym, reloc, rel_addr, value);
+
+// sysdeps/x86_64/dl-machine.h
+static inline ElfW(Addr)
+elf_machine_fixup_plt (struct link_map *map, lookup_t t,
+                       const ElfW(Sym) *refsym, const ElfW(Sym) *sym,
+                       const ElfW(Rela) *reloc,
+                       ElfW(Addr) *reloc_addr, ElfW(Addr) value)
+{
+  return *reloc_addr = value;
+}
+```
+
+```cpp
+/* Relocation table entry with addend (in section of type SHT_RELA).  */
+typedef struct
+{
+  Elf64_Addr    r_offset;               /* Address */
+  Elf64_Xword   r_info;                 /* Relocation type and symbol index */
+  Elf64_Sxword  r_addend;               /* Addend */
+} Elf64_Rela;
+```
+
+```bash
+# readelf --dynamic main | grep -E "Tag|JMPREL"
+  Tag        Type                         Name/Value
+ 0x0000000000000017 (JMPREL)             0x578
+```
+
+```bash
+# readelf --section-headers main | grep -E "Nr|578" -A1 | grep -v "\-\-"
+  [Nr] Name              Type             Address           Offset
+       Size              EntSize          Flags  Link  Info  Align
+  [10] .rela.plt         RELA             0000000000000578  00000578
+       0000000000000018  0000000000000018  AI       5    23     8
+```
+
+```bash
+# export reloc_table_start_addr=0x578
+# export reloc_entry_size=0x18
+# export reloc_offset=0
+# od --skip-bytes=$(($reloc_table_start_addr + $reloc_entry_size * $reloc_offset)) --read-bytes=$reloc_entry_size --format=xL main
+0002570 0000000000004018 0000000400000007
+0002610 0000000000000000
+```
+
+对比 `Elf64_Rela` 的定义，`r_offset` 的值是 0x4018 ，而 0x4018 恰好是 .got.plt 表为函数 foo 预留的占位符。
+
+```bash
+# objdump -d -j .plt main | tail -n 3
+    1030:   ff 25 e2 2f 00 00       jmpq   *0x2fe2(%rip)        # 4018 <_Z3foov>
+    1036:   68 00 00 00 00          pushq  $0x0
+    103b:   e9 e0 ff ff ff          jmpq   1020 <.plt>
+```
+
+```bash
+# readelf --section-headers main | grep -E "Nr|.got.plt" -A1 | grep -v "\-\-"
+  [Nr] Name              Type             Address           Offset
+       Size              EntSize          Flags  Link  Info  Align
+  [23] .got.plt          PROGBITS         0000000000004000  00003000
+       0000000000000020  0000000000000008  WA       0     0     8
+```
 
