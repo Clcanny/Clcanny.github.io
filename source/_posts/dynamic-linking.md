@@ -1,6 +1,12 @@
-# Dynamic Link
+# 导读
 
-## 环境
+本篇文章详细地介绍了动态链接库重定位的过程：
+
+![](http://junbin-hexo-img.oss-cn-beijing.aliyuncs.com/dynamic-linking/guide.jpg)
+
+下文出现的 objects 指代动态链接库和可执行文件。
+
+# 环境
 
 ```dockerfile
 FROM debian:buster
@@ -47,7 +53,7 @@ gcc (Debian 8.3.0-6) 8.3.0
 ldd (Debian GLIBC 2.28-10) 2.28
 ```
 
-## 动态链接的一个小例子
+# 一个小例子
 
 ```cpp
 // gcc -fPIC -ggdb -O0 -shared -Wl,--dynamic-linker=/root/glibc/build/install/lib/ld-linux-x86-64.so.2 foo.cpp -o libfoo.so
@@ -62,11 +68,11 @@ int main() {
 }
 ```
 
-## 从 ELF 文件看动态链接
+# 了解 ELF 文件
 
-### 工具概述
+## 工具概述
 
-#### Dump 二进制
+### Dump 二进制
 
 ```bash
 # od --skip-bytes=0 --read-bytes=8 --format=xL main
@@ -92,7 +98,7 @@ int main() {
 0000010
 ```
 
-#### Dump 汇编代码
+### Dump 汇编代码
 
 ```bash
 # objdump -d libfoo.so --start-address=0x1020 --stop-address=$((0x1020+0x10))
@@ -102,7 +108,7 @@ int main() {
     102c:   0f 1f 40 00             nopl   0x0(%rax)
 ```
 
-#### Dump 元信息
+### Dump 元信息
 
 ```bash
 # readelf --file-header main
@@ -110,7 +116,7 @@ int main() {
 # readelf --section-headers main
 ```
 
-#### 解析特定 sections
+### 解析特定 sections
 
 ```bash
 # readelf --dynamic main | head -n 5 | tail -n 4
@@ -125,7 +131,7 @@ String dump of section '.strtab':
   [    21]  __do_global_dtors_aux
 ```
 
-### ELF 文件概述
+## ELF 文件概述
 
 ![](http://junbin-hexo-img.oss-cn-beijing.aliyuncs.com/dynamic-linking/ELF_Executable_and_Linkable_Format_diagram_by_Ange_Albertini.png)
 
@@ -133,7 +139,7 @@ File Header 和 Program Header 在 ELF 文件的开头，Section Header 在 ELF 
 
 接下来我们会用 readelf 直接查看元数据，也会用 od 以二进制方式看看每一个 Header 。
 
-#### File Header
+### File Header
 
 ```bash
 # readelf --file-header main
@@ -196,7 +202,7 @@ File Header 帮助链接器：
 1. 确认是否可以装载文件，包括系统是 32 位还是 64 位、大小端、ABI 版本等；
 2. 决定如何装载文件，包括 Program Header 和 Section Header 的位置及大小、如何寻找 section 名称、entry point address 等。
 
-#### Program Header
+### Program Header
 
 ```bash
 # readelf --program-headers main
@@ -273,7 +279,7 @@ Program Header 最重要的作用是指导链接器如何装载 ELF 文件，要
 
 LOAD Segment 在文件中的起始地址是 0x2dc8 ，在内存中的起始地址是 0x3dc8 ，两者并不相等。
 
-#### Section Header
+### Section Header
 
 ```bash
 # readelf --section-headers main
@@ -326,7 +332,13 @@ typedef struct
 
 根据 [man elf](https://man7.org/linux/man-pages/man5/elf.5.html) 的描述，sh_link / sh_info 的含义都取决于 section 。
 
-### 重定位
+## .got .plt .got.plt .plt.got
+
+# 同文件重定位
+
+# 跨文件重定位
+
+## 开始重定位：.plt .got.plt
 
 以 main 调用 foo 为例：
 
@@ -384,58 +396,28 @@ rip + 0x2fe2 是重定位实现 lazy binding 留下的一个占位符，这个�
 1. link_map 是怎么构造出来的？
 2. `_dl_runtime_resolve_xsave` 做了些什么？
 
-#### 构造 link_map
-
-### .got .plt .got.plt .plt.got
-
-### .dynamic
-
-## 从运行时看动态链接
-
-根据 [Understanding Linux ELF RTLD internals](http://s.eresi-project.org/inc/articles/elf-rtld.txt) 的描述，the dynamic linker source code hierarchy 如下：
-
-```txt
-_dl_main()
-  process_envvars()
-  _dl_new_object()
-```
-
-### _dl_runtime_resolve_xsave 执行过程
+## \_dl\_runtime\_resolve\_xsave: before \_dl\_fixup
 
 `_dl_runtime_resolve_xsave` 定义于 /root/glibc/glibc-2.28/sysdeps/x86_64/dl-trampoline.h ，不过文件内大量使用 `#if` 语句，并不适合直接阅读。
 
-根据 [_dl_runtime_resolve](https://www.jianshu.com/p/57f6474fe4c6) 的描述，`_dl_runtime_resolve_xsave` 的执行过程分为几步：
+\_dl\_runtime\_resolve\_xsave 在调用 \_dl\_fixup 之前的主要工作是：保存寄存器。
 
-1. 用 link_map 访问 .dynamic ，分别取出 .dynstr、.dynsym、.rel.plt 的地址
+## \_dl\_fixup
 
-2. .rel.plt + 参数 `relic_index` ，求出当前函数的重定位表项 Elf32_Rel 的指针，记作 rel
+`_dl_runtime_resolve_xsave` 的核心是位于 elf/dl-runtime.c 的 `_dl_fixup` ，`_dl_fixup` 的执行过程如下：
 
-3. `rel->r_info >> 8` 作为 .dynsym 的下标，求出当前函数的符号表项 `Elf32_Sym` 的指针，记作 `sym`
+1. 用 `link_map` 访问 .dynamic ，分别取出 .rela.plt / .dynsym / .dynstr 的地址；
 
-4. `.dynstr` + `sym->st_name`得出符号名字符串指针
+2. .rela.plt + 参数 `reloc_arg` ，求出当前函数的重定位表项 Elf64_Rela 的指针，记作 reloc ；
 
-5. 在动态链接库查找这个函数的地址，并且把地址赋值给`*rel->r_offset`，即`GOT`表
+3. 以 `ELFW(R_SYM) (reloc->r_info)` 作为 .dynsym 的下标，求出当前函数的符号表项 `Elf64_Sym` 的指针，记作 `sym` ；
 
-6. 调用这个函数
+4. `.dynstr + sym->st_name` 得出符号名字 ；
 
-```bash
-# Get the difference between the addresses in the ELF file and the addresses in memory.
-# echo "y" | gdb main -ex "start" -ex "set pagination off" -ex "info proc mappings" -ex quit | grep "/root/test/main"
-Starting program: /root/test/main
-      0x555555554000     0x555555555000     0x1000        0x0 /root/test/main
-      0x555555555000     0x555555556000     0x1000     0x1000 /root/test/main
-      0x555555556000     0x555555557000     0x1000     0x2000 /root/test/main
-      0x555555557000     0x555555558000     0x1000     0x2000 /root/test/main
-      0x555555558000     0x555555559000     0x1000     0x3000 /root/test/main
-```
+5. 在动态链接库中查找这个函数的地址，并且把地址赋值给 `*(reloc->r_offset)` ，即 .got.plt 表项 。
 
-`l_addr` = 进程中 segment 的虚存地址 - ELF 文件中 segment 的虚存地址 = 0x555555554000
 
-### _dl_fixup
-
-`_dl_runtime_resolve_xsave` 的核心是位于 elf/dl-runtime.c 的 `_dl_fixup` ，接下来我们会跟着代码一步一步地解析 ELF 文件。
-
-#### 访问 .dynamic 表项
+### 访问 .dynamic 表项
 
 ```cpp
 typedef struct
@@ -493,7 +475,7 @@ struct link_map
  0x000000000000000d (FINI)               0x11b4
 ```
 
-##### 对比 .dynamic 与 section headers
+### 对比 .dynamic 与 section headers
 
 初次接触 ELF 文件会被 .dynamic 和 section headers 的区别坑到，我们不禁想问：既然有 section headers 指明每个 sections 的起始地址，为什么还需要 .dynamic ？
 
@@ -551,7 +533,7 @@ Section header 说 .symtab 的起始地址是 0x3050 ，.dynamic 表说 .symtab 
 
 .dynamic 表和 section headers 都使用了 strtab 这个名字，但两者完全不是一个意思。
 
-#### 访问 .rela.plt 表项
+### 访问 .rela.plt 表项
 
 ```cpp
 // reloc_offset = reloc_arg ，是 _dl_fixup 的第二个参数。
@@ -594,7 +576,7 @@ typedef struct
 
 对照 `Elf64_Rela` 的定义，`r_info` 的值是 0x4 << 32 + 0x7 。
 
-#### 访问 .symtab 表项
+### 访问 .dynsym 表项
 
 ```cpp
 /* We use this macro to refer to ELF macros independent of the native
@@ -650,7 +632,7 @@ typedef struct
 
 对照 `Elf64_Sym` 的定义，`st_name` 的值是 0x50 。
 
-#### 访问 .strtab 表项
+### 访问 .dynstr 表项
 
 ```cpp
 const char *strtab = (const void *) D_PTR (l, l_info[DT_STRTAB]);
@@ -665,6 +647,14 @@ result = _dl_lookup_symbol_x (strtab + sym->st_name, l, &sym, l->l_scope,
 ```
 
 ```bash
+# readelf --section-headers main | grep -E "Nr|3f0" -A1 | grep -v "\-\-"
+  [Nr] Name              Type             Address           Offset
+       Size              EntSize          Flags  Link  Info  Align
+  [ 6] .dynstr           STRTAB           00000000000003f0  000003f0
+       000000000000009a  0000000000000000   A       0     0     1
+```
+
+```bash
 # export string_table_start_addr=0x3f0
 # export st_name=0x50
 # od --skip-bytes=$(($string_table_start_addr + $st_name)) --read-bytes=0x8 --format=xC -c main
@@ -674,11 +664,22 @@ result = _dl_lookup_symbol_x (strtab + sym->st_name, l, &sym, l->l_scope,
 
 函数 `foo` 在 mangle 后的名字是 `_Z3fooV` 。
 
-#### 查找符号
+### 查找符号
 
-`_dl_lookup_symbol_x` 是怎么根据字符串找到函数地址的？
+```cpp
+// elf/dl-lookup.c
+_dl_lookup_symbol_x
+  do_lookup_x
+```
 
-根据 [Symbol Versioning](https://gcc.gnu.org/wiki/SymbolVersioning) 的说法：In general, this capability exists only on a few platforms. Symbol Versioning 不是一种普遍的做法。
+`_dl_lookup_symbol_x` 遍历 `l->l_scope` ，对于每一个 `scope` 调用 `do_lookup_x` 函数寻找符号。
+
+1. `l_scope` 和已加载的动态链接库的关系是什么？是怎么被构造出来的？
+2. 如何在某个动态链接库内查找符号？
+
+#### l_scope
+
+##### l_scope 是什么？
 
 ```cpp
 /* Structure to describe a single list of scope elements.  The lookup
@@ -703,9 +704,65 @@ struct link_map
   };
 ```
 
+摘抄自 [ld.so Scopes](http://log.or.cz/?p=129) ：
+
+> The scope describes which libraries should be searched for symbol lookups occuring within the scope owner. (By the way, given that lookup scope may differ by caller, implementing `dlsym()` is not *that* trivial.) It is further divided into **scope elements (struct r_scope_elem)** – a single scope element basically describes a single search list of libraries, and the scope (**link_map.l_scope** is the scope used for symbol lookup) is list of such scope elements.
+
+> To reiterate, a symbol lookup scope is a list of lists! Then, when looking up a symbol, the linker walks the lists in the order they are listed in the scope. But what really are the scope elements? There are two usual kinds:
+>
+> - The "global scope" – all libraries (ahem, link_maps) that have been requested to be loaded by the main program (what ldd on the binary file of the main program would print out, plus dlopen()ed stuff).
+> - The "local scope" – DT_NEEDED library dependencies of the current link_map (what ldd on the binary file of the library would print out, plus dlopen()ed stuff).
+
+> The global scope is shared between all link_maps (in the current namespace), while the local scope is owned by a particular library.
+
+![](http://junbin-hexo-img.oss-cn-beijing.aliyuncs.com/dynamic-linking/l_scope.jpeg)
+
 ##### 构造 l_scope
 
-##### _dl_setup_hash
+```cpp
+// 以下代码只展示了有关于 l_scope 的部分
+/* Allocate a `struct link_map' for a new object being loaded,
+   and enter it into the _dl_loaded list.  */
+struct link_map *
+_dl_new_object (char *realname, const char *libname, int type,
+                struct link_map *loader, int mode, Lmid_t nsid)
+{
+  struct link_map *new = (struct link_map *) calloc (sizeof (*new) + audit_space
+                                    + sizeof (struct link_map *)
+                                    + sizeof (*newname) + libname_len, 1);
+  /* Use the 'l_scope_mem' array by default for the 'l_scope'
+     information.  If we need more entries we will allocate a large
+     array dynamically.  */
+  new->l_scope = new->l_scope_mem;
+  new->l_scope_max = sizeof (new->l_scope_mem) / sizeof (new->l_scope_mem[0]);
+  /* Counter for the scopes we have to handle.  */
+  int idx = 0;
+  /* Insert the scope if it isn't the global scope we already added.  */
+  if (idx == 0 || &loader->l_searchlist != new->l_scope[0])
+  {
+    if ((mode & RTLD_DEEPBIND) != 0 && idx != 0)
+    {
+      new->l_scope[1] = new->l_scope[0];
+      idx = 0;
+    }
+    new->l_scope[idx] = &loader->l_searchlist;
+  }
+}
+```
+
+```cpp
+// elf/rtld.c
+// dl_main
+_dl_add_to_namespace_list (main_map, LM_ID_BASE);
+assert (main_map == GL(dl_ns)[LM_ID_BASE]._ns_loaded);
+```
+
+这里只探讨用得最多的 global scope ：
+
+1. 加载文件时，代表 objects 的 `link_map` 会通过 `_dl_add_to_namespace_list` 函数添加到一个全局链表；
+2. `dl_new_object` 会将 global scope 赋值给 `l_scope[0]` 。
+
+#### \_dl\_setup\_hash
 
 .gnu.hash 需要有多个导出符号才能较方便地分析，因此我们将使用 test_gnu_hash.cpp 作为待分析的文件：
 
@@ -718,6 +775,8 @@ void test() {}
 void haha() {}
 void more() {}
 ```
+
+编译器会准备好查找符号需要的数据，主要是布隆过滤器和哈希表。
 
 ```cpp
 struct link_map
@@ -801,7 +860,7 @@ _dl_setup_hash (struct link_map *map)
 0001220 6a5ebc3c 6a6128eb
 ```
 
-###### l_nbuckets / symbias / bitmask_nwords / l_gnu_shift
+##### l_nbuckets / symbias / bitmask_nwords / l_gnu_shift
 
 从 [GNU Hash ELF Sections](https://blogs.oracle.com/solaris/gnu-hash-elf-sections-v2) 摘抄了一段关于 .gnu.hash section 的描述：
 
@@ -840,11 +899,26 @@ Symbol table '.dynsym' contains 10 entries:
 
 `symbias` 表明第一个可以通过 .gnu.hash section 访问的符号（即可以提供给其它库访问的符号），在 `libtest_gnu_hash.so` 中这个符号是 `_Z4hahav` 。
 
-###### l_gnu_bitmask
+##### l_gnu_bitmask
 
 `l_gnu_bitmask` 是 0x260 + 4 * 4 = 0x270 ，`l_gnu_bitmask` 指向 `libtest_gnu_hash.so` 的布隆过滤器；从这个角度看的话，动态链接库的布隆过滤器是由编译器计算的，不是由链接器计算的。
 
-`l_gnu_bitmask` 的计算方法在《查找哈希表》小节会详细地讲，这里先将算法提前用一下：
+布隆过滤器的原理可以参考文章[详解布隆过滤器的原理，使用场景和注意事项](https://zhuanlan.zhihu.com/p/43263751)，简而言之，将数据使用多个不同的哈希函数生成多个哈希值，并将对应比特位置为 1 ，就能判断某个数据肯定不存在。
+
+参考 [GNU Hash ELF Sections](https://blogs.oracle.com/solaris/gnu-hash-elf-sections-v2) ，构建布隆过滤器的伪代码如下：
+
+```cpp
+const uint_fast32_t new_hash = dl_new_hash(undef_name);
+uint32_t H1 = new_hash;
+uint32_t H2 = new_hash >> map->l_gnu_shift;
+uint32_t N = (H1 / __ELF_NATIVE_CLASS) & map->l_gnu_bitmask_idxbits;
+unsigned int hashbit1 = H1 % __ELF_NATIVE_CLASS;
+unsigned int hashbit2 = H2 % __ELF_NATIVE_CLASS;
+bloom[N] |= (1 << hashbit1);
+bloom[N] |= (1 << hashbit2);
+```
+
+构建布隆过滤器的 C++ 代码如下：
 
 ```cpp
 // bloom.cpp
@@ -871,8 +945,9 @@ void new_bitmask(const char* s, uint64_t* bitmask_arr)
   int n = (hash_value1 / __ELF_NATIVE_CLASS) & l_gnu_bitmask_idxbits;
   unsigned int hashbit1 = hash_value1 % __ELF_NATIVE_CLASS;
   unsigned int hashbit2 = hash_value2 % __ELF_NATIVE_CLASS;
-  bitmask_arr[n] |= (1 << hashbit1);
-  bitmask_arr[n] |= (1 << hashbit2);
+  // Please use 1L (64 bits) instead of 1 (32 bits).
+  bitmask_arr[n] |= (1L << hashbit1);
+  bitmask_arr[n] |= (1L << hashbit2);
 }
 
 int main()
@@ -884,13 +959,11 @@ int main()
   new_bitmask("_Z3barv", bitmask_arr);
   new_bitmask("_Z3foov", bitmask_arr);
   std::cout << std::hex << "0x" << bitmask_arr[0] << std::endl;
-  // 0x1c212d08
+  // 0x1801290804200400
 }
 ```
 
-我们算出来的 `l_gnu_bitmask` 和编译器算出来的 `l_gnu_bitmask` 有差异，需要深究。
-
-###### l_gnu_buckets / l_gnu_chain_zero
+##### l_gnu_buckets / l_gnu_chain_zero
 
 `l_gnu_buckets` 指向的一个数组，数组的 `l_nbuckets` 个元素分别是 5、8 和 0 ；5 代表 0 号桶的第一个元素是 `l_gnu_chain_zero[5]` ，8 代表 1 号桶的第一个元素是 `l_gnu_chain_zero[8]` ，0 代表 2 号桶是一个空桶；这是一种用一维数组实现二维数组的手段。
 
@@ -903,7 +976,7 @@ int main()
 然而，.gnu.hash 为了节省空间，做了两件非常 tricky 的事情：
 
 1. 将 5 个符号排序（可以发现 5 个符号在 .dynsym 表的顺序并非字母序），使得哈希后处在同一个哈希桶的多个符号彼此相邻，从而将二维表化简成一维表；
-2. 将不可导出符号（比如 __cxa_finalize@GLIBC_2.2.5 ）排在可导出符号（比如 _Z3foov）的前面，从而节省掉存储不可导出符号的哈希值的空间；第一个可导出符号在 .dynsym 表的下标记为 `symbias` 。
+2. 将不可导出符号（比如 \_\_cxa\_finalize@GLIBC\_2.2.5 ）排在可导出符号（比如 \_Z3foov）的前面，从而节省掉存储不可导出符号的哈希值的空间；第一个可导出符号在 .dynsym 表的下标记为 `symbias` 。
 
 ```cpp
 map->l_gnu_chain_zero = hash32 - symbias;
@@ -911,7 +984,7 @@ map->l_gnu_chain_zero = hash32 - symbias;
 
 将 `l_gnu_chain_zero` 减去 `symbias` ，方便后续计算符号在 .dynsym 表的下标。
 
-##### do_lookup_x
+#### do_lookup_x
 
 ```cpp
 // elf/dl-lookup.c
@@ -958,36 +1031,37 @@ if (__glibc_likely (bitmask != NULL))
 }
 ```
 
-参考 [GNU Hash ELF Sections](https://blogs.oracle.com/solaris/gnu-hash-elf-sections-v2) ，我们知道查找符号用的哈希算法有两个特点：
-
-1. 哈希值的长度是 32 位；
-2. 使用布隆过滤器来提升查找效率，布隆过滤器的原理可以参考文章[详解布隆过滤器的原理，使用场景和注意事项](https://zhuanlan.zhihu.com/p/43263751)，简而言之，将数据使用多个不同的哈希函数生成多个哈希值，并将对应比特位置为 1 ，就能判断某个数据肯定不存在。
-
-###### 哈希算法
-
-###### 布隆过滤
+##### 哈希算法
 
 ```cpp
-const uint_fast32_t new_hash = dl_new_hash (undef_name);
+static uint_fast32_t
+dl_new_hash (const char *s)
+{
+  uint_fast32_t h = 5381;
+  for (unsigned char c = *s; c != '\0'; c = *++s)
+    h = h * 33 + c;
+  return h & 0xffffffff;
+}
+```
+
+##### 布隆过滤
+
+```cpp
+const uint_fast32_t new_hash = dl_new_hash(undef_name);
 uint32_t H1 = new_hash;
 uint32_t H2 = new_hash >> map->l_gnu_shift;
 uint32_t N = (H1 / __ELF_NATIVE_CLASS) & map->l_gnu_bitmask_idxbits;
 unsigned int hashbit1 = H1 % __ELF_NATIVE_CLASS;
 unsigned int hashbit2 = H2 % __ELF_NATIVE_CLASS;
-// 构造布隆过滤器
-bloom[N] |= (1 << hashbit1);
-bloom[N] |= (1 << hashbit2);
-// 利用布隆过滤器判断某个哈希值是否存在
 (bloom[N] & (1 << hashbit1)) && (bloom[N] & (1 << hashbit2));
 ```
 
-链接器使用的布隆过滤算法与以上代码实现的布隆过滤算法一致。
+##### 查找哈希表
 
-###### 查找哈希表
+1. 根据 `l_gnu_buckets` 找到哈希桶的第一个元素；
+2. 顺序搜索哈希桶内的元素，直到找到相应的哈希值或者到达结尾。
 
-
-
-#### 回调 .got.plt 表项
+### 回填 .got.plt 表项
 
 ```cpp
 const PLTREL *const reloc
@@ -1059,3 +1133,83 @@ typedef struct
        0000000000000020  0000000000000008  WA       0     0     8
 ```
 
+## \_dl\_runtime\_resolve\_xsave: after \_dl\_fixup
+
+```assembly
+jmp *%r11               # Jump to function address.
+```
+
+\_dl\_runtime\_resolve\_xsave 在调用 \_dl\_fixup 之后的主要工作是：调用函数。
+
+# Others
+
+## 构造 link_map
+
+可执行文件的 `link_map` 由 `dl_main` 函数构造。
+
+## gdb watch
+
+`watch` 能帮助我们找到修改某个值的代码。
+
+```bash
+watch *(struct link_map *)0x7ffff7ffe190
+```
+
+## l_addr
+
+`l_addr` = 进程中 segment 的虚存地址 - ELF 文件中 segment 的虚存地址 = 0x555555554000
+
+通过 `info proc mappings` 能取得 `l_addr` 。
+
+```bash
+# Get the difference between the addresses in the ELF file and the addresses in memory.
+# echo "y" | gdb main -ex "start" -ex "set pagination off" -ex "info proc mappings" -ex quit | grep "/root/test/main"
+Starting program: /root/test/main
+      0x555555554000     0x555555555000     0x1000        0x0 /root/test/main
+      0x555555555000     0x555555556000     0x1000     0x1000 /root/test/main
+      0x555555556000     0x555555557000     0x1000     0x2000 /root/test/main
+      0x555555557000     0x555555558000     0x1000     0x2000 /root/test/main
+      0x555555558000     0x555555559000     0x1000     0x3000 /root/test/main
+```
+
+# 参考资料
+
+ELF (except .plt and .got.plt and etc.):
+
++ [Wikipedia: Executable and Linkable Format](https://en.wikipedia.org/wiki/Executable_and_Linkable_Format)
++ [Keith Makan: Introduction to the ELF Format (Part VII): Dynamic Linking / Loading and the .dynamic section](http://blog.k3170makan.com/2018/11/introduction-to-elf-format-part-vii.html)
++ [知乎：写一个工具来了解ELF文件（二）](https://zhuanlan.zhihu.com/p/54399161)
++ [Stack Overflow: Difference between Program header and Section Header in ELF](https://stackoverflow.com/questions/23379880/difference-between-program-header-and-section-header-in-elf)
++ [Oracle Solaris Blog: GNU Hash ELF Sections](https://blogs.oracle.com/solaris/gnu-hash-elf-sections-v2)
++ [ORACLE: Dynamic Section](https://docs.oracle.com/cd/E23824_01/html/819-0690/chapter6-42444.html)
+
+.plt and .got.plt and etc.:
+
++ [Stack Exchange: What is PLT/GOT?](https://reverseengineering.stackexchange.com/questions/1992/what-is-plt-got)
++ [Stack Overflow: Why does the PLT exist in addition to the GOT, instead of just using the GOT?](https://stackoverflow.com/questions/43048932/why-does-the-plt-exist-in-addition-to-the-got-instead-of-just-using-the-got)
++ [Stack Overflow: .plt .plt.got what is different?](https://stackoverflow.com/questions/58076539/plt-plt-got-what-is-different)
++ [Stack Overflow: What is the difference between .got and .got.plt section?](https://stackoverflow.com/questions/11676472/what-is-the-difference-between-got-and-got-plt-section)
++ [Technovelty: PLT and GOT - the key to code sharing and dynamic libraries](https://www.technovelty.org/linux/plt-and-got-the-key-to-code-sharing-and-dynamic-libraries.html)
++ [System Overlord: GOT and PLT for pwning.](https://systemoverlord.com/2017/03/19/got-and-plt-for-pwning.html)
+
+Dynamic linking:
+
++ [Peilin Ye: Understanding \_dl\_runtime\_resolve()](https://ypl.coffee/dl-resolve/)
++ [简书：\_dl\_runtime\_resolve](https://www.jianshu.com/p/57f6474fe4c6)
++ [Understanding Linux ELF RTLD internals](http://s.eresi-project.org/inc/articles/elf-rtld.txt)
++ [Airs – Ian Lance Taylor: Linkers part 1](https://www.airs.com/blog/archives/38)
++ [Airs – Ian Lance Taylor: Linkers part 4](https://www.airs.com/blog/archives/41)
++ [知乎：程序如何从文本文件到ELF文件，再到进程中](https://zhuanlan.zhihu.com/p/96012152)
+
+Debug:
+
++ [Installing as the primary C library](https://tldp.org/HOWTO/Glibc2-HOWTO-5.html)
++ [glibc wiki: Debugging the Loader](https://sourceware.org/glibc/wiki/Debugging/Loader_Debugging)
++ [Super User: overwrite default /lib64/ld-linux-x86-64.so.2 to call executables](https://superuser.com/questions/1144758/overwrite-default-lib64-ld-linux-x86-64-so-2-to-call-executables)
++ [Stack Overflow: Locating the Global Offset Table in an ELF file](https://stackoverflow.com/questions/32947936/locating-the-global-offset-table-in-an-elf-file)
++ [知乎：x86_64 架构下的函数调用及栈帧原理](https://zhuanlan.zhihu.com/p/107455887)
++ [Stack Overflow: What is the jmpq command doing in this example](https://stackoverflow.com/questions/26543029/what-is-the-jmpq-command-doing-in-this-example)
+
+Others:
+
++ [Pasky’s Log: ld.so Scopes](http://log.or.cz/?tag=suse)
