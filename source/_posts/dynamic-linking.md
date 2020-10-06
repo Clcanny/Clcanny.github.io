@@ -1,3 +1,11 @@
+---
+title: Dynamic linking
+date: 2020-10-07 00:28:00
+tags:
+  - dynamic linking
+---
+<!--more-->
+
 # 导读
 
 本篇文章详细地介绍了动态链接库重定位的过程：
