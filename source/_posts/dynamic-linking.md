@@ -8,11 +8,11 @@ tags:
 
 # 导读
 
-本篇文章详细地介绍了动态链接库重定位的过程：
+下文出现的 objects 均指代动态链接库和可执行文件。
 
-![](http://junbin-hexo-img.oss-cn-beijing.aliyuncs.com/dynamic-linking/guide.jpg)
+本篇文章详细地介绍了 objects 重定位的过程：
 
-下文出现的 objects 指代动态链接库和可执行文件。
+![](http://junbin-hexo-img.oss-cn-beijing.aliyuncs.com/dynamic-linking/guide.png)
 
 # 环境
 
@@ -22,7 +22,7 @@ LABEL maintainer="837940593@qq.com"
 
 ENV DEBIAN_FRONTEND noninteractive
 RUN apt-get update
-RUN apt-get install -y build-essential make gcc g++ gdb
+RUN apt-get install -y build-essential bear make gcc g++ gdb
 
 # Compile linker.
 RUN mkdir /root/glibc
@@ -34,7 +34,8 @@ RUN tar -xzvf glibc-2.28.tar.gz
 RUN mkdir build
 WORKDIR /root/glibc/build
 RUN ../glibc-2.28/configure CFLAGS="-O1 -ggdb -w" --with-tls --enable-add-ons=nptl --prefix="$PWD/install"
-RUN make all -j8 && make install
+RUN bear make -j8
+RUN make install -j8
 
 # Install tools.
 # Install hexdump.
@@ -343,6 +344,157 @@ typedef struct
 ## .got .plt .got.plt .plt.got
 
 # 同文件重定位
+
+## R_X86_64_IRELATIVE
+
+```cpp
+// test_x86_64_irelative.cpp
+// gcc test_x86_64_irelative.cpp -O0 -ggdb -o test_x86_64_irelative
+int global_var = 0xABCDEF12;
+int* p_global_var = &global_var;
+int main() {
+}
+```
+
+```bash
+# readelf --relocs test_x86_64_irelative
+Relocation section '.rela.dyn' at offset 0x470 contains 9 entries:
+  Offset          Info           Type           Sym. Value    Sym. Name + Addend
+000000003e18  000000000008 R_X86_64_RELATIVE                    1120
+000000003e20  000000000008 R_X86_64_RELATIVE                    10e0
+000000004020  000000000008 R_X86_64_RELATIVE                    4020
+000000004030  000000000008 R_X86_64_RELATIVE                    4028
+000000003fd8  000100000006 R_X86_64_GLOB_DAT 0000000000000000 _ITM_deregisterTMClone + 0
+000000003fe0  000200000006 R_X86_64_GLOB_DAT 0000000000000000 __libc_start_main@GLIBC_2.2.5 + 0
+000000003fe8  000300000006 R_X86_64_GLOB_DAT 0000000000000000 __gmon_start__ + 0
+000000003ff0  000400000006 R_X86_64_GLOB_DAT 0000000000000000 _ITM_registerTMCloneTa + 0
+000000003ff8  000500000006 R_X86_64_GLOB_DAT 0000000000000000 __cxa_finalize@GLIBC_2.2.5 + 0
+```
+
+```bash
+# readelf --section-headers test_x86_64_irelative | grep -E "Nr|\.data" -A1 | grep -v "\-\-"
+  [Nr] Name              Type             Address           Offset
+       Size              EntSize          Flags  Link  Info  Align
+  [23] .data             PROGBITS         0000000000004018  00003018
+       0000000000000020  0000000000000000  WA       0     0     8
+```
+
+```bash
+# od --skip-bytes=$((0x4028 - 0x4018 + 0x3018)) --read-bytes=4 --format=xI test_x86_64_irelative
+0030060 abcdef12
+# od --skip-bytes=$((0x4030 - 0x4018 + 0x3018)) --read-bytes=8 --format=xL test_x86_64_irelative
+0030050 0000000000004028
+```
+
+0x4028 是 `global_var` 的地址，0x4030 是 `p_global_var` 的地址。
+
+```cpp
+auto inline void
+__attribute ((always_inline))
+elf_machine_rela_relative (ElfW(Addr) l_addr, const ElfW(Rela) *reloc,
+                           void *const reloc_addr_arg)
+{
+  ElfW(Addr) *const reloc_addr = reloc_addr_arg;
+    {
+      assert (ELFW(R_TYPE) (reloc->r_info) == R_X86_64_RELATIVE);
+      *reloc_addr = l_addr + reloc->r_addend;
+    }
+}
+```
+
+重定位公式：`*reloc_addr = l_addr + reloc->r_addend` ，`r_addend` 是 0x4028 ，也就是 `global_var` 的地址。
+
+## R_X86_64_JUMP_SLOT
+
+```bash
+# readelf --relocs main | grep "R_X86_64_JUMP_SLO" -B2
+Relocation section '.rela.plt' at offset 0x578 contains 1 entry:
+  Offset          Info           Type           Sym. Value    Sym. Name + Addend
+000000004018  000400000007 R_X86_64_JUMP_SLO 0000000000000000 _Z3foov + 0
+```
+
+```bash
+# objdump -s -j .got.plt main | tail -n 3
+Contents of section .got.plt:
+ 4000 d83d0000 00000000 00000000 00000000  .=..............
+ 4010 00000000 00000000 36100000 00000000  ........6.......
+```
+
+`R_X86_64_JUMP_SLOT` 标记的是 .got.plt 表项，.got.plt 表项也需要一次同文件重定位。
+
+```cpp
+auto inline void
+__attribute ((always_inline))
+elf_machine_lazy_rel (struct link_map *map,
+                      ElfW(Addr) l_addr, const ElfW(Rela) *reloc,
+                      int skip_ifunc)
+{
+  ElfW(Addr) *const reloc_addr = (void *) (l_addr + reloc->r_offset);
+  const unsigned long int r_type = ELFW(R_TYPE) (reloc->r_info);
+
+  /* Check for unexpected PLT reloc type.  */
+  if (__glibc_likely (r_type == R_X86_64_JUMP_SLOT))
+    {
+      /* Prelink has been deprecated.  */
+      if (__glibc_likely (map->l_mach.plt == 0))
+        *reloc_addr += l_addr;
+      else
+        *reloc_addr =
+          map->l_mach.plt
+          + (((ElfW(Addr)) reloc_addr) - map->l_mach.gotplt) * 2;
+    }
+  // ...
+```
+
+重定位公式：`*reloc_addr += l_addr` 。
+
+## Others
+
+从 [Executable and Linkable Format 101 Part 3: Relocations](https://www.intezer.com/blog/elf/executable-and-linkable-format-101-part-3-relocations/) 中摘抄得到 x86_64 的重定位类型：
+
+- A: Addend of Elfxx_Rela entries.
+- B: Image base where the shared object was loaded in process virtual address space.
+- G: Offset to the GOT relative to the address of the correspondent relocation entry’s symbol.
+- GOT: Address of the Global Offset Table.
+- L: Section offset or address of the procedure linkage table (PLT, .got.plt).
+- P: The section offset or address of the storage unit being relocated.
+  retrieved via r_offset relocation entry’s field.
+- S: Relocation entry’s correspondent symbol value.
+- Z: Size of Relocations entry’s symbol.
+
+| Name               | Value | Field | Calculation                                 |
+| :----------------- | :---- | :---- | :------------------------------------------ |
+| R_X86_64_NONE      | 0     | None  | None                                        |
+| R_X86_64_64        | 1     | qword | S + A                                       |
+| R_X86_64_PC32      | 2     | dword | S + A – P                                   |
+| R_X86_64_GOT32     | 3     | dword | G + A                                       |
+| R_X86_64_PLT32     | 4     | dword | L + A – P                                   |
+| R_X86_64_COPY      | 5     | None  | Value is copied directly from shared object |
+| R_X86_64_GLOB_DAT  | 6     | qword | S                                           |
+| R_X86_64_JUMP_SLOT | 7     | qword | S                                           |
+| R_X86_64_RELATIVE  | 8     | qword | B + A                                       |
+| R_X86_64_GOTPCREL  | 9     | dword | G + GOT + A – P                             |
+| R_X86_64_32        | 10    | dword | S + A                                       |
+| R_X86_64_32S       | 11    | dword | S + A                                       |
+| R_X86_64_16        | 12    | word  | S + A                                       |
+| R_X86_64_PC16      | 13    | word  | S + A – P                                   |
+| R_X86_64_8         | 14    | word8 | S + A                                       |
+| R_X86_64_PC8       | 15    | word8 | S + A – P                                   |
+| R_X86_64_PC64      | 24    | qword | S + A – P                                   |
+| R_X86_64_GOTOFF64  | 25    | qword | S + A – GOT                                 |
+| R_X86_64_GOTPC32   | 26    | dword | GOT + A – P                                 |
+| R_X86_64_SIZE32    | 32    | dword | Z + A                                       |
+| R_X86_64_SIZE64    | 33    | qword | Z + A                                       |
+
+## 如何阅读代码？
+
+`_dl_relocate_object` 大量使用 `#ifdef` 语句和宏定义，导致很难阅读。因而需要用 bear 生成的 compile_commands.json 来还原编译命令，并加上 `-E -P` 选项，得到预处理之后的文件。
+
+```bash
+# pwd
+/root/glibc/glibc-2.28/elf
+# gcc -c -std=gnu11 -fgnu89-inline -O1 -Wall -Werror -Wundef -Wwrite-strings -fmerge-all-constants -fno-stack-protector -frounding-math -ggdb -w -Wstrict-prototypes -Wold-style-definition -fno-math-errno -fPIC -fno-stack-protector -DSTACK_PROTECTOR_LEVEL=0 -mno-mmx -ftls-model=initial-exec -I../include -I/root/glibc/build/elf -I/root/glibc/build -I../sysdeps/unix/sysv/linux/x86_64/64 -I../sysdeps/unix/sysv/linux/x86_64 -I../sysdeps/unix/sysv/linux/x86/include -I../sysdeps/unix/sysv/linux/x86 -I../sysdeps/x86/nptl -I../sysdeps/unix/sysv/linux/wordsize-64 -I../sysdeps/x86_64/nptl -I../sysdeps/unix/sysv/linux/include -I../sysdeps/unix/sysv/linux -I../sysdeps/nptl -I../sysdeps/pthread -I../sysdeps/gnu -I../sysdeps/unix/inet -I../sysdeps/unix/sysv -I../sysdeps/unix/x86_64 -I../sysdeps/unix -I../sysdeps/posix -I../sysdeps/x86_64/64 -I../sysdeps/x86_64/fpu/multiarch -I../sysdeps/x86_64/fpu -I../sysdeps/x86/fpu/include -I../sysdeps/x86/fpu -I../sysdeps/x86_64/multiarch -I../sysdeps/x86_64 -I../sysdeps/x86 -I../sysdeps/ieee754/float128 -I../sysdeps/ieee754/ldbl-96/include -I../sysdeps/ieee754/ldbl-96 -I../sysdeps/ieee754/dbl-64/wordsize-64 -I../sysdeps/ieee754/dbl-64 -I../sysdeps/ieee754/flt-32 -I../sysdeps/wordsize-64 -I../sysdeps/ieee754 -I../sysdeps/generic -I.. -I../libio -I. -D_LIBC_REENTRANT -include /root/glibc/build/libc-modules.h -DMODULE_NAME=rtld -include ../include/libc-symbols.h -DPIC -DSHARED -DTOP_NAMESPACE=glibc -E -P dl-reloc.c > dl-reloc.i
+```
 
 # 跨文件重定位
 
@@ -1211,6 +1363,10 @@ Dynamic linking:
 
 Debug:
 
++ [GCC preprocessor with -E and save in file named x](https://stackoverflow.com/questions/41572707/gcc-preprocessor-with-e-and-save-in-file-named-x)
++ [Stack Overflow: How to keep assembly files with --save-temps when multiple targets use the same source file?](https://stackoverflow.com/questions/53810792/how-to-keep-assembly-files-with-save-temps-when-multiple-targets-use-the-same)
++ [GCC Developer Options](https://gcc.gnu.org/onlinedocs/gcc/Developer-Options.html#Developer-Options)
++ [Options Controlling the Preprocessor](https://gcc.gnu.org/onlinedocs/gcc/Preprocessor-Options.html)
 + [Installing as the primary C library](https://tldp.org/HOWTO/Glibc2-HOWTO-5.html)
 + [glibc wiki: Debugging the Loader](https://sourceware.org/glibc/wiki/Debugging/Loader_Debugging)
 + [Super User: overwrite default /lib64/ld-linux-x86-64.so.2 to call executables](https://superuser.com/questions/1144758/overwrite-default-lib64-ld-linux-x86-64-so-2-to-call-executables)
@@ -1220,4 +1376,5 @@ Debug:
 
 Others:
 
++ [Executable and Linkable Format 101 Part 3: Relocations](https://www.intezer.com/blog/elf/executable-and-linkable-format-101-part-3-relocations/)
 + [Pasky’s Log: ld.so Scopes](http://log.or.cz/?tag=suse)
