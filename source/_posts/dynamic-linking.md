@@ -500,7 +500,7 @@ elf_machine_lazy_rel (struct link_map *map,
 
 ## 开始重定位：.plt .got.plt
 
-.plt 和 .got.plt 配合完成 lazy binding ，图片摘抄自 [](https://lief.quarkslab.com/doc/latest/tutorials/05_elf_infect_plt_got.html) ：
+.plt 和 .got.plt 配合完成 lazy binding ，图片摘抄自 [LIEF: 05 - Infecting the plt/got](https://lief.quarkslab.com/doc/latest/tutorials/05_elf_infect_plt_got.html) ：
 
 ![](http://junbin-hexo-img.oss-cn-beijing.aliyuncs.com/dynamic-linking/plt-got-mechanism-first-time-call.jpg)
 
@@ -1361,6 +1361,7 @@ ELF (except .plt and .got.plt and etc.):
 + [Stack Overflow: What is the difference between .got and .got.plt section?](https://stackoverflow.com/questions/11676472/what-is-the-difference-between-got-and-got-plt-section)
 + [Technovelty: PLT and GOT - the key to code sharing and dynamic libraries](https://www.technovelty.org/linux/plt-and-got-the-key-to-code-sharing-and-dynamic-libraries.html)
 + [System Overlord: GOT and PLT for pwning.](https://systemoverlord.com/2017/03/19/got-and-plt-for-pwning.html)
++ [LIEF: 05 - Infecting the plt/got](https://lief.quarkslab.com/doc/latest/tutorials/05_elf_infect_plt_got.html)
 
 Dynamic linking:
 
