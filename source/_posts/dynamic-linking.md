@@ -500,6 +500,16 @@ elf_machine_lazy_rel (struct link_map *map,
 
 ## 开始重定位：.plt .got.plt
 
+.plt 和 .got.plt 配合完成 lazy binding ，图片摘抄自 [](https://lief.quarkslab.com/doc/latest/tutorials/05_elf_infect_plt_got.html) ：
+
+![](http://junbin-hexo-img.oss-cn-beijing.aliyuncs.com/dynamic-linking/plt-got-mechanism-first-time-call.jpg)
+
+*With lazy binding, the first time that the function is called the* `got` *entry redirects to the plt instruction.*
+
+![](http://junbin-hexo-img.oss-cn-beijing.aliyuncs.com/dynamic-linking/plt-got-mechanism-second-time-call.jpg)
+
+*The Second time,* `got` *entry holds the address in the shared library.*
+
 以 main 调用 foo 为例：
 
 ```assembly
