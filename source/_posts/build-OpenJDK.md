@@ -1,5 +1,5 @@
 ---
-title: build-OpenJDK.md
+title: build-OpenJDK
 date: 2020-10-24 19:06:45
 tags:
   - OpenJDK
