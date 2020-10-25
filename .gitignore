@@ -1,6 +1,7 @@
 node_modules/**
 public/**
 themes/**
+.deploy_git/**
 db.json
 package-lock.json
 .DS_Store
