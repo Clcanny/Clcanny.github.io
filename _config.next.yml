@@ -1,0 +1,4 @@
+font:
+  enable: true
+  global:
+    size: 0.85
