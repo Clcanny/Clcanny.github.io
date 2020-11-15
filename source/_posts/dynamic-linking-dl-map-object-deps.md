@@ -38,14 +38,14 @@ struct list {
 void _dl_sort_maps(struct link_map** maps, unsigned int nmaps) {
     uint16_t seen[nmaps];
     memset(seen, 0, nmaps * sizeof(seen[0]));
-    //                                                    i
-    //                                                    │
-    // ┌────────────────────────┬────────────────────────┬▼┬─┬─┬─┬─┬─┐
-    // │           a            │           b            │c│d│e│f│g│h│
-    // ├────────────────────────┴────────────────────────┼─┴─┴─┴─┴─┴─┤
-    // │ The elements between [0,i) has been sorted,     │Hasn't been│
-    // │ they doesn't depend on the subsequent elements. │  sorted.  │
-    // └─────────────────────────────────────────────────┴───────────┘
+    //                                                  i
+    //                                                  │
+    // ┌───────────────────────┬───────────────────────┬▼┬─┬─┬─┬─┬─┐
+    // │           a           │           b           │c│d│e│f│g│h│
+    // ├───────────────────────┴───────────────────────┼─┴─┴─┴─┴─┴─┤
+    // │  The elements between [0,i) has been sorted,  │Hasn't been│
+    // │they doesn't depend on the subsequent elements.│  sorted.  │
+    // └───────────────────────────────────────────────┴───────────┘
     for (unsigned int i = 0; i++; i < nmaps) {
         // `seen` records how many times we have seen element n at position `i`,
         // it is used to detect ring.
@@ -60,8 +60,9 @@ void _dl_sort_maps(struct link_map** maps, unsigned int nmaps) {
             // │a│b│c│d│e│f│g│h│  │a│b│d│e│f│c│g│h│
             // └─┴─┴┬┴─┴─┴▲┴─┴─┘  └─┴─┴─┴─┴─┴─┴─┴─┘
             //      │     │
-            //      ──────│
-            //  c depends on f.
+            //      │     │
+            //    c depends
+            //      on f.─┘
             for (struct link_map** runp = maps[k]->l_initfini;
                  runp != NULL && *runp != NULL;
                  runp++) {
@@ -76,13 +77,13 @@ void _dl_sort_maps(struct link_map** maps, unsigned int nmaps) {
 
                     // Found a ring in dependency tree, don't try to sort them.
                     // The following graph shows `seen[i] > 1` isn't right:
-                    //    ──────│
+                    //    ┌─────┐
                     //    │     │    abcd
                     // ┌─┬┴┬───┬▼┐   bcad
                     // │a│b│ c │d│   cadb
                     // └┬┴─┴▲─┬┴▲┘   adcb // seen[0] = 2, not ring.
                     //  │   │ │ │    dcab
-                    //  ────│ ──│
+                    //  └───┘ └─┘
                     if (seen[i] > nmaps - i) {
                         goto next;
                     }
@@ -102,13 +103,13 @@ void _dl_map_object_deps(struct link_map* map,
                          unsigned int npreloads,
                          int trace_mode,
                          int open_mode) {
-    unsigned int nlist = 1 + npreloads + 1;
+    unsigned int nlist = 1 + npreloads;
     // `__alloca` is used to allocate memory that is automatically freed.
     // `known` is the queue used in the depth-first search process.
     // `done` indicates whether the node has been searched, it is used to avoid
     // infinite recursion when search a directed cyclic graph.
-    struct list* known = __alloca(sizeof(struct list) * nlist);
-    for (unsigned int i = 0; i < nlist; i++) {
+    struct list* known = __alloca(sizeof(struct list) * (nlist + 1));
+    for (unsigned int i = 0; i < nlist + 1; i++) {
         known[i].done = 0;
         known[i].next = &known[i + 1];
     }
@@ -128,18 +129,15 @@ void _dl_map_object_deps(struct link_map* map,
     known[nlist - 1].next = NULL;
     // Pointer to last unique object.
     struct list* tail = &known[nlist - 1];
-    // ┌─────┐                                      ┌────┐
-    // │known│                                      │tail│
-    // └┬────┘                                      └┬───┘
-    //  │                                            │
-    // ┌▼──┬───────────┬──────┬─────────────────────┬▼─────────────┬───────┐
-    // │map│preloads[0]│......│preloads[npreloads-1]│known[nlist-1]│nullptr│
-    // └┬──┴▲─────────┬┴▲────┬┴▲───────────────────┬┴▲────────────┬┴▲──────┘
-    //  │   │         │ │    │ │                   │ │            │ │
-    //  ────│         ──│    ──│                   ──│            ──│
-
-    struct scratch_buffer needed_space;
-    scratch_buffer_init(&needed_space);
+    // clang-format off
+    //  known                  tail
+    //  │                      │
+    // ┌▼──┬───────────┬──────┬▼────────────────────┬───────────────────────────────┐┌───────┐
+    // │map│preloads[0]│......│preloads[npreloads-1]│known[1+preloads] // empty node││nullptr│
+    // └┬──┴▲─────────┬┴▲────┬┴▲───────────────────┬┴───────────────────────────────┘└▲──────┘
+    //  │   │         │ │    │ │                   │                                  │
+    //  └───┘         └─┘    └─┘                   └──────────────────────────────────┘
+    // clang-format on
 
     // Process each element of the search list, loading each of its
     // auxiliary objects and immediate dependencies.
@@ -152,7 +150,6 @@ void _dl_map_object_deps(struct link_map* map,
     // Dependencies will be appended to the list as we step through it.
     // This produces a flat, ordered list that represents a breadth-first search
     // of the dependency tree.
-
     for (struct list* runp = known; runp;) {
         struct link_map* l = runp->map;
         struct link_map** needed = NULL;
@@ -167,9 +164,8 @@ void _dl_map_object_deps(struct link_map* map,
         if (l->l_searchlist.r_list == NULL && l->l_initfini == NULL &&
             l != map && l->l_ldnum > 0) {
             // l->l_ldnum includes space for the terminating NULL.
-            scratch_buffer_set_array_size(
-                &needed_space, l->l_ldnum, sizeof(struct link_map*));
-            needed = needed_space.data;
+            needed = (struct link_map**)malloc(l->l_ldnum *
+                                               sizeof(struct link_map*));
         }
 
         // l_info stores same information as `readelf --dynamic $elf`.
@@ -192,6 +188,15 @@ void _dl_map_object_deps(struct link_map* map,
                         open_mode,
                         l->l_ns);
 
+                    // clang-format off
+                    //  known                                                                           tail
+                    //  │                                                                               │
+                    // ┌▼──┬───────────┬──────┬─────────────────────┬────────────────────────────────┐ ┌▼───┐
+                    // │map│preloads[0]│......│preloads[npreloads-1]│known[1+preloads] // empty node │ │newp│
+                    // └┬──┴▲─────────┬┴▲────┬┴▲───────────────────┬┴────────────────────────────────┘ └▲───┘
+                    //  │   │         │ │    │ │                   │                                    │
+                    //  └───┘         └─┘    └─┘                   └────────────────────────────────────┘
+                    // clang-format on
                     // `l_reserved` indicates if object is already in the search
                     // list.
                     if (!dep->l_reserved) {
@@ -207,17 +212,6 @@ void _dl_map_object_deps(struct link_map* map,
                         // Set the mark bit that says it's already in the list.
                         dep->l_reserved = 1;
                     }
-                    // clang-format off
-                    // ┌─────┐                                                                     ┌────┐
-                    // │known│                                                                     │tail│
-                    // └┬────┘                                                                     └┬───┘
-                    //  │                                                                           │
-                    // ┌▼──┬───────────┬──────┬─────────────────────┬────────────────────────────┐ ┌▼───┐
-                    // │map│preloads[0]│......│preloads[npreloads-1]│known[nlist-1] // empty node│ │newp│
-                    // └┬──┴▲─────────┬┴▲────┬┴▲───────────────────┬┴▲──────────────────────────┬┘ └▲───┘
-                    //  │   │         │ │    │ │                   │ │                          │   │
-                    //  ────│         ──│    ──│                   ──│                          ────│
-                    // clang-format on
 
                     // Remember this dependency.
                     if (needed != NULL) {
@@ -246,7 +240,6 @@ void _dl_map_object_deps(struct link_map* map,
             // └─┴─────────┴───┴─────────────────┴───────┴─┴─────────┴───┴─────────────────┘
             // clang-format on
             l->l_initfini = l_initfini;
-            l->l_free_initfini = 1;
         }
 
         // If we have no auxiliary objects just go on to the next map.
@@ -256,8 +249,6 @@ void _dl_map_object_deps(struct link_map* map,
             } while (runp != NULL && runp->done);
         }
     }
-
-    scratch_buffer_free(&needed_space);
 
     // Store the search list we built in the object.
     // It will be used for searches in the scope of this object.
@@ -275,49 +266,29 @@ void _dl_map_object_deps(struct link_map* map,
         runp->map->l_reserved = 0;
     }
 
-    // Maybe we can remove some relocation dependencies now.
-    assert(map->l_searchlist.r_list[0] == map);
-    struct link_map_reldeps* l_reldeps = NULL;
-    if (map->l_reldeps != NULL) {
-        for (unsigned int i = 1; i < nlist; ++i) {
-            map->l_searchlist.r_list[i]->l_reserved = 1;
-        }
-
-        struct link_map** list = &map->l_reldeps->list[0];
-        for (unsigned int i = 0; i < map->l_reldeps->act; ++i) {
-            if (list[i]->l_reserved) {
-                // Need to allocate new array of relocation dependencies.
-                l_reldeps =
-                    malloc(sizeof(*l_reldeps) +
-                           map->l_reldepsmax * sizeof(struct link_map*));
-                unsigned int j = i;
-                memcpy(&l_reldeps->list[0],
-                       &list[0],
-                       i * sizeof(struct link_map*));
-                for (i = i + 1; i < map->l_reldeps->act; ++i)
-                    if (!list[i]->l_reserved)
-                        l_reldeps->list[j++] = list[i];
-                l_reldeps->act = j;
-            }
-        }
-
-        for (unsigned int i = 1; i < nlist; ++i) {
-            map->l_searchlist.r_list[i]->l_reserved = 0;
-        }
-    }
-
     // Sort the initializer list to take dependencies into account.
     // The binary itself will always be initialize last.
     memcpy(
         l_initfini, map->l_searchlist.r_list, nlist * sizeof(struct link_map*));
+    // Terminate the list of dependencies.
+    l_initfini[nlist] = NULL;
+    //  map->l_initfini
+    //  │
+    // ┌▼──┬───────────┬───┬─────────────────────┬──────┬───┬──────┐
+    // │map│preloads[0]│...│preloads[npreloads-1]│newp_1│...│newp_k│
+    // ├───┴───┬───────┴───┴─────────────────────┴──────┴───┴──────┘
+    // │nullptr│
+    // ├───┬───┴───────┬───┬─────────────┬──────┬───┬──────┐
+    // │map│preloads[0]│...│  preloads   │newp_1│...│newp_k│
+    // └▲──┴───────────┴───┴─────────────┴──────┴───┴──────┘
+    //  │
+    //  map->l_searchlist.r_list
+
     // We can skip looking for the binary itself which is at the front of the
     // search list, and skip fini parts.
     _dl_sort_maps(&l_initfini[1], nlist - 1);
-
-    // Terminate the list of dependencies.
-    l_initfini[nlist] = NULL;
     map->l_initfini = l_initfini;
-    map->l_free_initfini = 1;
+
     if (l_reldeps != NULL) {
         void* old_l_reldeps = map->l_reldeps;
         map->l_reldeps = l_reldeps;
