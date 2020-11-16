@@ -1,5 +1,5 @@
 ---
-title: _dl_map_object_deps
+title: "Dynamic linking: _dl_map_object_deps"
 date: 2020-11-15 18:30:00
 tags:
   - Dynamic linking
