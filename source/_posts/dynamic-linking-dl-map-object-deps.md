@@ -58,11 +58,11 @@ void _dl_sort_maps(struct link_map** maps, unsigned int nmaps) {
             //      │     │            │     │
             // ┌─┬─┬▼┬─┬─┬▼┬─┬─┐  ┌─┬─┬▼┬─┬─┬▼┬─┬─┐
             // │a│b│c│d│e│f│g│h│  │a│b│d│e│f│c│g│h│
-            // └─┴─┴┬┴─┴─┴▲┴─┴─┘  └─┴─┴─┴─┴─┴─┴─┴─┘
+            // └─┴─┴▲┴─┴─┴┬┴─┴─┘  └─┴─┴─┴─┴─┴─┴─┴─┘
             //      │     │
             //      │     │
-            //    c depends
-            //      on f.─┘
+            //    f depends
+            //      on c.─┘
             for (struct link_map** runp = maps[k]->l_initfini;
                  runp != NULL && *runp != NULL;
                  runp++) {
@@ -79,9 +79,9 @@ void _dl_sort_maps(struct link_map** maps, unsigned int nmaps) {
                     // The following graph shows `seen[i] > 1` isn't right:
                     //    ┌─────┐
                     //    │     │    abcd
-                    // ┌─┬┴┬───┬▼┐   bcad
+                    // ┌─┬▼┬───┬┴┐   bcad
                     // │a│b│ c │d│   cadb
-                    // └┬┴─┴▲─┬┴▲┘   adcb // seen[0] = 2, not ring.
+                    // └▲┴─┴┬─▲┴┬┘   adcb // seen[0] = 2, not ring.
                     //  │   │ │ │    dcab
                     //  └───┘ └─┘
                     if (seen[i] > nmaps - i) {
@@ -278,9 +278,9 @@ void _dl_map_object_deps(struct link_map* map,
     // │map│preloads[0]│...│preloads[npreloads-1]│newp_1│...│newp_k│
     // ├───┴───┬───────┴───┴─────────────────────┴──────┴───┴──────┘
     // │nullptr│
-    // ├───┬───┴───────┬───┬─────────────┬──────┬───┬──────┐
-    // │map│preloads[0]│...│  preloads   │newp_1│...│newp_k│
-    // └▲──┴───────────┴───┴─────────────┴──────┴───┴──────┘
+    // ├───┬───┴───────┬───┬─────────────────────┬──────┬───┬──────┐
+    // │map│preloads[0]│...│preloads[npreloads-1]│newp_1│...│newp_k│
+    // └▲──┴───────────┴───┴─────────────────────┴──────┴───┴──────┘
     //  │
     //  map->l_searchlist.r_list
 
