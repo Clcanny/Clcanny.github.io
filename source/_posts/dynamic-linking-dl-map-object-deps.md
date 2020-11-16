@@ -6,6 +6,17 @@ tags:
 ---
 <!--more-->
 
+# 导读
+
+这篇文章探讨了**目前**动态链接库的初始化顺序：
+
+1. 精华在 Code 一节，笔者简化了 `_dl_sort_maps` 和 `_dl_map_object_deps` ，并为之添加了图示，有利于从代码层面理解动态链接库的初始化顺序；
+2. 一般而言，`_dl_sort_maps` 不会产生任何影响，在这种情况下，动态链接库的初始化顺序是广度优先遍历依赖树的逆序；
+3. `_dl_sort_maps` 的核心思想是：被依赖的链接库应该先于依赖它的链接库初始化；
+4. 用两个例子证明我们的理解是对的。
+
+# Code
+
 ```c
 /* Load the dependencies of a mapped object.
    Copyright (C) 1996-2018 Free Software Foundation, Inc.
@@ -98,6 +109,7 @@ void _dl_sort_maps(struct link_map** maps, unsigned int nmaps) {
     }
 }
 
+// This isn't a recursive function.
 void _dl_map_object_deps(struct link_map* map,
                          struct link_map** preloads,
                          unsigned int npreloads,
@@ -296,3 +308,110 @@ void _dl_map_object_deps(struct link_map* map,
     }
 }
 ```
+
+```c
+/* Run initializers for newly loaded objects.
+   Copyright (C) 1995-2018 Free Software Foundation, Inc.
+   This file is part of the GNU C Library.
+
+   The GNU C Library is free software; you can redistribute it and/or
+   modify it under the terms of the GNU Lesser General Public
+   License as published by the Free Software Foundation; either
+   version 2.1 of the License, or (at your option) any later version.
+
+   The GNU C Library is distributed in the hope that it will be useful,
+   but WITHOUT ANY WARRANTY; without even the implied warranty of
+   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+   Lesser General Public License for more details.
+
+   You should have received a copy of the GNU Lesser General Public
+   License along with the GNU C Library; if not, see
+   <http://www.gnu.org/licenses/>.  */
+
+void _dl_init(struct link_map* main_map, int argc, char** argv, char** env) {
+    /* Stupid users forced the ELF specification to be changed.  It now
+       says that the dynamic loader is responsible for determining the
+       order in which the constructors have to run.  The constructors
+       for all dependencies of an object must run before the constructor
+       for the object itself.  Circular dependencies are left unspecified.
+
+       This is highly questionable since it puts the burden on the dynamic
+       loader which has to find the dependencies at runtime instead of
+       letting the user do it right.  Stupidity rules!  */
+    for (unsigned i = main_map->l_searchlist.r_nlist - 1; i > 0; i--) {
+        call_init(main_map->l_initfini[i], argc, argv, env);
+    }
+}
+```
+
+# 证明
+
+```makefile
+# Makefile
+compile-need-sort :
+    # Depth: 2.
+    gcc lib.cpp -shared -fPIC -o libg.so
+    gcc lib.cpp -shared -fPIC -L$(PWD) -Wl,-rpath=$(PWD) -lg -o libf.so
+    gcc lib.cpp -shared -fPIC -L$(PWD) -Wl,-rpath=$(PWD) -lf -o libe.so
+    gcc lib.cpp -shared -fPIC -L$(PWD) -Wl,-rpath=$(PWD) -le -o libh.so
+    # Depth: 1.
+    gcc lib.cpp -shared -fPIC -L$(PWD) -Wl,-rpath=$(PWD) -le -lf -o liba.so
+    gcc lib.cpp -shared -fPIC -L$(PWD) -Wl,-rpath=$(PWD) -lg -lh -o libb.so
+    gcc main.cpp                                                                     \
+            -Wl,--dynamic-linker=$(PWD)/glibc/build/install/lib/ld-linux-x86-64.so.2 \
+            -L$(PWD) -Wl,-rpath=$(PWD) -la -lb                                       \
+            -o main
+    LD_DEBUG=all ./main 2>&1 | grep "calling init"
+
+compile-dont-need-sort :
+    # Depth: 2.
+    gcc lib.cpp -shared -fPIC -o libg.so
+    gcc lib.cpp -shared -fPIC -o libf.so
+    gcc lib.cpp -shared -fPIC -o libe.so
+    gcc lib.cpp -shared -fPIC -o libh.so
+    # Depth: 1.
+    gcc lib.cpp -shared -fPIC -L$(PWD) -Wl,-rpath=$(PWD) -le -lf -o liba.so
+    gcc lib.cpp -shared -fPIC -L$(PWD) -Wl,-rpath=$(PWD) -lg -lh -o libb.so
+    gcc main.cpp                                                                     \
+            -Wl,--dynamic-linker=$(PWD)/glibc/build/install/lib/ld-linux-x86-64.so.2 \
+            -L$(PWD) -Wl,-rpath=$(PWD) -la -lb                                       \
+            -o main
+    LD_DEBUG=all ./main 2>&1 | grep "calling init"
+```
+
+## Normal Case
+
+![makefile-compile-dont-need-sort](http://junbin-hexo-img.oss-cn-beijing.aliyuncs.com/dynamic-linking-dl-map-object-deps/makefile-compile-dont-need-sort.png)
+
+```bash
+# make compile-dont-need-sort
+LD_DEBUG=all ./main 2>&1 | grep "calling init"
+     12859:     calling init: /home/demons/_dl_map_objects_validate/glibc/build/install/lib/libc.so.6
+     12859:     calling init: /home/demons/_dl_map_objects_validate/libh.so
+     12859:     calling init: /home/demons/_dl_map_objects_validate/libg.so
+     12859:     calling init: /home/demons/_dl_map_objects_validate/libf.so
+     12859:     calling init: /home/demons/_dl_map_objects_validate/libe.so
+     12859:     calling init: /home/demons/_dl_map_objects_validate/libb.so
+     12859:     calling init: /home/demons/_dl_map_objects_validate/liba.so
+```
+
+通过 `LD_DEBUG=all` 看到的初始化顺序与推断的顺序一致。
+
+## Special Case
+
+![makefile-compile-need-sort](http://junbin-hexo-img.oss-cn-beijing.aliyuncs.com/dynamic-linking-dl-map-object-deps/makefile-compile-need-sort.png)
+
+```bash
+# make compile-need-sort
+LD_DEBUG=all ./main 2>&1 | grep "calling init"
+     12802:     calling init: /home/demons/_dl_map_objects_validate/glibc/build/install/lib/libc.so.6
+     12802:     calling init: /home/demons/_dl_map_objects_validate/libg.so
+     12802:     calling init: /home/demons/_dl_map_objects_validate/libf.so
+     12802:     calling init: /home/demons/_dl_map_objects_validate/libe.so
+     12802:     calling init: /home/demons/_dl_map_objects_validate/libh.so
+     12802:     calling init: /home/demons/_dl_map_objects_validate/libb.so
+     12802:     calling init: /home/demons/_dl_map_objects_validate/liba.so
+```
+
+通过 `LD_DEBUG=all` 看到的初始化顺序与推断的顺序一致。
+
