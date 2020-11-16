@@ -17,16 +17,6 @@ tags:
 
 # Code
 
-```cpp
-// lib.cpp
-```
-
-```cpp
-// main.cpp
-int main() {
-}
-```
-
 ```c
 /* Load the dependencies of a mapped object.
    Copyright (C) 1996-2018 Free Software Foundation, Inc.
@@ -355,6 +345,16 @@ void _dl_init(struct link_map* main_map, int argc, char** argv, char** env) {
 ```
 
 # 证明
+
+```cpp
+// lib.cpp
+```
+
+```cpp
+// main.cpp
+int main() {
+}
+```
 
 ```makefile
 # Makefile
