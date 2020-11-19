@@ -1,6 +1,6 @@
 ---
 layout: post
-title: "Dynamic linking: symbol search order"
+title: "Dynamic Linking: Symbol Search Order"
 date: 2020-11-18 13:50:23
 tags:
   - Dynamic linkging
