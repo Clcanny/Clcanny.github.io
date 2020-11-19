@@ -3,7 +3,7 @@ layout: post
 title: "Dynamic Linking: Symbol Search Order"
 date: 2020-11-18 13:50:23
 tags:
-  - Dynamic linkging
+  - dynamic linkging
 ---
 
 # 导读

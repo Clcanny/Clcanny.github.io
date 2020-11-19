@@ -2,7 +2,7 @@
 title: "Dynamic Linking: Init Order"
 date: 2020-11-15 18:30:00
 tags:
-  - Dynamic linking
+  - dynamic linking
 ---
 <!--more-->
 
