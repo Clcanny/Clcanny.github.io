@@ -1,5 +1,5 @@
 ---
-title: "Dynamic linking: _dl_map_object_deps"
+title: "Dynamic linking: init order"
 date: 2020-11-15 18:30:00
 tags:
   - Dynamic linking
