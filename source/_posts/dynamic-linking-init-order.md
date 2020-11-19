@@ -391,7 +391,7 @@ compile-dont-need-sort :
 
 ## Normal Case
 
-![makefile-compile-dont-need-sort](http://junbin-hexo-img.oss-cn-beijing.aliyuncs.com/dynamic-linking-dl-map-object-deps/makefile-compile-dont-need-sort.png)
+![makefile-compile-dont-need-sort](http://junbin-hexo-img.oss-cn-beijing.aliyuncs.com/dynamic-linking-init-order/makefile-compile-dont-need-sort.png)
 
 ```bash
 # make compile-dont-need-sort
@@ -409,7 +409,7 @@ LD_DEBUG=all ./main 2>&1 | grep "calling init"
 
 ## Special Case
 
-![makefile-compile-need-sort](http://junbin-hexo-img.oss-cn-beijing.aliyuncs.com/dynamic-linking-dl-map-object-deps/makefile-compile-need-sort.png)
+![makefile-compile-need-sort](http://junbin-hexo-img.oss-cn-beijing.aliyuncs.com/dynamic-linking-init-order/makefile-compile-need-sort.png)
 
 ```bash
 # make compile-need-sort
