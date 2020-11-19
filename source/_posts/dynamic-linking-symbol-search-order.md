@@ -194,7 +194,7 @@ all :
     g++ -std=c++11 g.cpp -shared -fPIC -o libg.so
     g++ -std=c++11 empty.cpp -shared -fPIC -o libh.so
     g++ -std=c++11 empty.cpp -shared -fPIC -L$(PWD) -Wl,-rpath=$(PWD) -le -lf -o liba.so
-    g++ -std=c++11 b.cpp -shared -fPIC -L$(PWD) -Wl,-rpath=$(PWD) -lg -lh -shared -fPIC -o libb.so
+    g++ -std=c++11 b.cpp -shared -fPIC -L$(PWD) -Wl,-rpath=$(PWD) -lg -lh -o libb.so
     g++ -std=c++11 -L$(PWD) -Wl,-rpath=$(PWD) -la -lb main.cpp -o main
     LD_DEBUG=all ./main 2>&1 | grep -E "var|I'm in"
 ```
@@ -214,6 +214,80 @@ LD_DEBUG=all ./main 2>&1 | grep -E "var|I'm in"
       6382:     binding file /home/demons/_dl_map_objects_validate/search_symbol_order/libb.so [0] to /home/demons/_dl_map_objects_validate/search_symbol_order/libf.so [0]: normal symbol `var'
 I'm in f.
 ```
+
+# A coredump
+
+![](http://junbin-hexo-img.oss-cn-beijing.aliyuncs.com/dynamic-linking-symbol-search-order/coredump.png)
+
+```cpp
+// main.cpp
+int main() {
+}
+```
+
+```cpp
+// a.cpp
+#include <iostream>
+#include <string>
+
+namespace {
+const std::string var = "I'm in a.";
+}
+
+void accessVar() {
+  std::cout << var[0] << std::endl;
+}
+```
+
+```cpp
+// b.cpp
+void accessVar();
+
+struct AccessVar {
+  AccessVar() {
+    accessVar();
+  }
+} _;
+```
+
+```cpp
+// e.cpp
+#include <iostream>
+#include <string>
+
+namespace {
+const std::string var = "I'm in e.";
+}
+
+void accessVar() {
+  std::cout << var[0] << std::endl;
+}
+```
+
+```makefile
+# Makefile
+all :
+    g++ e.cpp -shared -fPIC -O3 -o libe.so
+    g++ a.cpp -shared -fPIC -O3 -o liba.so
+    g++ b.cpp -shared -fPIC -L$(PWD) -Wl,-rpath=$(PWD) -le -O3 -o libb.so
+    g++ main.cpp -L$(PWD) -Wl,-rpath=$(PWD) -la -lb -O3 -o main
+    LD_DEBUG=all ./main 2>&1 | grep -E "calling init|accessVar"
+```
+
+```bash
+Segmentation fault
+     14934:     calling init: /lib/x86_64-linux-gnu/libc.so.6
+     14934:     calling init: /lib/x86_64-linux-gnu/libm.so.6
+     14934:     calling init: /lib/x86_64-linux-gnu/libgcc_s.so.1
+     14934:     calling init: /usr/lib/x86_64-linux-gnu/libstdc++.so.6
+     14934:     calling init: /home/demons/_dl_map_objects_validate/search_symbol_order/libe.so
+     14934:     calling init: /home/demons/_dl_map_objects_validate/search_symbol_order/libb.so
+     14934:     symbol=_Z9accessVarv;  lookup in file=./main [0]
+     14934:     symbol=_Z9accessVarv;  lookup in file=/home/demons/_dl_map_objects_validate/search_symbol_order/liba.so [0]
+     14934:     binding file /home/demons/_dl_map_objects_validate/search_symbol_order/libb.so [0] to /home/demons/_dl_map_objects_validate/search_symbol_order/liba.so [0]: normal symbol `_Z9accessVarv'
+```
+
+初始化的顺序是 eba ，查找符号的顺序是 abe ，因此初始化 libb.so 的时候用到了来自 liba.so 的、尚未初始化的 `var` 变量，导致 coredump 。
 
 # More
 
