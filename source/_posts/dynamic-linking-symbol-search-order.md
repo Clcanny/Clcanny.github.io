@@ -14,7 +14,7 @@ tags:
 2. 符号都能在 `l_scope[0]` 指向的已加载文件列表（即 global scope ）中找到；
 3. 查找符号的顺序是 `main_map->l_searchlist` 的顺序，也即广度优先遍历依赖树的顺序：
     1. `link_map->l_scope[0]` 指向 `GL(dl_ns)[nsid]._ns_loaded->l_searchlist` ，又因为 `GL(dl_ns)[nsid]._ns_loaded` 是 `main_map` ，所以 `link_map->l_scope[0]` 指向 `main_map->l_searchlist` ；
-    2. 根据[上一篇文章](https://clcanny.github.io/2020/11/15/dynamic-linking-init-order/)的说法，`main_map->l_searchlist` 指向 `main_map->l_initfini` 的后半段，这部分未经 `_dl_sort_maps` 函数排序，仍然保持着广度优先遍历依赖树的顺序。
+    2. 根据 [Dynamic Linking: Init Order](https://clcanny.github.io/2020/11/15/dynamic-linking-init-order/) 的说法，`main_map->l_searchlist` 指向 `main_map->l_initfini` 的后半段，这部分未经 `_dl_sort_maps` 函数排序，仍然保持着广度优先遍历依赖树的顺序。
 
 # Code
 
