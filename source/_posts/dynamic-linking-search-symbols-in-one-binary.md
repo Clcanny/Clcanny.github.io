@@ -147,15 +147,14 @@ void more() {}
 0001220 6a5ebc3c 6a6128eb
 ```
 
-|       | l_nbuckets | symbias | bitmask_nwords | l_gnu_bitmask_idxbits | l_gnu_shift |   l_gnu_bitmask    |  l_gnu_buckets  | l_gnu_chain_zero |
-|       |    :-:     |   :-:   |      :-:       |          :-:          |     :-:     |        :-:         |       :-:       |       :-:        |
-| value |    0x3     |   0x5   |      0x1       |          0x0          |     0x6     | 0x1801290804200400 | [0x5, 0x8, 0x0] |                  |
+|       | l\_nbuckets | symbias | bitmask\_nwords | l\_gnu\_bitmask_idxbits | l\_gnu\_shift |  l\_gnu\_bitmask   | l\_gnu\_buckets |                l\_gnu\_chain\_zero + symbias                 |
+|  :-:  |     :-:     |   :-:   |       :-:       |           :-:           |      :-:      |        :-:         |       :-:       |                             :-:                              |
+| value |     0x3     |   0x5   |       0x1       |           0x0           |      0x6      | 0x1801290804200400 | [0x5, 0x8, 0x0] | [0xb8f7d29a, 0xb95a257a, 0xb9d35b69, 0x6a5ebc3c, 0x6a6128eb] |
 
 ## 哈希表
 
 1. 根据 `l_gnu_buckets` 找到哈希桶的第一个元素；
 2. 顺序搜索哈希桶内的元素，直到找到相应的哈希值或者到达结尾。
-
 
 ### l_nbuckets / symbias / bitmask_nwords / l_gnu_shift
 
@@ -217,7 +216,7 @@ map->l_gnu_chain_zero = hash32 - symbias;
 
 将 `l_gnu_chain_zero` 减去 `symbias` ，方便后续计算符号在 .dynsym 表的下标。
 
-##### 哈希算法
+### 哈希算法
 
 ```cpp
 static uint_fast32_t
