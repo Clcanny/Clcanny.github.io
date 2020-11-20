@@ -18,6 +18,33 @@ tags:
 
 # Code
 
+## l\_scope
+
+```cpp
+/* Structure to describe a single list of scope elements.  The lookup
+   functions get passed an array of pointers to such structures.  */
+struct r_scope_elem
+{
+  /* Array of maps for the scope.  */
+  struct link_map **r_list;
+  /* Number of entries in the scope.  */
+  unsigned int r_nlist;
+};
+
+struct link_map
+  {
+    // ...
+    /* Size of array allocated for 'l_scope'.  */
+    size_t l_scope_max;
+    /* This is an array defining the lookup scope for this link map.
+       There are initially at most three different scope lists.  */
+    struct r_scope_elem **l_scope;
+    // ...
+  };
+```
+
+## 赋值 l\_scope
+
 ```c
 /* Storage management for the chain of loaded shared objects.
    Copyright (C) 1995-2018 Free Software Foundation, Inc.
@@ -91,6 +118,8 @@ struct link_map* _dl_new_object(char* realname,
   return new;
 }
 ```
+
+![](http://junbin-hexo-img.oss-cn-beijing.aliyuncs.com/dynamic-linking-relocation-across-files/l-scope-point-to-l-searchlist.png)
 
 # 证明
 
