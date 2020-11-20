@@ -198,9 +198,9 @@ void more() {}
     2. 哈希表只记录可导出符号（比如 \_Z3foov ）的哈希值，不记录不可导出符号（比如 \_\_cxa\_finalize@GLIBC\_2.2.5 ）的哈希值；
     3. 为同时达到以上两个目标，编译器在 .dynsym 表中将不可导出符号（比如 \_\_cxa\_finalize@GLIBC\_2.2.5 ）排在可导出符号（比如 \_Z3foov ）的前面，将第一个可导出符号在 .dynsym 表中的下标记为 `symbias` ，计算 `l_gnu_chain_zero` 的公式是 `map->l_gnu_chain_zero = map->l_gnu_buckets + map->l_nbuckets - symbias` 。
 
-![](http://junbin-hexo-img.oss-cn-beijing.aliyuncs.com/dynamic-linking-search-symbols-in-one-binary/two-dimensional-hash-table.png)
-
 ![](http://junbin-hexo-img.oss-cn-beijing.aliyuncs.com/dynamic-linking-search-symbols-in-one-binary/one-dimensional-hash-table.png)
+
+![](http://junbin-hexo-img.oss-cn-beijing.aliyuncs.com/dynamic-linking-search-symbols-in-one-binary/two-dimensional-hash-table.png)
 
 | id  |   name    | new\_hash  | 处理最后一个比特后 | bucket |
 | :-: |    :-:    |    :-:     |        :-:         |  :-:   |
