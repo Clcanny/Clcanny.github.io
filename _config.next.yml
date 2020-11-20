@@ -3,5 +3,10 @@ font:
   global:
     size: 0.85
 
+toc:
+  enable: true
+  expand_all: true
+  max_depth: 5
+
 custom_file_path:
   style: styles.styl
