@@ -119,7 +119,7 @@ struct link_map* _dl_new_object(char* realname,
 }
 ```
 
-![](http://junbin-hexo-img.oss-cn-beijing.aliyuncs.com/dynamic-linking-relocation-across-files/l-scope-point-to-l-searchlist.png)
+![](http://junbin-hexo-img.oss-cn-beijing.aliyuncs.com/dynamic-linking-symbol-search-order/l-scope-point-to-l-searchlist.png)
 
 # 证明
 
