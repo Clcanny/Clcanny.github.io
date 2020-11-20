@@ -147,6 +147,8 @@ if (__glibc_likely (bitmask != NULL))
 
 # 详解
 
+.gnu.hash 需要有多个导出符号才能较方便地分析，因此我们将使用 test_gnu_hash.cpp 作为待分析的文件：
+
 ```cpp
 // test_gnu_hash.cpp
 // g++ -std=c++11 -shared -fPIC test_gnu_hash.cpp -o libtest_gnu_hash.so
@@ -195,8 +197,13 @@ void more() {}
     3. 约定哈希桶的最后一个元素的最后一个比特是 1 ，其余元素的最后一个比特是 0 ；
 2. 为节省哈希表空间：
     1. 哈希表只记录哈希值，不记录符号在 .dynsym 表中的下标；
-    2. 哈希表只记录可导出符号（比如 \_Z3foov ）的哈希值，不记录不可导出符号（比如 \_\_cxa\_finalize@GLIBC\_2.2.5 ）的哈希值；
-    3. 为同时达到以上两个目标，编译器在 .dynsym 表中将不可导出符号（比如 \_\_cxa\_finalize@GLIBC\_2.2.5 ）排在可导出符号（比如 \_Z3foov ）的前面，将第一个可导出符号在 .dynsym 表中的下标记为 `symbias` ，计算 `l_gnu_chain_zero` 的公式是 `map->l_gnu_chain_zero = map->l_gnu_buckets + map->l_nbuckets - symbias` 。
+    2. 哈希表只记录可导出符号（比如 `_Z3foov` ）的哈希值，不记录不可导出符号（比如 `__cxa_finalize@GLIBC_2.2.5` ）的哈希值；
+    3. 为同时达到以上两个目标，编译器在 .dynsym 表中将不可导出符号（比如 `__cxa_finalize@GLIBC_2.2.5` ）排在可导出符号（比如 `_Z3foov` ）的前面，将第一个可导出符号在 .dynsym 表中的下标记为 `symbias` ，计算 `l_gnu_chain_zero` 的公式是 `map->l_gnu_chain_zero = map->l_gnu_buckets + map->l_nbuckets - symbias` 。
+
+因此，链接器查找哈希表的步骤是：
+
+1. 根据 `l_gnu_buckets` 找到哈希桶的第一个元素；
+2. 顺序搜索哈希桶内的元素，直到找到相应的哈希值或者到达结尾。
 
 ![](http://junbin-hexo-img.oss-cn-beijing.aliyuncs.com/dynamic-linking-search-symbols-in-one-binary/one-dimensional-hash-table.png)
 
