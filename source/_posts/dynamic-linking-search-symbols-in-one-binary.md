@@ -153,6 +153,26 @@ void more() {}
 
 ## 哈希表
 
+编译器实现哈希表时用了几个技巧：
+
+1. 用一维数组 `l_gnu_chain_zero + symbias` 实现二维哈希表：
+    1. 将在同一个哈希桶内的元素放在数组的相连区域；
+    2. 用另一个一维数组 `l_gnu_buckets` 记录哈希桶的起始位置；
+    3. 约定哈希桶的最后一个元素的最后一个比特是 1 ，其余元素的最后一个比特是 0 ；
+2. `l_gnu_chain_zero` 并不直接指向代表哈希表的数组，而是指向数组往前偏移 `symbias` 的位置，方便后续计算符号在 .dynsym 表的下标。
+
+![](http://junbin-hexo-img.oss-cn-beijing.aliyuncs.com/dynamic-linking-search-symbols-in-one-binary/hash-table.png)
+
+| id  |   name    |  new_hash  | 处理最后一个比特后 | bucket |
+| :-: |    :-:    |    :-:     |        :-:         |  :-:   |
+|  5  | \_Z4hahav | 0xb8f7d29a |     0xb8f7d29a     |   0    |
+|  6  | \_Z4morev | 0xb95a257b |     0xb95a257a     |   0    |
+|  7  | \_Z4testv | 0xb9d35b68 |   **0xb9d35b69**   |   0    |
+|  8  | \_Z3barv  | 0x6a5ebc3c |     0x6a5ebc3c     |   1    |
+|  9  | \_Z3foov  | 0x6a6128eb |   **0x6a6128eb**   |   1    |
+
+加粗部分是每个哈希桶的最后一个元素，最后一个比特需要置成 1 。
+
 1. 根据 `l_gnu_buckets` 找到哈希桶的第一个元素；
 2. 顺序搜索哈希桶内的元素，直到找到相应的哈希值或者到达结尾。
 
