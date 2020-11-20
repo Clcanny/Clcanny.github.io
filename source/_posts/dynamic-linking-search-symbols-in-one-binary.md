@@ -15,6 +15,8 @@ tags:
 
 # Code
 
+## 加载 .gnu.hash section
+
 ```c
 struct link_map {
   // ...
@@ -65,6 +67,38 @@ void _dl_setup_hash(struct link_map* map) {
   // ...
 }
 ```
+
+从 [GNU Hash ELF Sections](https://blogs.oracle.com/solaris/gnu-hash-elf-sections-v2) 摘抄了一段关于 .gnu.hash section 的描述：
+
+> - **l_nbuckets**
+>   The number of hash buckets
+>
+> - **symbias**
+>   The dynamic symbol table has *dynsymcount* symbols. *symndx* is the index of the first symbol in the dynamic symbol table that is to be accessible via the hash table. This implies that there are (*dynsymcount* - *symndx*) symbols accessible via the hash table.
+>
+> - **bitmask_nwords**
+>
+>   The number of \_\_ELF\_NATIVE\_CLASS sized words in the Bloom filter portion of the hash table section. This value must be non-zero, and must be a power of 2 as explained below.
+>
+>   Note that a value of 0 could be interpreted to mean that no Bloom filter is present in the hash section. However, the GNU linkers do not do this — the GNU hash section always includes at least 1 mask word.
+>
+> - **l_gnu_shift**
+>   A shift count used by the Bloom filter. HashValue\_2 = HashValue\_1 >> l\_gnu\_shift.
+
+## 哈希算法
+
+```cpp
+static uint_fast32_t
+dl_new_hash (const char *s)
+{
+  uint_fast32_t h = 5381;
+  for (unsigned char c = *s; c != '\0'; c = *++s)
+    h = h * 33 + c;
+  return h & 0xffffffff;
+}
+```
+
+## 查找符号
 
 ```cpp
 // elf/dl-lookup.c
@@ -156,14 +190,17 @@ void more() {}
 编译器实现哈希表时用了几个技巧：
 
 1. 用一维数组 `l_gnu_chain_zero + symbias` 实现二维哈希表：
-    1. 将在同一个哈希桶内的元素放在数组的相连区域；
+    1. 将在同一个哈希桶内的元素放在数组的连续区域；
     2. 用另一个一维数组 `l_gnu_buckets` 记录哈希桶的起始位置；
     3. 约定哈希桶的最后一个元素的最后一个比特是 1 ，其余元素的最后一个比特是 0 ；
-2. `l_gnu_chain_zero` 并不直接指向代表哈希表的数组，而是指向数组往前偏移 `symbias` 的位置，方便后续计算符号在 .dynsym 表的下标。
+2. 为节省哈希表空间：
+    1. 哈希表只记录哈希值，不记录符号在 .dynsym 表中的下标；
+    2. 哈希表只记录可导出符号（比如 \_Z3foov ）的哈希值，不记录不可导出符号（比如 \_\_cxa\_finalize@GLIBC\_2.2.5 ）的哈希值；
+    3. 为同时达到以上两个目标，编译器在 .dynsym 表中将不可导出符号（比如 \_\_cxa\_finalize@GLIBC\_2.2.5 ）排在可导出符号（比如 \_Z3foov ）的前面，将第一个可导出符号在 .dynsym 表中的下标记为 `symbias` ，计算 `l_gnu_chain_zero` 的公式是 `map->l_gnu_chain_zero = map->l_gnu_buckets + map->l_nbuckets - symbias` 。
 
 ![](http://junbin-hexo-img.oss-cn-beijing.aliyuncs.com/dynamic-linking-search-symbols-in-one-binary/hash-table.png)
 
-| id  |   name    |  new_hash  | 处理最后一个比特后 | bucket |
+| id  |   name    | new\_hash  | 处理最后一个比特后 | bucket |
 | :-: |    :-:    |    :-:     |        :-:         |  :-:   |
 |  5  | \_Z4hahav | 0xb8f7d29a |     0xb8f7d29a     |   0    |
 |  6  | \_Z4morev | 0xb95a257b |     0xb95a257a     |   0    |
@@ -176,26 +213,7 @@ void more() {}
 1. 根据 `l_gnu_buckets` 找到哈希桶的第一个元素；
 2. 顺序搜索哈希桶内的元素，直到找到相应的哈希值或者到达结尾。
 
-### l_nbuckets / symbias / bitmask_nwords / l_gnu_shift
-
-从 [GNU Hash ELF Sections](https://blogs.oracle.com/solaris/gnu-hash-elf-sections-v2) 摘抄了一段关于 .gnu.hash section 的描述：
-
-> - **l_nbuckets**
->   The number of hash buckets
->
-> - **symbias**
->   The dynamic symbol table has *dynsymcount* symbols. *symndx* is the index of the first symbol in the dynamic symbol table that is to be accessible via the hash table. This implies that there are (*dynsymcount* - *symndx*) symbols accessible via the hash table.
->
-> - **bitmask_nwords**
->
->   The number of \_\_ELF\_NATIVE\_CLASS sized words in the Bloom filter portion of the hash table section. This value must be non-zero, and must be a power of 2 as explained below.
->
->   Note that a value of 0 could be interpreted to mean that no Bloom filter is present in the hash section. However, the GNU linkers do not do this — the GNU hash section always includes at least 1 mask word.
->
-> - **l_gnu_shift**
->   A shift count used by the Bloom filter. HashValue\_2 = HashValue\_1 >> l\_gnu\_shift.
-
-对照前面的代码：`l_nbuckets` 是 3 ，`symbias` 是 5 ，`bitmask_nwords` 是 1 ，`l_gnu_shift` 是 6 。
+### symbias
 
 ```bash
 # readelf --dyn-syms libtest_gnu_hash.so
@@ -215,45 +233,7 @@ Symbol table '.dynsym' contains 10 entries:
 
 `symbias` 表明第一个可以通过 .gnu.hash section 访问的符号（即可以提供给其它库访问的符号），在 `libtest_gnu_hash.so` 中这个符号是 `_Z4hahav` 。
 
-### l_gnu_buckets / l_gnu_chain_zero
-
-`l_gnu_buckets` 指向的一个数组，数组的 `l_nbuckets` 个元素分别是 5、8 和 0 ；5 代表 0 号桶的第一个元素是 `l_gnu_chain_zero[5]` ，8 代表 1 号桶的第一个元素是 `l_gnu_chain_zero[8]` ，0 代表 2 号桶是一个空桶；这是一种用一维数组实现二维数组的手段。
-
-![](http://junbin-hexo-img.oss-cn-beijing.aliyuncs.com/dynamic-linking/gnu.hash-implementation.jpeg)
-
-.gnu.hash 实现的是一张二维表，X 轴是哈希表的桶号，Y 轴是符号在 .dynsym 表中的下标，如下图所示：
-
-![](http://junbin-hexo-img.oss-cn-beijing.aliyuncs.com/dynamic-linking/gnu.hash-two-dimensional-table.jpeg)
-
-然而，.gnu.hash 为了节省空间，做了两件非常 tricky 的事情：
-
-1. 将 5 个符号排序（可以发现 5 个符号在 .dynsym 表的顺序并非字母序），使得哈希后处在同一个哈希桶的多个符号彼此相邻，从而将二维表化简成一维表；
-2. 将不可导出符号（比如 \_\_cxa\_finalize@GLIBC\_2.2.5 ）排在可导出符号（比如 \_Z3foov）的前面，从而节省掉存储不可导出符号的哈希值的空间；第一个可导出符号在 .dynsym 表的下标记为 `symbias` 。
-
-```cpp
-map->l_gnu_chain_zero = hash32 - symbias;
-```
-
-将 `l_gnu_chain_zero` 减去 `symbias` ，方便后续计算符号在 .dynsym 表的下标。
-
-### 哈希算法
-
-```cpp
-static uint_fast32_t
-dl_new_hash (const char *s)
-{
-  uint_fast32_t h = 5381;
-  for (unsigned char c = *s; c != '\0'; c = *++s)
-    h = h * 33 + c;
-  return h & 0xffffffff;
-}
-```
-
 ## 布隆过滤器
-
-### l_gnu_bitmask
-
-`l_gnu_bitmask` 是 0x260 + 4 * 4 = 0x270 ，`l_gnu_bitmask` 指向 `libtest_gnu_hash.so` 的布隆过滤器。
 
 布隆过滤器的原理可以参考文章[详解布隆过滤器的原理，使用场景和注意事项](https://zhuanlan.zhihu.com/p/43263751)，简而言之，将数据使用多个不同的哈希函数生成多个哈希值，并将对应比特位置为 1 ，就能判断某个数据肯定不存在。
 
@@ -315,6 +295,11 @@ int main()
 }
 ```
 
+# More
+
+编译器如何处理哈希冲突？
+
 # 参考资料
 
 + [GNU Hash ELF Sections](https://blogs.oracle.com/solaris/gnu-hash-elf-sections-v2)
++ [知乎：详解布隆过滤器的原理，使用场景和注意事项](https://zhuanlan.zhihu.com/p/43263751)
