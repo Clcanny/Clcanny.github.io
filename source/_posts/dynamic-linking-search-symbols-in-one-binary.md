@@ -8,16 +8,12 @@ tags:
 
 # 导读
 
-[Dynamic Linking: Symbol Search Order](https://clcanny.github.io/2020/11/18/dynamic-linking-symbol-search-order/) 介绍了在多个文件间查找符号的顺序，本篇文章会聚焦于 `do_lookup_x` 函数，探讨在单文件内查找符号的步骤及关键的数据结构和算法：
+[Dynamic Linking: Symbol Search Order](https://clcanny.github.io/2020/11/18/dynamic-linking-symbol-search-order/) 介绍了在多个文件间查找符号的顺序，本篇文章会聚焦于 `do_lookup_x` 函数，探讨在单文件内查找符号的步骤：
 
-1. 布隆过滤；
-2. 哈希表。
+1. 布隆过滤器和哈希表是两个重要的数据结构；
+2. 它们是由编译器而不是运行时链接器准备的。
 
-# 哈希表
-
-编译器会准备好哈希表。
-
-## Code
+# Code
 
 ```c
 struct link_map {
@@ -70,7 +66,52 @@ void _dl_setup_hash(struct link_map* map) {
 }
 ```
 
-## 例子
+```cpp
+// elf/dl-lookup.c
+// do_lookup_x
+// const uint_fast32_t new_hash = dl_new_hash (undef_name);
+const struct link_map *map = list[i]->l_real;
+const ElfW(Addr) *bitmask = map->l_gnu_bitmask;
+if (__glibc_likely (bitmask != NULL))
+{
+  ElfW(Addr) bitmask_word
+    = bitmask[(new_hash / __ELF_NATIVE_CLASS)& map->l_gnu_bitmask_idxbits];
+  unsigned int hashbit1 = new_hash & (__ELF_NATIVE_CLASS - 1);
+  unsigned int hashbit2 = ((new_hash >> map->l_gnu_shift)
+                           & (__ELF_NATIVE_CLASS - 1));
+  if (__glibc_unlikely ((bitmask_word >> hashbit1)
+                        & (bitmask_word >> hashbit2) & 1))
+  {
+    Elf32_Word bucket = map->l_gnu_buckets[new_hash
+                                           % map->l_nbuckets];
+    if (bucket != 0)
+    {
+      const Elf32_Word *hasharr = &map->l_gnu_chain_zero[bucket];
+      do
+        if (((*hasharr ^ new_hash) >> 1) == 0)
+        {
+          symidx = hasharr - map->l_gnu_chain_zero;
+          sym = check_match (undef_name, ref, version, flags,
+                             type_class, &symtab[symidx], symidx,
+                             strtab, map, &versioned_sym,
+                             &num_versions);
+          if (sym != NULL)
+            goto found_it;
+        }
+      while ((*hasharr++ & 1u) == 0);
+    }
+  }
+  else
+  {
+    /* Use the old SysV-style hash table.  Search the appropriate
+       hash bucket in this object's symbol table for a definition
+       for the same symbol name.  */
+    // ...
+  }
+}
+```
+
+# 详解
 
 ```cpp
 // test_gnu_hash.cpp
@@ -106,4 +147,155 @@ void more() {}
 0001220 6a5ebc3c 6a6128eb
 ```
 
-# 哈希表
+|       | l_nbuckets | symbias | bitmask_nwords | l_gnu_bitmask_idxbits | l_gnu_shift |   l_gnu_bitmask    |  l_gnu_buckets  | l_gnu_chain_zero |
+|       |    :-:     |   :-:   |      :-:       |          :-:          |     :-:     |        :-:         |       :-:       |       :-:        |
+| value |    0x3     |   0x5   |      0x1       |          0x0          |     0x6     | 0x1801290804200400 | [0x5, 0x8, 0x0] |                  |
+
+## 哈希表
+
+1. 根据 `l_gnu_buckets` 找到哈希桶的第一个元素；
+2. 顺序搜索哈希桶内的元素，直到找到相应的哈希值或者到达结尾。
+
+
+### l_nbuckets / symbias / bitmask_nwords / l_gnu_shift
+
+从 [GNU Hash ELF Sections](https://blogs.oracle.com/solaris/gnu-hash-elf-sections-v2) 摘抄了一段关于 .gnu.hash section 的描述：
+
+> - **l_nbuckets**
+>   The number of hash buckets
+>
+> - **symbias**
+>   The dynamic symbol table has *dynsymcount* symbols. *symndx* is the index of the first symbol in the dynamic symbol table that is to be accessible via the hash table. This implies that there are (*dynsymcount* - *symndx*) symbols accessible via the hash table.
+>
+> - **bitmask_nwords**
+>
+>   The number of \_\_ELF\_NATIVE\_CLASS sized words in the Bloom filter portion of the hash table section. This value must be non-zero, and must be a power of 2 as explained below.
+>
+>   Note that a value of 0 could be interpreted to mean that no Bloom filter is present in the hash section. However, the GNU linkers do not do this — the GNU hash section always includes at least 1 mask word.
+>
+> - **l_gnu_shift**
+>   A shift count used by the Bloom filter. HashValue\_2 = HashValue\_1 >> l\_gnu\_shift.
+
+对照前面的代码：`l_nbuckets` 是 3 ，`symbias` 是 5 ，`bitmask_nwords` 是 1 ，`l_gnu_shift` 是 6 。
+
+```bash
+# readelf --dyn-syms libtest_gnu_hash.so
+Symbol table '.dynsym' contains 10 entries:
+   Num:    Value          Size Type    Bind   Vis      Ndx Name
+     0: 0000000000000000     0 NOTYPE  LOCAL  DEFAULT  UND
+     1: 0000000000000000     0 FUNC    WEAK   DEFAULT  UND __cxa_finalize@GLIBC_2.2.5 (2)
+     2: 0000000000000000     0 NOTYPE  WEAK   DEFAULT  UND _ITM_deregisterTMCloneTab
+     3: 0000000000000000     0 NOTYPE  WEAK   DEFAULT  UND __gmon_start__
+     4: 0000000000000000     0 NOTYPE  WEAK   DEFAULT  UND _ITM_registerTMCloneTable
+     5: 000000000000110a     7 FUNC    GLOBAL DEFAULT   11 _Z4hahav
+     6: 0000000000001111     7 FUNC    GLOBAL DEFAULT   11 _Z4morev
+     7: 0000000000001103     7 FUNC    GLOBAL DEFAULT   11 _Z4testv
+     8: 00000000000010fc     7 FUNC    GLOBAL DEFAULT   11 _Z3barv
+     9: 00000000000010f5     7 FUNC    GLOBAL DEFAULT   11 _Z3foov
+```
+
+`symbias` 表明第一个可以通过 .gnu.hash section 访问的符号（即可以提供给其它库访问的符号），在 `libtest_gnu_hash.so` 中这个符号是 `_Z4hahav` 。
+
+### l_gnu_buckets / l_gnu_chain_zero
+
+`l_gnu_buckets` 指向的一个数组，数组的 `l_nbuckets` 个元素分别是 5、8 和 0 ；5 代表 0 号桶的第一个元素是 `l_gnu_chain_zero[5]` ，8 代表 1 号桶的第一个元素是 `l_gnu_chain_zero[8]` ，0 代表 2 号桶是一个空桶；这是一种用一维数组实现二维数组的手段。
+
+![](http://junbin-hexo-img.oss-cn-beijing.aliyuncs.com/dynamic-linking/gnu.hash-implementation.jpeg)
+
+.gnu.hash 实现的是一张二维表，X 轴是哈希表的桶号，Y 轴是符号在 .dynsym 表中的下标，如下图所示：
+
+![](http://junbin-hexo-img.oss-cn-beijing.aliyuncs.com/dynamic-linking/gnu.hash-two-dimensional-table.jpeg)
+
+然而，.gnu.hash 为了节省空间，做了两件非常 tricky 的事情：
+
+1. 将 5 个符号排序（可以发现 5 个符号在 .dynsym 表的顺序并非字母序），使得哈希后处在同一个哈希桶的多个符号彼此相邻，从而将二维表化简成一维表；
+2. 将不可导出符号（比如 \_\_cxa\_finalize@GLIBC\_2.2.5 ）排在可导出符号（比如 \_Z3foov）的前面，从而节省掉存储不可导出符号的哈希值的空间；第一个可导出符号在 .dynsym 表的下标记为 `symbias` 。
+
+```cpp
+map->l_gnu_chain_zero = hash32 - symbias;
+```
+
+将 `l_gnu_chain_zero` 减去 `symbias` ，方便后续计算符号在 .dynsym 表的下标。
+
+##### 哈希算法
+
+```cpp
+static uint_fast32_t
+dl_new_hash (const char *s)
+{
+  uint_fast32_t h = 5381;
+  for (unsigned char c = *s; c != '\0'; c = *++s)
+    h = h * 33 + c;
+  return h & 0xffffffff;
+}
+```
+
+## 布隆过滤器
+
+### l_gnu_bitmask
+
+`l_gnu_bitmask` 是 0x260 + 4 * 4 = 0x270 ，`l_gnu_bitmask` 指向 `libtest_gnu_hash.so` 的布隆过滤器。
+
+布隆过滤器的原理可以参考文章[详解布隆过滤器的原理，使用场景和注意事项](https://zhuanlan.zhihu.com/p/43263751)，简而言之，将数据使用多个不同的哈希函数生成多个哈希值，并将对应比特位置为 1 ，就能判断某个数据肯定不存在。
+
+参考 [GNU Hash ELF Sections](https://blogs.oracle.com/solaris/gnu-hash-elf-sections-v2) ，构建布隆过滤器的伪代码如下：
+
+```cpp
+const uint_fast32_t new_hash = dl_new_hash(undef_name);
+uint32_t H1 = new_hash;
+uint32_t H2 = new_hash >> map->l_gnu_shift;
+uint32_t N = (H1 / __ELF_NATIVE_CLASS) & map->l_gnu_bitmask_idxbits;
+unsigned int hashbit1 = H1 % __ELF_NATIVE_CLASS;
+unsigned int hashbit2 = H2 % __ELF_NATIVE_CLASS;
+bloom[N] |= (1 << hashbit1);
+bloom[N] |= (1 << hashbit2);
+```
+
+构建布隆过滤器的 C++ 代码如下：
+
+```cpp
+// bloom.cpp
+#include <ios>
+#include <iostream>
+
+uint32_t dl_new_hash(const char *s)
+{
+  uint32_t h = 5381;
+  for (unsigned char c = *s; c != '\0'; c = *++s)
+    h = h * 33 + c;
+  return h & 0xffffffff;
+}
+
+const int __ELF_NATIVE_CLASS = 64;
+const int l_gnu_shift = 6;
+const int bitmask_nwords = 1;
+const int l_gnu_bitmask_idxbits = bitmask_nwords - 1;
+
+void new_bitmask(const char* s, uint64_t* bitmask_arr)
+{
+  uint32_t hash_value1 = dl_new_hash(s);
+  uint32_t hash_value2 = hash_value1 >> l_gnu_shift;
+  int n = (hash_value1 / __ELF_NATIVE_CLASS) & l_gnu_bitmask_idxbits;
+  unsigned int hashbit1 = hash_value1 % __ELF_NATIVE_CLASS;
+  unsigned int hashbit2 = hash_value2 % __ELF_NATIVE_CLASS;
+  // Please use 1L (64 bits) instead of 1 (32 bits).
+  bitmask_arr[n] |= (1L << hashbit1);
+  bitmask_arr[n] |= (1L << hashbit2);
+}
+
+int main()
+{
+  uint64_t bitmask_arr[bitmask_nwords] = {0};
+  new_bitmask("_Z4hahav", bitmask_arr);
+  new_bitmask("_Z4morev", bitmask_arr);
+  new_bitmask("_Z4testv", bitmask_arr);
+  new_bitmask("_Z3barv", bitmask_arr);
+  new_bitmask("_Z3foov", bitmask_arr);
+  std::cout << std::hex << "0x" << bitmask_arr[0] << std::endl;
+  // 0x1801290804200400
+}
+```
+
+# 参考资料
+
++ [GNU Hash ELF Sections](https://blogs.oracle.com/solaris/gnu-hash-elf-sections-v2)
