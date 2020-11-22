@@ -1,57 +1,78 @@
 ---
 layout: post
-title: dynamic-linking-static-symbol-table-order
+title: "Dynamic Linking: Merge Static Symbol Table"
 date: 2020-11-21 13:10:08
 tags:
   - dynamic linking
 ---
 
-symtab_node::register_symbol // gcc/symtab.c
+# 导读
+
+1. 来自某个文件的 LOCAL 符号都跟在代表该文件的 entry 之后；
+3. 全局符号（ GLOBAL / WEAK ）排在本地符号（ LOCAL ）之后；
+2. .symtab section header 的 information 是第一个全局符号在 .symtab section 的 index 。
 
 根据 [Orcale: Symbol Table Section](https://docs.oracle.com/cd/E23824_01/html/819-0690/chapter6-79797.html) 的说法：
 
-> Conventionally, the symbol's name gives the name of the source file that is associated with the object file. A file symbol has STB_LOCAL binding and a section index of SHN_ABS. This symbol, if present, precedes the other STB_LOCAL symbols for the file.
+> Conventionally, the symbol's name gives the name of the source file that is associated with the object file. A file symbol has STB\_LOCAL binding and a section index of SHN\_ABS. This symbol, if present, precedes the other STB\_LOCAL symbols for the file.
+
+# 证明
+
+```cpp
+// foo.cpp
+// g++ foo.cpp -shared -fPIC -O0 -ggdb -o libfoo.so
+
+namespace {
+int bar = 1;
+const char* name = "foo.cpp";
+}  // anonymous namespace
+
+void foo() {
+}
+```
 
 ```bash
-wget https://ftp.gnu.org/gnu/gcc/gcc-8.3.0/gcc-8.3.0.tar.gz
-tar -xzvf gcc-8.3.0.tar.gz
-cd gcc-8.3.0
-./contrib/download_prerequisites
-cd .. && mkdir gcc-8.3.0-build && cd gcc-8.3.0-build
-CFLAGS="-O0 -ggdb" CXXFLAGS="-O0 -ggdb" $PWD/../gcc-8.3.0/configure --prefix=$PWD/install --enable-languages=c,c++,fortran,go --disable-multilib
-make -j8
+# readelf --section-headers libfoo.so | grep -E "Nr|symtab" -A1 | grep -v "\-\-"
+  [Nr] Name              Type             Address           Offset
+       Size              EntSize          Flags  Link  Info  Align
+  [30] .symtab           SYMTAB           0000000000000000  00001270
+       00000000000005d0  0000000000000018          31    51     8
 ```
 
+```bash
+# readelf --symbols libfoo.so
+    30: 0000000000000000     0 FILE    LOCAL  DEFAULT  ABS crtstuff.c
+    31: 0000000000200e10     0 OBJECT  LOCAL  DEFAULT   18 __JCR_LIST__
+    32: 0000000000000570     0 FUNC    LOCAL  DEFAULT   11 deregister_tm_clones
+    33: 00000000000005b0     0 FUNC    LOCAL  DEFAULT   11 register_tm_clones
+    34: 0000000000000600     0 FUNC    LOCAL  DEFAULT   11 __do_global_dtors_aux
+    35: 0000000000201030     1 OBJECT  LOCAL  DEFAULT   23 completed.6972
+    36: 0000000000200e08     0 OBJECT  LOCAL  DEFAULT   17 __do_global_dtors_aux_fin
+    37: 0000000000000640     0 FUNC    LOCAL  DEFAULT   11 frame_dummy
+    38: 0000000000200e00     0 OBJECT  LOCAL  DEFAULT   16 __frame_dummy_init_array_
+
+    39: 0000000000000000     0 FILE    LOCAL  DEFAULT  ABS foo.cpp
+    40: 0000000000201020     4 OBJECT  LOCAL  DEFAULT   22 _ZN12_GLOBAL__N_13barE
+    41: 0000000000201028     8 OBJECT  LOCAL  DEFAULT   22 _ZN12_GLOBAL__N_14nameE
+
+    42: 0000000000000000     0 FILE    LOCAL  DEFAULT  ABS crtstuff.c
+    43: 0000000000000728     0 OBJECT  LOCAL  DEFAULT   15 __FRAME_END__
+    44: 0000000000200e10     0 OBJECT  LOCAL  DEFAULT   18 __JCR_END__
+
+    45: 0000000000000000     0 FILE    LOCAL  DEFAULT  ABS
+    46: 000000000000068c     0 NOTYPE  LOCAL  DEFAULT   14 __GNU_EH_FRAME_HDR
+    47: 0000000000201000     0 OBJECT  LOCAL  DEFAULT   21 _GLOBAL_OFFSET_TABLE_
+    48: 0000000000201030     0 OBJECT  LOCAL  DEFAULT   22 __TMC_END__
+    49: 0000000000201018     0 OBJECT  LOCAL  DEFAULT   22 __dso_handle
+    50: 0000000000200e18     0 OBJECT  LOCAL  DEFAULT   19 _DYNAMIC
+
+    51: 0000000000000000     0 NOTYPE  WEAK   DEFAULT  UND __gmon_start__
 ```
-cc1: internal compiler error: in register_symbol, at symtab.c:377
-0xa51e3d symtab_node::register_symbol()                                                                                                                                              /home/demons/gcc/build/../gcc-8.3.0/gcc/symtab.c:377
-0xa5db5f cgraph_node::create(tree_node*)                                                                                                                                             /home/demons/gcc/build/../gcc-8.3.0/gcc/cgraph.c:523
-0xa5dc89 cgraph_node::get_create(tree_node*)                                                                                                                                         /home/demons/gcc/build/../gcc-8.3.0/gcc/cgraph.c:545
-0xa6e63c cgraph_node::finalize_function(tree_node*, bool)                                                                                                                            /home/demons/gcc/build/../gcc-8.3.0/gcc/cgraphunit.c:438
-0xf251c0 function_reader::create_function()                                                                                                                                          /home/demons/gcc/build/../gcc-8.3.0/gcc/read-rtl-function.c:520
-0xf24de7 function_reader::parse_function()
-        /home/demons/gcc/build/../gcc-8.3.0/gcc/read-rtl-function.c:425
-0xf24d95 function_reader::handle_unknown_directive(file_location, char const*)
-        /home/demons/gcc/build/../gcc-8.3.0/gcc/read-rtl-function.c:411
-0x1cc03e0 md_reader::handle_file()
-        /home/demons/gcc/build/../gcc-8.3.0/gcc/read-md.c:1158
-0x1cc049a md_reader::handle_toplevel_file()
-        /home/demons/gcc/build/../gcc-8.3.0/gcc/read-md.c:1180
-0x1cc0595 md_reader::read_file(char const*)
-        /home/demons/gcc/build/../gcc-8.3.0/gcc/read-md.c:1325
-0xf27988 read_rtl_function_body(char const*)
-        /home/demons/gcc/build/../gcc-8.3.0/gcc/read-rtl-function.c:1617
-0xfe379e selftest::rtl_dump_test::rtl_dump_test(selftest::location const&, char*)
-        /home/demons/gcc/build/../gcc-8.3.0/gcc/selftest-rtl.c:92
-0xf28342 test_loading_dump_fragment_1
-        /home/demons/gcc/build/../gcc-8.3.0/gcc/read-rtl-function.c:1739
-0xf2defe selftest::read_rtl_function_c_tests()
-        /home/demons/gcc/build/../gcc-8.3.0/gcc/read-rtl-function.c:2176
-```
+
+# 合并静态符号表
 
 # 参考资料
 
 + [Linkers and Loaders](https://www.iecc.com/linker/)
 + [https://www.iecc.com/linker/](https://akkadia.org/drepper/dsohowto.pdf)
-+ [GCC Wiki: Installing GCC](https://gcc.gnu.org/wiki/InstallingGCC)
 + [Orcale: Symbol Table Section](https://docs.oracle.com/cd/E23824_01/html/819-0690/chapter6-79797.html)
