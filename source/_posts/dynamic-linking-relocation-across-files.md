@@ -434,4 +434,4 @@ typedef struct
 jmp *%r11               # Jump to function address.
 ```
 
-\_dl\_runtime\_resolve\_xsave 在调用 \_dl\_fixup 之后的主要工作是：调用函数。
+`_dl_runtime_resolve_xsave` 在调用 `_dl_fixup` 之后的主要工作是：调用函数。
