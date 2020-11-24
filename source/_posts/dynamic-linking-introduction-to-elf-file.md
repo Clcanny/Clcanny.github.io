@@ -1,6 +1,6 @@
 ---
 layout: post
-title: dynamic-linking-introduction-to-elf-file
+title: "Dynamic Linking: Introduction To Elf File"
 date: 2020-11-24 10:42:03
 tags:
   - dynamic linking
@@ -340,6 +340,42 @@ typedef struct
 根据 [man elf](https://man7.org/linux/man-pages/man5/elf.5.html) 的描述，sh_link / sh_info 的含义都取决于 section 。
 
 ## .got .plt .got.plt .plt.got
+
+.plt 和 .got.plt 是完成跨文件重定位需要的两个 sections 。
+
+### .plt.got & .got
+
+```bash
+# objdump -d -j .plt.got main
+0000000000001040 <__cxa_finalize@plt>:
+    1040:       ff 25 b2 2f 00 00       jmpq   *0x2fb2(%rip)        # 3ff8 <__cxa_finalize@GLIBC_2.2.5>
+    1046:       66 90                   xchg   %ax,%ax
+```
+
+```bash
+# readelf --section-headers main | grep -E "Nr| .got " -A1 | grep -v "\-\-"
+  [Nr] Name              Type             Address           Offset
+       Size              EntSize          Flags  Link  Info  Align
+  [22] .got              PROGBITS         0000000000003fd8  00002fd8
+       0000000000000028  0000000000000008  WA       0     0     8
+```
+
+```bash
+# od --skip-bytes=$((0x1046 + 0x2fb2 - 0x3fd8 + 0x2fd8)) --read-bytes=8 --format=xL main
+0027770 0000000000000000
+0030000
+```
+
+该地址会由 `elf_machine_rela` 函数填入 `__cxa_finalize` 函数的首地址，调用链如下：
+
+```bash
+elf_machine_rela
+elf_dynamic_do_Rela
+_dl_relocate_object
+dl_main
+```
+
+.plt.got & .got 同 .plt & .got.plt 一样，都是一组用于重定位的 sections ；不同之处是：.plt.got & .got 没有 lazy binding ，由链接器直接触发重定位，.plt & .got.plt 有 lazy binding ，在第一次调用函数时触发重定位。
 
 # 参考资料
 
