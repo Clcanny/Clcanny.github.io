@@ -341,7 +341,41 @@ typedef struct
 
 ## .got .plt .got.plt .plt.got
 
-.plt 和 .got.plt 是完成跨文件重定位需要的两个 sections 。
+Debug 技巧：先用 `info proc mappings` 获取 start address ，再用 `watch *(unsigned long long*)(<start_addr> + <addr>)` 就能看到改变特定地址的栈了。
+
+### .plt & .got.plt
+
+```bash
+# objdump -d -j .plt main
+0000000000001020 <.plt>:
+    1020:       ff 35 e2 2f 00 00       pushq  0x2fe2(%rip)        # 4008 <_GLOBAL_OFFSET_TABLE_+0x8>
+    1026:       ff 25 e4 2f 00 00       jmpq   *0x2fe4(%rip)        # 4010 <_GLOBAL_OFFSET_TABLE_+0x10>
+    102c:       0f 1f 40 00             nopl   0x0(%rax)
+
+0000000000001030 <_Z3foov@plt>:
+    1030:       ff 25 e2 2f 00 00       jmpq   *0x2fe2(%rip)        # 4018 <_Z3foov>
+    1036:       68 00 00 00 00          pushq  $0x0
+    103b:       e9 e0 ff ff ff          jmpq   1020 <.plt>
+```
+
+```bash
+# readelf --section-headers main | grep -E "Nr|.got.plt" -A1 | grep -v "\-\-"
+  [Nr] Name              Type             Address           Offset
+       Size              EntSize          Flags  Link  Info  Align
+  [23] .got.plt          PROGBITS         0000000000004000  00003000
+       0000000000000020  0000000000000008  WA       0     0     8
+```
+
+```bash
+# od --skip-bytes=$((0x1036 + 0x2fe2 - 0x4000 + 0x3000)) --read-bytes=8 --format=xL main
+0030030 0000000000001036
+0030040
+```
+
+该地址会发生两次改变：
+
+1. 由 0x1036 变成 start address + 0x1036 ，调用栈是 `dl_main -> _dl_relocate_object -> elf_dynamic_do_Rela` ；这是同文件重定位，仅仅加上了 start address ，不需要查找符号，执行速度快；
+2. 由 start address + 0x1036 变成 `foo` 函数的首地址，调用栈是 `main -> _dl_runtime_resolve_xsavec -> _dl_fixup` ；这是跨文件重定位，需要查找符号，执行速度较慢。
 
 ### .plt.got & .got
 
@@ -366,14 +400,7 @@ typedef struct
 0030000
 ```
 
-该地址会由 `elf_machine_rela` 函数填入 `__cxa_finalize` 函数的首地址，调用链如下：
-
-```bash
-elf_machine_rela
-elf_dynamic_do_Rela
-_dl_relocate_object
-dl_main
-```
+该地址仅发生一次改变，由 0x0 变成 `__cxa_finalize` 函数的首地址，调用栈是 `dl_main -> _dl_relocate_object -> elf_dynamic_do_Rela -> elf_machine_rela` 。
 
 .plt.got & .got 同 .plt & .got.plt 一样，都是一组用于重定位的 sections ；不同之处是：.plt.got & .got 没有 lazy binding ，由链接器直接触发重定位，.plt & .got.plt 有 lazy binding ，在第一次调用函数时触发重定位。
 
