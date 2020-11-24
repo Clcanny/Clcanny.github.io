@@ -339,7 +339,7 @@ typedef struct
 
 根据 [man elf](https://man7.org/linux/man-pages/man5/elf.5.html) 的描述，sh_link / sh_info 的含义都取决于 section 。
 
-## .got .plt .got.plt .plt.got
+## .plt & .got.plt / .plt.got & .got
 
 Debug 技巧：先用 `info proc mappings` 获取 start address ，再用 `watch *(unsigned long long*)(<start_addr> + <addr>)` 就能看到改变特定地址的栈了。
 
