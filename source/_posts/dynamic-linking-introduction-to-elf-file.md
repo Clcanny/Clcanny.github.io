@@ -404,6 +404,64 @@ Debug 技巧：先用 `info proc mappings` 获取 start address ，再用 `watch
 
 .plt.got & .got 同 .plt & .got.plt 一样，都是一组用于重定位的 sections ；不同之处是：.plt.got & .got 没有 lazy binding ，由链接器直接触发重定位，.plt & .got.plt 有 lazy binding ，在第一次调用函数时触发重定位。
 
+## .rela.dyn & .rela.plt
+
+以 foo.cpp 为例：
+
+```cpp
+// foo.cpp
+#include <iostream>
+namespace {
+int var = 1;
+void bar() { std::cout << "bar" << std::endl; }
+}
+void foo() {}
+```
+
+### .rela.dyn / .rela.plt
+
+根据 [Linux Foundation Referenced Specifications: Additional Special Sections](https://refspecs.linuxfoundation.org/LSB_4.1.0/LSB-Core-S390/LSB-Core-S390/sections.html) 的说法：
+
+1. .rela.plt section 负责配合 .plt section 完成[跨文件重定位](https://clcanny.github.io/2020/11/21/dynamic-linking-relocation-across-files/) ；
+2. .rela.dyn 负责其它类型的重定位。
+
+### .rela.dyn & .rela.plt 与 .symtab 的关系
+
+.symtab 中的 undefined symbols 都能在 relocation sections 中找到：
+
+```bash
+# readelf --symbols --wide libfoo.so | grep ".symtab" -A 100 | grep "UND" | awk '{print $8}' | sort
+__cxa_atexit@@GLIBC_2.2.5
+__cxa_finalize@@GLIBC_2.2.5
+__gmon_start__
+_ITM_deregisterTMCloneTable
+_ITM_registerTMCloneTable
+_Jv_RegisterClasses
+_ZNSolsEPFRSoS_E@@GLIBCXX_3.4
+_ZNSt8ios_base4InitC1Ev@@GLIBCXX_3.4
+_ZNSt8ios_base4InitD1Ev@@GLIBCXX_3.4
+_ZSt4cout@@GLIBCXX_3.4
+_ZSt4endlIcSt11char_traitsIcEERSt13basic_ostreamIT_T0_ES6_@@GLIBCXX_3.4
+_ZStlsISt11char_traitsIcEERSt13basic_ostreamIcT_ES5_PKc@@GLIBCXX_3.4
+```
+
+```bash
+# readelf --relocs --wide libfoo.so | grep -v "\<Offset\>" | awk '{print $5}' | sort | uniq
+__cxa_atexit@GLIBC_2.2.5
+__cxa_finalize@GLIBC_2.2.5
+__gmon_start__
+_ITM_deregisterTMCloneTable
+_ITM_registerTMCloneTable
+_Jv_RegisterClasses
+offset
+_ZNSolsEPFRSoS_E@GLIBCXX_3.4
+_ZNSt8ios_base4InitC1Ev@GLIBCXX_3.4
+_ZNSt8ios_base4InitD1Ev@GLIBCXX_3.4
+_ZSt4cout@GLIBCXX_3.4
+_ZSt4endlIcSt11char_traitsIcEERSt13basic_ostreamIT_T0_ES6_@GLIBCXX_3.4
+_ZStlsISt11char_traitsIcEERSt13basic_ostreamIcT_ES5_PKc@GLIBCXX_3.4
+```
+
 # 参考资料
 
 ELF (except .plt and .got.plt and etc.):
@@ -425,3 +483,8 @@ ELF (except .plt and .got.plt and etc.):
 + [Technovelty: PLT and GOT - the key to code sharing and dynamic libraries](https://www.technovelty.org/linux/plt-and-got-the-key-to-code-sharing-and-dynamic-libraries.html)
 + [System Overlord: GOT and PLT for pwning.](https://systemoverlord.com/2017/03/19/got-and-plt-for-pwning.html)
 + [LIEF: 05 - Infecting the plt/got](https://lief.quarkslab.com/doc/latest/tutorials/05_elf_infect_plt_got.html)
+
+.rela.dyn and .rela.plt:
+
++ [Linux Foundation Referenced Specifications: Additional Special Sections](https://refspecs.linuxfoundation.org/LSB_4.1.0/LSB-Core-S390/LSB-Core-S390/sections.html)
++ [Keith Makan: Introduction to The ELF Format (Part VI): The Symbol Table and Relocations (Part 2)](http://blog.k3170makan.com/2018/10/introduction-to-elf-format-part-vi_18.html)
