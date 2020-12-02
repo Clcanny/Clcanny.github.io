@@ -90,12 +90,12 @@ void foo() {
 1. In relocatable files, st\_value holds a section offset for a defined symbol. st\_value is an offset from the beginning of the section that st\_shndx identifies.
 2. In executable and shared object files, st\_value holds a virtual address. To make these files' symbols more useful for the dynamic linker, the section offset (file interpretation) gives way to a virtual address (memory interpretation) for which the section number is irrelevant.
 
-|          Ndx           |  Type  |
-|          :-:           |  :-:   |
-| not UND (1, 2, 3, ...) |  FUNC  |
-|                        | OBJECT |
-|          UND           |  FUNC  |
-|                        | NOTYPE |
+|     Ndx      |  Type  |
+|     :-:      |  :-:   |
+| 1, 2, 3, ... |  FUNC  |
+|              | OBJECT |
+|     UND      |  FUNC  |
+|              | NOTYPE |
 
 ```bash
 # readelf --symbols libfoo.so | grep -v "UND" | grep "FUNC" | awk '{print $2, $8}' | sort | uniq
