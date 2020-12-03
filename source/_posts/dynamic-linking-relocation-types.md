@@ -97,6 +97,24 @@ objdump -d -j .text libfoo.so | grep -E "(1130|11b4|10f0|4038).*>:" | sort
 00000000000011b4 <_GLOBAL__sub_I_foo.cpp>:
 ```
 
+# Debug 技巧
+
+```bash
+(gdb) start
+(gdb) info sharedlibrary
+From                To                  Syms Read   Shared Object Library
+0x00007ffff7fcc080  0x00007ffff7fcc1c9  Yes         /test/libfoo.so
+(gdb) watch *(unsigned long long*)(0x00007ffff7fcc080 + 0x000000003fc0)
+Hardware watchpoint 2: *(unsigned long long*)(0x00007ffff7fcc080 + 0x000000003fc0)
+(gdb) start
+Hardware watchpoint 2: *(unsigned long long*)(0x00007ffff7fcc080 + 0x000000003fc0)
+Old value = <unreadable>
+New value = 0
+_dl_new_object (realname=realname@entry=0x7ffff7fd0000 "/test/libfoo.so", libname=<optimized out>, libname@entry=0x5555555543d9 "libfoo.so", type=type@entry=1,
+    loader=loader@entry=0x7ffff7ffe190, mode=mode@entry=0, nsid=nsid@entry=0) at dl-object.c:108
+108       for (unsigned int cnt = 0; cnt < naudit; ++cnt)
+```
+
 # 参考资料
 
 + [Acronyms relevant to Executable and Linkable Format (ELF)](https://stevens.netmeister.org/631/elf.html)
