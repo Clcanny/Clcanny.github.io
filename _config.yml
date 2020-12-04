@@ -62,6 +62,10 @@ markdown:
     linkify: true
     typographer: true
     quotes: '“”‘’'
+  anchors:
+    # https://github.com/bubkoo/hexo-toc/issues/20
+    # Minimum level for ID creation. (Ex. h2 to h6)
+    level: 1
 
 # Home page setting
 # path: Root path for your blogs index page. (default = '')
