@@ -163,3 +163,4 @@ New value = 140737353936952
 + [Acronyms relevant to Executable and Linkable Format (ELF)](https://stevens.netmeister.org/631/elf.html)
 + [United Computer Wizards: Relocation Types](https://www.ucw.cz/~hubicka/papers/abi/node19.html)
 + [Stack Exchange: Why does ldd and (gdb) info sharedlibrary show a different library base address?](https://reverseengineering.stackexchange.com/questions/6657/why-does-ldd-and-gdb-info-sharedlibrary-show-a-different-library-base-addr)
++ [Keith Makan: Introduction to The ELF Format (Part VI): The Symbol Table and Relocations (Part 2)](http://blog.k3170makan.com/2018/10/introduction-to-elf-format-part-vi_18.html)
