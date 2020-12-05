@@ -6,6 +6,12 @@ tags:
   - dynamic linking
 ---
 
+# 导读
+
+下图摘自 [Keith Makan: Introduction to The ELF Format (Part VI): The Symbol Table and Relocations (Part 2)](http://blog.k3170makan.com/2018/10/introduction-to-elf-format-part-vi_18.html) ，展示了 relocation entry 的格式：
+
+![](http://junbin-hexo-img.oss-cn-beijing.aliyuncs.com/dynamic-linking-relocation-types/relocation-table-entry-format.png)
+
 # 证明
 
 ```cpp
