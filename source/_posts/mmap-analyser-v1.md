@@ -2,8 +2,7 @@
 title: mmap analyser v1
 date: 2020-04-24 01:00:00
 tags:
-  - memory analyser
-  - linux
+  - memory analyse
 ---
 <!--more-->
 
