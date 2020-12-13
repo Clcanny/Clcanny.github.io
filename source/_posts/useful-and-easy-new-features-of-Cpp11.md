@@ -1,5 +1,5 @@
 ---
-title: useful and easy new features of Cpp11
+title: Useful And Easy New Features Of Cpp11
 date: 2019-07-16 22:14:15
 tags:
   - c++11
@@ -8,7 +8,7 @@ tags:
 
 # 简单易用的 C++11 新特性
 
-重构代码时提炼几点有用的 C++11 新特性，能够帮助大家写出更加优雅的 C++ 代码
+重构代码时提炼几点有用的 C++11 新特性，能够帮助大家写出更加优雅的 C++ 代码。
 
 ## 强制类型转换
 
@@ -21,9 +21,7 @@ tags:
 
 ## 右值语义
 
-> 如何移动一头大象？在第二个冰箱中启动量子复制系统，克隆一只完全相同的大象，然后启动高能激光将第一个冰箱内的大象气化消失。
-
-感谢[知乎](https://www.zhihu.com/question/22111546/answer/30801982)段子带来的快乐
+> [如何移动一头大象？](https://www.zhihu.com/question/22111546/answer/30801982)在第二个冰箱中启动量子复制系统，克隆一只完全相同的大象，然后启动高能激光将第一个冰箱内的大象气化消失。
 
 ### Value categories
 
@@ -32,7 +30,7 @@ tags:
 参考[Stroustrup 叙述 C++11 值类型取名历程](https://stackoverflow.com/questions/3601602/what-are-rvalues-lvalues-xvalues-glvalues-and-prvalues)，整理出判断值类型的表：
 
 + Has identity
-  + It's possible to determine whether the expression refers to the same entity as another expression, such as by comparing addressses of the objects or the functions they identity (obtained directly or indirectly)
+  + It's possible to determine whether the expression refers to the same entity as another expression, such as by comparing addressses of the objects or the functions they identity (obtained directly or indirectly).
 + Can be moved from
   + Move constructor, move assignments operator, or another function overload that implements move semantics can bind to the expression.
   + The resource will not be used in another place or be discarded by explicitly.
@@ -539,7 +537,7 @@ Named Return Value Optimization = NRVO
 
 Return Value Optimization = RVO
 
-在 C++11 ，标准只是允许 `copy elision` 而不是强制 `copy elision` ，不过 `copy elision` 在主流编译器已经得到实现 
+在 C++11 ，标准只是允许 `copy elision` 而不是强制 `copy elision` ，不过 `copy elision` 在主流编译器已经得到实现
 
 ### 触发 NRVO 的条件
 
@@ -774,7 +772,7 @@ int func(...)
 }
 ```
 
-以任意个数、任意类型（参数类型不需要一致）的参数调用 `func` 都是没问题的 
+以任意个数、任意类型（参数类型不需要一致）的参数调用 `func` 都是没问题的
 
 ### 对模板参数的限制
 
@@ -888,14 +886,14 @@ test.cpp:41:20: note: in instantiation of template class 'Container<int>' reques
 1 error generated.
 ```
 
-编译器在 `static_assert` 失败之后，并没有继续尝试实例化 `static_assert` 之后的成员函数；同时报错信息也可以自行定制；模板报错变得简短而准确
+编译器在 `static_assert` 失败之后，并没有继续尝试实例化 `static_assert` 之后的成员函数；同时报错信息也可以自行定制；模板报错变得简短而准确。
 
 ### 编译器反射如何影响代码？
 
-abstract class vs template
+abstract class vs template ：
 
 1. 不需要付出性能损耗的代价（模板成员函数默认会 inline ？）
-2. 注入更加方便，不需要类似 `SetDependency` 的函数提供注入手段
+2. 注入更加方便，不需要类似 `SetDependency` 的函数提供注入手段。
 
 在将 `Has_Max_Method` 类似的类用宏抽象后，编译期反射用起来的体验如下：
 
@@ -904,4 +902,4 @@ GET_RT_MACRO_SIMPLE(PublicMethod, 0);
 static_assert(std::is_same<Get_PublicMethod_MethodRT0<Test>::type, bool>::value, "");
 ```
 
-这不妨成为 `abstract class` 的一种替代选项
+这不妨成为 `abstract class` 的一种替代选项。
