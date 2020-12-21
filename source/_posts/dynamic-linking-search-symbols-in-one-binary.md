@@ -13,6 +13,14 @@ tags:
 1. 布隆过滤器和哈希表是两个重要的数据结构；
 2. 它们是由编译器而不是运行时链接器准备的。
 
+Hash sections 有两种格式，GNU hash section 和 SYSV hash section ：
+
+1. GNU hash section 比 SYSV hash section 具备更好的性能；
+2. 通过 `-Wl,--hash-style=sysv` 选项指定编译 SYSV hash section ；
+3. 通过 `-Wl,--hash-style=gnu` 选项指定编译 GNU hash section 。
+
+本文讨论 GNU hash section 。
+
 # Code
 
 ## 加载 .gnu.hash section
@@ -312,3 +320,4 @@ int main()
 
 + [GNU Hash ELF Sections](https://blogs.oracle.com/solaris/gnu-hash-elf-sections-v2)
 + [知乎：详解布隆过滤器的原理，使用场景和注意事项](https://zhuanlan.zhihu.com/p/43263751)
++ [AnSwEr's Blog ：\-\-hash-style 兼容性问题](https://answerywj.com/2020/05/14/ld-hash-style/)
