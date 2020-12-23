@@ -81,7 +81,7 @@ struct elf_hash_table {
 0001010 0000000b 00000007
 ```
 
-| nbucket | nchain | bucket\nbucket] | chain[nchain] |
+| nbucket | nchain | bucket[bucket]  | chain[nchain] |
 |   :-:   |  :-:   |       :-:       |      :-:      |
 |   0x3   |  0x11  | [0xf, 0xa, 0xe] |  [0x0, ...]   |
 
