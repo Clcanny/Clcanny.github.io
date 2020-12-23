@@ -15,7 +15,7 @@ tags:
 2. [ELF: symbol lookup via DT\_HASH](https://flapenguin.me/elf-dt-hash) 将 SysV hash table 讲得非常清楚：
     1. SysV hash table 的长度和 dynamic symbol table 的长度相同；
     2. bucket 记录每个桶的起始符号；
-    3. chain[id] 既是符号在 dynamic symbol table 中的下标，又是桶中下一个符号在 chain 中的下标；
+    3. chain 是 dynamic symbol table 的附属指针数组；
     4. chain[id] 将 Ndx = STN_UNDEF 的符号作为结束符。
 
 # 详解
@@ -162,6 +162,8 @@ int main() {
 |     16     |     \_fini     |  0x65d049   |     1      |
 
 ## 哈希表
+
+![](https://junbin-hexo-img.oss-cn-beijing.aliyuncs.com/dynamic-linking-compatibility-of-hash-tables/hash-table.png)
 
 # 参考资料
 
