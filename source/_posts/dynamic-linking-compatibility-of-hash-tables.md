@@ -3,7 +3,7 @@ layout: post
 title: "Dynamic Linking Compatibility Of Hash Tables"
 date: 2020-12-22 10:43:35
 tags:
-  -- dynamic linking
+  - dynamic linking
 ---
 
 # 导读
@@ -18,7 +18,7 @@ tags:
     3. chain 是 dynamic symbol table 的附属指针数组；
     4. chain[id] 将 Ndx = STN_UNDEF 的符号作为结束符。
 
-# 详解
+# SysV hash table 详解
 
 ```cpp
 // test_hash.cpp
@@ -169,3 +169,4 @@ int main() {
 
 + [ELF: symbol lookup via DT\_HASH](https://flapenguin.me/elf-dt-hash)
 + [A Fast LKM loader based on SysV ELF hash table](https://elinux.org/images/1/18/C_AMOROSO_Fast_lkm_loader_ELC-E_2009.pdf)
++ [AnSwEr's Blog ：\-\-hash-style 兼容性问题](https://answerywj.com/2020/05/14/ld-hash-style/)
