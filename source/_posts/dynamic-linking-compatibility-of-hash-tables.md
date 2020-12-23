@@ -170,3 +170,4 @@ int main() {
 + [ELF: symbol lookup via DT\_HASH](https://flapenguin.me/elf-dt-hash)
 + [A Fast LKM loader based on SysV ELF hash table](https://elinux.org/images/1/18/C_AMOROSO_Fast_lkm_loader_ELC-E_2009.pdf)
 + [AnSwEr's Blog ：\-\-hash-style 兼容性问题](https://answerywj.com/2020/05/14/ld-hash-style/)
++ [Oracle: Hash Table Section](https://docs.oracle.com/cd/E23824_01/html/819-0690/chapter6-48031.html)
