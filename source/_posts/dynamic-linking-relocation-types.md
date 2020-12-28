@@ -170,3 +170,4 @@ New value = 140737353936952
 + [United Computer Wizards: Relocation Types](https://www.ucw.cz/~hubicka/papers/abi/node19.html)
 + [Stack Exchange: Why does ldd and (gdb) info sharedlibrary show a different library base address?](https://reverseengineering.stackexchange.com/questions/6657/why-does-ldd-and-gdb-info-sharedlibrary-show-a-different-library-base-addr)
 + [Keith Makan: Introduction to The ELF Format (Part VI): The Symbol Table and Relocations (Part 2)](http://blog.k3170makan.com/2018/10/introduction-to-elf-format-part-vi_18.html)
++ [System V Application Binary Interface: AMD64 Architecture Processor Supplement](https://refspecs.linuxbase.org/elf/x86_64-abi-0.98.pdf)
