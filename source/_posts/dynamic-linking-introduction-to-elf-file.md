@@ -387,7 +387,7 @@ Relocation section '.rela.plt' at offset 0x590 contains 1 entry:
 .got.plt 表项（虚存地址是 0x1036 + 0x2fe2）会发生两次改变：
 
 1. 从 0x1036 变成 start address + 0x1036 ：
-    1. 由运行时链接器在 .rela.plt 表项的指导下完成，调用栈是 `dl_main -> _dl_relocate_object -> elf_dynamic_do_Rela` ；
+    1. 由运行时链接器在 .rela.plt (R\_X86\_64\_JUMP\_SLOT) 表项的指导下完成，调用栈是 `dl_main -> _dl_relocate_object -> elf_dynamic_do_Rela` ；
     2. 是同文件重定位，仅仅加上了 start address ，不需要查找符号，执行速度快；
 2. 从 start address + 0x1036 变成 `foo` 函数的首地址 ：
     1. 由用户代码在函数 `foo` 第一次被调用时触发，调用栈是 `main -> _dl_runtime_resolve_xsavec -> _dl_fixup` ；
@@ -424,7 +424,7 @@ Relocation section '.rela.plt' at offset 0x590 contains 1 entry:
 
 .got 表项（虚存地址是 0x1046 + 0x2fb2）只会发生一次改变，从 0x0 变成 `__cxa_finalize` 函数的首地址：
 
-1. 由运行时链接器在 .rela.dyn 表项的指导下完成，调用栈是 `dl_main -> _dl_relocate_object -> elf_dynamic_do_Rela -> elf_machine_rela` ；
+1. 由运行时链接器在 .rela.dyn (R\_X86\_64\_GLOB\_DAT) 表项的指导下完成，调用栈是 `dl_main -> _dl_relocate_object -> elf_dynamic_do_Rela -> elf_machine_rela` ；
 2. 是跨文件重定位，需要查找符号，执行速度慢。
 
 ## .rela.dyn & .rela.plt
