@@ -12,14 +12,17 @@ tags:
 
 ![](http://junbin-hexo-img.oss-cn-beijing.aliyuncs.com/dynamic-linking-relocation-types/relocation-table-entry-format.png)
 
-# 证明
+# 详解
 
 ```cpp
 // foo.cpp
 // g++ -std=c++11 foo.cpp -O0 -ggdb -shared -fPIC -o libfoo.so
 #include <iostream>
-int var = 1;
-void foo() { std::cout << var << std::endl; }
+int a = 1;
+int* pa = &a;
+extern int b;
+int* pb = &b;
+void foo() { std::cout << *pa + *pb << std::endl; }
 ```
 
 ```cpp
@@ -29,32 +32,36 @@ void foo() { std::cout << var << std::endl; }
 //     -Wl,-rpath=/usr/lib/x86_64-linux-gnu                                                       \
 //     -Wl,-rpath=/lib/x86_64-linux-gnu                                                           \
 //     -o main
+int b = 1;
 int main() {}
 ```
 
 ```bash
 # readelf --relocs libfoo.so
-Relocation section '.rela.dyn' at offset 0x580 contains 12 entries:
+Relocation section '.rela.dyn' at offset 0x5e0 contains 15 entries:
   Offset          Info           Type           Sym. Value    Sym. Name + Addend
-000000003db8  000000000008 R_X86_64_RELATIVE                    1130
-000000003dc0  000000000008 R_X86_64_RELATIVE                    11b4
-000000003dc8  000000000008 R_X86_64_RELATIVE                    10f0
+000000003db0  000000000008 R_X86_64_RELATIVE                    1130
+000000003db8  000000000008 R_X86_64_RELATIVE                    11c5
+000000003dc0  000000000008 R_X86_64_RELATIVE                    10f0
 000000004038  000000000008 R_X86_64_RELATIVE                    4038
-000000003fc0  000c00000006 R_X86_64_GLOB_DAT 0000000000004040 var + 0
-000000003fc8  000100000006 R_X86_64_GLOB_DAT 0000000000000000 __cxa_finalize@GLIBC_2.2.5 + 0
-000000003fd0  000200000006 R_X86_64_GLOB_DAT 0000000000000000 _ZSt4endlIcSt11char_tr@GLIBCXX_3.4 + 0
-000000003fd8  000500000006 R_X86_64_GLOB_DAT 0000000000000000 _ZSt4cout@GLIBCXX_3.4 + 0
-000000003fe0  000800000006 R_X86_64_GLOB_DAT 0000000000000000 _ITM_deregisterTMClone + 0
-000000003fe8  000900000006 R_X86_64_GLOB_DAT 0000000000000000 __gmon_start__ + 0
-000000003ff0  000a00000006 R_X86_64_GLOB_DAT 0000000000000000 _ITM_registerTMCloneTa + 0
-000000003ff8  000b00000006 R_X86_64_GLOB_DAT 0000000000000000 _ZNSt8ios_base4InitD1E@GLIBCXX_3.4 + 0
+000000003fb8  000100000006 R_X86_64_GLOB_DAT 0000000000000000 __cxa_finalize@GLIBC_2.2.5 + 0
+000000003fc0  000200000006 R_X86_64_GLOB_DAT 0000000000000000 _ZSt4endlIcSt11char_tr@GLIBCXX_3.4 + 0
+000000003fc8  000500000006 R_X86_64_GLOB_DAT 0000000000000000 _ZSt4cout@GLIBCXX_3.4 + 0
+000000003fd0  000f00000006 R_X86_64_GLOB_DAT 0000000000004048 pa + 0
+000000003fd8  001000000006 R_X86_64_GLOB_DAT 0000000000004050 pb + 0
+000000003fe0  000900000006 R_X86_64_GLOB_DAT 0000000000000000 _ITM_deregisterTMClone + 0
+000000003fe8  000a00000006 R_X86_64_GLOB_DAT 0000000000000000 __gmon_start__ + 0
+000000003ff0  000b00000006 R_X86_64_GLOB_DAT 0000000000000000 _ITM_registerTMCloneTa + 0
+000000003ff8  000c00000006 R_X86_64_GLOB_DAT 0000000000000000 _ZNSt8ios_base4InitD1E@GLIBCXX_3.4 + 0
+000000004048  000d00000001 R_X86_64_64       0000000000004040 a + 0
+000000004050  000700000001 R_X86_64_64       0000000000000000 b + 0
 
-Relocation section '.rela.plt' at offset 0x6a0 contains 4 entries:
+Relocation section '.rela.plt' at offset 0x748 contains 4 entries:
   Offset          Info           Type           Sym. Value    Sym. Name + Addend
 000000004018  000300000007 R_X86_64_JUMP_SLO 0000000000000000 __cxa_atexit@GLIBC_2.2.5 + 0
 000000004020  000400000007 R_X86_64_JUMP_SLO 0000000000000000 _ZNSolsEPFRSoS_E@GLIBCXX_3.4 + 0
 000000004028  000600000007 R_X86_64_JUMP_SLO 0000000000000000 _ZNSt8ios_base4InitC1E@GLIBCXX_3.4 + 0
-000000004030  000700000007 R_X86_64_JUMP_SLO 0000000000000000 _ZNSolsEi@GLIBCXX_3.4 + 0
+000000004030  000800000007 R_X86_64_JUMP_SLO 0000000000000000 _ZNSolsEi@GLIBCXX_3.4 + 0
 ```
 
 从 [United Computer Wizards: Relocation Types](https://www.ucw.cz/~hubicka/papers/abi/node19.html) 找到 AMD x86-64 relocation types ：
@@ -62,42 +69,62 @@ Relocation section '.rela.plt' at offset 0x6a0 contains 4 entries:
 |          Name          | Value | Field  |           Calculation            |
 |          :-:           |  :-:  |  :-:   |               :-:                |
 |    R\_X86\_64\_NONE    |   0   |  none  |               none               |
+|     R\_X86\_64\_64     |   1   | word64 |              S + A               |
 |    R\_X86\_64\_COPY    |   5   |  none  |               none               |
 | R\_X86\_64\_GLOB\_DAT  |   6   | word64 |                S                 |
 | R\_X86\_64\_JUMP\_SLOT |   7   | word64 |                S                 |
 |  R\_X86\_64\_RELATIVE  |   8   | word64 | BaseAddressAfterLoading + Addend |
 
+## R\_X86\_64\_64
+
+[System V Application Binary Interface: AMD64 Architecture Processor Supplement](https://refspecs.linuxbase.org/elf/x86_64-abi-0.98.pdf) 说 R\_X86\_64\_64 的重定位公式是：S + A 。
+
+> S represents the value of the symbol whose index resides in the relocation entry.
+> A represents the addend used to compute the value of the relocatable field.
+
+1. 不妨将 S 理解成符号在虚存中的地址，A 理解成相对于符号的偏移量；
+2. 计算 S 需要在所有动态链接库中搜索符号，因此重定位 R\_X86\_64\_64 表项会用到符号绑定。
+
+```bash
+# LD_DEBUG=bindings ./main 2>&1 | grep -E "\<a\>|\<b\>"
+656: binding file /root/talk/relocation_types/libfoo.so [0] to /root/talk/relocation_types/libfoo.so [0]: normal symbol `a'
+656: binding file /root/talk/relocation_types/libfoo.so [0] to ./main [0]: normal symbol
+```
+
+1. 无论符号是否在同一个动态链接库内，重定位 R\_X86\_64\_64 表项都会发生符号绑定；
+2. Symbol value of `pa` 是 `a` 的地址，symbol value of `pb` 是 0 ，两者对符号查找有什么影响？
+
 ## R\_X86\_64\_RELATIVE
 
 ```bash
 # readelf --relocs libfoo.so
-Relocation section '.rela.dyn' at offset 0x580 contains 12 entries:
+Relocation section '.rela.dyn' at offset 0x5e0 contains 15 entries:
   Offset          Info           Type           Sym. Value    Sym. Name + Addend
-000000003db8  000000000008 R_X86_64_RELATIVE                    1130
-000000003dc0  000000000008 R_X86_64_RELATIVE                    11b4
-000000003dc8  000000000008 R_X86_64_RELATIVE                    10f0
+000000003db0  000000000008 R_X86_64_RELATIVE                    1130
+000000003db8  000000000008 R_X86_64_RELATIVE                    11c5
+000000003dc0  000000000008 R_X86_64_RELATIVE                    10f0
 000000004038  000000000008 R_X86_64_RELATIVE                    4038
 ```
 
 ```bash
-# objdump -d -j .text libfoo.so | grep -E "(1130|11b4|10f0|4038).*>:" | sort
+# objdump -d -j .text libfoo.so | grep -E "(1130|11c5|10f0|4038).*>:" | sort
 00000000000010f0 <__do_global_dtors_aux>:
 0000000000001130 <frame_dummy>:
-00000000000011b4 <_GLOBAL__sub_I_foo.cpp>:
+00000000000011c5 <_GLOBAL__sub_I_foo.cpp>:
 ```
 
 ```bash
 (gdb) p/x 0x7ffff7fcb000 + 0x4038
-$2 = 0x7ffff7fcf038
+$1 = 0x7ffff7fcf038
 (gdb) x/a 0x7ffff7fcb000 + 0x4038
 0x7ffff7fcf038: 0x7ffff7fcf038
 ```
 
 .rela.dyn 指导运行时链接器：
 
-1. 将 0x3db8 填上 `frame_dummy` 的首地址；
-2. 将 0x3dc0 填上 `_GLOBAL__sub_I_foo.cpp` 的首地址；
-3. 将 0x3dc8 填上 `__do_global_dtors_aux` 的首地址；
+1. 将 0x3db0 填上 `frame_dummy` 的首地址；
+2. 将 0x3db8 填上 `_GLOBAL__sub_I_foo.cpp` 的首地址；
+3. 将 0x3dc0 填上 `__do_global_dtors_aux` 的首地址；
 4. 将 0x4038 指向它自己。
 
 ## R\_X86\_64\_GLOB\_DAT
@@ -139,20 +166,6 @@ void elf_machine_rela(struct link_map* map,
 ```
 
 ## R\_X86\_64\_JUMP\_SLO
-
-## R\_X86\_64\_64
-
-[System V Application Binary Interface: AMD64 Architecture Processor Supplement](https://refspecs.linuxbase.org/elf/x86_64-abi-0.98.pdf) 说 R\_X86\_64\_64 的重定位公式是：S + A 。
-
-> S represents the value of the symbol whose index resides in the relocation entry.
-> A represents the addend used to compute the value of the relocatable field.
-
-1. 不妨将 S 理解成符号在虚存中的地址，A 理解成相对于符号的偏移量；
-2. 计算 S 需要在所有动态链接库中搜索符号，因此重定位 R\_X86\_64\_64 表项会用到符号绑定。
-
-```bash
-LD_DEBUG=bindings ./main 2>&1 | grep "\<a\>"
-```
 
 # Debug 技巧
 
