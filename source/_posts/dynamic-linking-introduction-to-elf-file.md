@@ -343,6 +343,11 @@ typedef struct
 
 Debug 技巧：先用 `info proc mappings` 获取 start address ，再用 `watch *(unsigned long long*)(<start_addr> + <addr>)` 就能看到改变特定地址的栈了。
 
+1. .plt.got & .got 同 .plt & .got.plt 一样，都是一组用于重定位的 sections ；
+2. 不同之处是：
+    1. .plt.got & .got 没有 lazy binding ，由链接器直接触发重定位；
+    2. .plt & .got.plt 有 lazy binding ，在第一次调用函数时触发重定位。
+
 ### .plt & .got.plt
 
 ```bash
@@ -372,10 +377,21 @@ Debug 技巧：先用 `info proc mappings` 获取 start address ，再用 `watch
 0030040
 ```
 
-该地址会发生两次改变：
+```bash
+# readelf --relocs main | grep "$(printf '%x' $((0x1036 + 0x2fe2)))" -B2
+Relocation section '.rela.plt' at offset 0x590 contains 1 entry:
+  Offset          Info           Type           Sym. Value    Sym. Name + Addend
+000000004018  000400000007 R_X86_64_JUMP_SLO 0000000000000000 _Z3foov + 0
+```
 
-1. 由 0x1036 变成 start address + 0x1036 ，调用栈是 `dl_main -> _dl_relocate_object -> elf_dynamic_do_Rela` ；这是同文件重定位，仅仅加上了 start address ，不需要查找符号，执行速度快；
-2. 由 start address + 0x1036 变成 `foo` 函数的首地址，调用栈是 `main -> _dl_runtime_resolve_xsavec -> _dl_fixup` ；这是跨文件重定位，需要查找符号，执行速度较慢。
+.got 表项（虚存地址是 0x1036 + 0x2fe2）会发生两次改变：
+
+1. 从 0x1036 变成 start address + 0x1036 ：
+    1. 由运行时链接器在 .rela.plt 表项的指导下完成，调用栈是 `dl_main -> _dl_relocate_object -> elf_dynamic_do_Rela` ；
+    2. 是同文件重定位，仅仅加上了 start address ，不需要查找符号，执行速度快；
+2. 从 start address + 0x1036 变成 `foo` 函数的首地址 ：
+    1. 由用户代码在函数 `foo` 第一次被调用时触发，调用栈是 `main -> _dl_runtime_resolve_xsavec -> _dl_fixup` ；
+    2. 是跨文件重定位，需要查找符号，执行速度慢。
 
 ### .plt.got & .got
 
@@ -401,8 +417,6 @@ Debug 技巧：先用 `info proc mappings` 获取 start address ，再用 `watch
 ```
 
 该地址仅发生一次改变，由 0x0 变成 `__cxa_finalize` 函数的首地址，调用栈是 `dl_main -> _dl_relocate_object -> elf_dynamic_do_Rela -> elf_machine_rela` 。
-
-.plt.got & .got 同 .plt & .got.plt 一样，都是一组用于重定位的 sections ；不同之处是：.plt.got & .got 没有 lazy binding ，由链接器直接触发重定位，.plt & .got.plt 有 lazy binding ，在第一次调用函数时触发重定位。
 
 ## .rela.dyn & .rela.plt
 
