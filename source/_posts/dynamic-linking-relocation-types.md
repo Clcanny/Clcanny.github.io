@@ -140,6 +140,20 @@ void elf_machine_rela(struct link_map* map,
 
 ## R\_X86\_64\_JUMP\_SLO
 
+## R\_X86\_64\_64
+
+[System V Application Binary Interface: AMD64 Architecture Processor Supplement](https://refspecs.linuxbase.org/elf/x86_64-abi-0.98.pdf) 说 R\_X86\_64\_64 的重定位公式是：S + A 。
+
+> S represents the value of the symbol whose index resides in the relocation entry.
+> A represents the addend used to compute the value of the relocatable field.
+
+1. 不妨将 S 理解成符号在虚存中的地址，A 理解成相对于符号的偏移量；
+2. 计算 S 需要在所有动态链接库中搜索符号，因此重定位 R\_X86\_64\_64 表项会用到符号绑定。
+
+```bash
+LD_DEBUG=bindings ./main 2>&1 | grep "\<a\>"
+```
+
 # Debug 技巧
 
 通过以下步骤能迅速定位到执行重定位的函数：
