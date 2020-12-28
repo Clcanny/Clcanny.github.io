@@ -384,7 +384,7 @@ Relocation section '.rela.plt' at offset 0x590 contains 1 entry:
 000000004018  000400000007 R_X86_64_JUMP_SLO 0000000000000000 _Z3foov + 0
 ```
 
-.got 表项（虚存地址是 0x1036 + 0x2fe2）会发生两次改变：
+.got.plt 表项（虚存地址是 0x1036 + 0x2fe2）会发生两次改变：
 
 1. 从 0x1036 变成 start address + 0x1036 ：
     1. 由运行时链接器在 .rela.plt 表项的指导下完成，调用栈是 `dl_main -> _dl_relocate_object -> elf_dynamic_do_Rela` ；
@@ -416,7 +416,16 @@ Relocation section '.rela.plt' at offset 0x590 contains 1 entry:
 0030000
 ```
 
-该地址仅发生一次改变，由 0x0 变成 `__cxa_finalize` 函数的首地址，调用栈是 `dl_main -> _dl_relocate_object -> elf_dynamic_do_Rela -> elf_machine_rela` 。
+```bash
+# readelf --relocs main | grep -E "Offset|$(printf '%x' $((0x1046 + 0x2fb2)))"
+  Offset          Info           Type           Sym. Value    Sym. Name + Addend
+000000003ff8  000600000006 R_X86_64_GLOB_DAT 0000000000000000 __cxa_finalize@GLIBC_2.2.5 + 0
+```
+
+.got 表项（虚存地址是 0x1046 + 0x2fb2）只会发生一次改变，从 0x0 变成 `__cxa_finalize` 函数的首地址：
+
+1. 由运行时链接器在 .rela.dyn 表项的指导下完成，调用栈是 `dl_main -> _dl_relocate_object -> elf_dynamic_do_Rela -> elf_machine_rela` ；
+2. 是跨文件重定位，需要查找符号，执行速度慢。
 
 ## .rela.dyn & .rela.plt
 
