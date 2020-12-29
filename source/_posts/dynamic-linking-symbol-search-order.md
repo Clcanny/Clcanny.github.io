@@ -228,6 +228,8 @@ all :
     LD_DEBUG=all ./main 2>&1 | grep -E "var|I'm in"
 ```
 
+![](http://junbin-hexo-img.oss-cn-beijing.aliyuncs.com/dynamic-linking-symbol-search-order/order.png)
+
 ```bash
 # make
 LD_DEBUG=all ./main 2>&1 | grep -E "var|I'm in"
