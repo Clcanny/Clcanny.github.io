@@ -113,6 +113,12 @@ int main() {
     1020:   ff 35 e2 2f 00 00       pushq  0x2fe2(%rip)  # 4008 <_GLOBAL_OFFSET_TABLE_+0x8>
     1026:   ff 25 e4 2f 00 00       jmpq   *0x2fe4(%rip) # 4010 <_GLOBAL_OFFSET_TABLE_+0x10>
     102c:   0f 1f 40 00             nopl   0x0(%rax)
+# objdump -d -j .text main | tail -n 2
+00000000000011b0 <__libc_csu_fini>:
+    11b0:       c3                      retq
+# objdump -d --disassemble-zeroes -j .data main | tail -n 2
+0000000000004028 <__dso_handle>:
+    4028:       28 40 00 00 00 00 00 00                             (@......
 ```
 
 ### Dump 元信息
@@ -131,6 +137,26 @@ Dynamic section at offset 0x2dd8 contains 28 entries:
   Tag        Type                         Name/Value
  0x0000000000000001 (NEEDED)             Shared library: [libfoo.so]
  0x0000000000000001 (NEEDED)             Shared library: [libc.so.6]
+# readelf --symbols main | grep "Symbol" -A2
+Symbol table '.dynsym' contains 7 entries:
+   Num:    Value          Size Type    Bind   Vis      Ndx Name
+     0: 0000000000000000     0 NOTYPE  LOCAL  DEFAULT  UND
+--
+Symbol table '.symtab' contains 69 entries:
+   Num:    Value          Size Type    Bind   Vis      Ndx Name
+     0: 0000000000000000     0 NOTYPE  LOCAL  DEFAULT  UND
+# readelf --dyn-syms main | grep "Symbol" -A2
+Symbol table '.dynsym' contains 7 entries:
+   Num:    Value          Size Type    Bind   Vis      Ndx Name
+     0: 0000000000000000     0 NOTYPE  LOCAL  DEFAULT  UND
+# readelf --relocs main | grep "Relocation" -A2
+Relocation section '.rela.dyn' at offset 0x4c8 contains 8 entries:
+  Offset          Info           Type           Sym. Value    Sym. Name + Addend
+000000003dc8  000000000008 R_X86_64_RELATIVE                    1130
+--
+Relocation section '.rela.plt' at offset 0x588 contains 1 entry:
+  Offset          Info           Type           Sym. Value    Sym. Name + Addend
+000000004018  000400000007 R_X86_64_JUMP_SLO 0000000000000000 _Z3foov + 0
 # readelf -p .strtab main | head -n 5 | tail -n 4
 String dump of section '.strtab':
   [     1]  crtstuff.c
