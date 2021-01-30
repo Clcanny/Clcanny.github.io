@@ -9,7 +9,7 @@ tags:
 # 导读
 
 1. 本篇文章提及的 Global Offset Table 是 .got.plt section ，不是 .got section ，[Dynamic Linking: Introduction To Elf File](https://stackoverflow.com/questions/49812485/where-is-the-got0-global-offset-table-used) 介绍了两者的差异；
-2. GOT[0] 是 dynamic section 的首地址，ld.so 自加载的过程会依赖于它；
+2. GOT[0] 是 .dynamic section 的首地址，ld.so 自加载的过程会依赖于它；
 3. GOT[1] 指向 `link_map` ；
 4. GOT[2] 指向 `_dl_runtime_resolve_xsave` 。
 
@@ -161,7 +161,7 @@ elf_machine_runtime_setup(struct link_map* l, int lazy, int profile) {
 }
 ```
 
-GOT[1] 指向 `link_map` ，GOT[2] 指向 `_dl_runtime_resolve_xsave` ，它们由 `elf_machine_runtime_setup` 函数负责填写。
+GOT[1] 指向 `link_map` ，GOT[2] 指向 `_dl_runtime_resolve_xsavec` ，它们由 `elf_machine_runtime_setup` 函数负责填写。
 
 # 如何合并 ELF 文件？
 
