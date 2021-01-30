@@ -163,6 +163,12 @@ elf_machine_runtime_setup(struct link_map* l, int lazy, int profile) {
 
 GOT[1] 指向 `link_map` ，GOT[2] 指向 `_dl_runtime_resolve_xsave` ，它们由 `elf_machine_runtime_setup` 函数负责填写。
 
+# 如何合并 ELF 文件？
+
+1. .got.plt section 的前三项不要参与合并；
+2. .plt section 的跳转位置需要修正；
+3. .rela.plt section 的 `r_offset` 字段需要修正。
+
 # 参考资料
 
 + [Stack Overflow: Where is the GOT[0] (global offset table) used?](https://stackoverflow.com/questions/49812485/where-is-the-got0-global-offset-table-used)
