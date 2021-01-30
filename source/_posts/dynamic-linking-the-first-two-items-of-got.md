@@ -88,6 +88,28 @@ elf_machine_load_address(void) {
 }
 ```
 
+## 无人访问其它 ELF 文件的 GOT[0]
+
+```bash
+# readelf --section-headers libfoo.so | grep -E "Nr|.got.plt|.dynamic" -A1 | grep -v "\-\-"
+  [Nr] Name              Type             Address           Offset
+       Size              EntSize          Flags  Link  Info  Align
+  [17] .dynamic          DYNAMIC          0000000000003e50  00002e50
+       0000000000000190  0000000000000010  WA       4     0     8
+  [19] .got.plt          PROGBITS         0000000000004000  00003000
+       0000000000000018  0000000000000008  WA       0     0     8
+# od --skip-bytes=0x3000 --read-bytes=8 --format=xL libfoo.so
+0030000 0000000000003e50
+```
+
+```bash
+# (gdb) info proc mappings
+0x7ffff7fcb000     0x7ffff7fcc000     0x1000        0x0 /root/libfoo.so
+# (gdb) rwatch *(unsigned long long*)(0x7ffff7fcb000 + 0x4000)
+# (gdb) start
+Temporary breakpoint 3, 0x0000555555555139 in main ()
+```
+
 # GOT[1]
 
 GOT[1] 指向 `link_map` ，由运行时链接器负责填写：
