@@ -3,6 +3,7 @@ layout: post
 title: "Dynamic Linking: Relocation Across Files"
 date: 2020-11-21 00:11:51
 tags:
+  - dynamic linking
 ---
 
 # 开始重定位：.plt .got.plt
