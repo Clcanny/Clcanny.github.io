@@ -105,6 +105,18 @@ int main() {
 0000010
 ```
 
+阅读字符串：
+
+```bash
+# dd if=libfoo.so of=libfoo.strtab ibs=1 obs=1 skip=$((0x3660)) count=$((0x15e))
+350+0 records in
+350+0 records out
+350 bytes copied, 0.000862803 s, 406 kB/s
+# strings libfoo.strtab | head -n 2
+crtstuff.c
+deregister_tm_clones
+```
+
 ### Dump 汇编代码
 
 ```bash
