@@ -117,6 +117,16 @@ crtstuff.c
 deregister_tm_clones
 ```
 
+查找字符串：
+
+```bash
+# strings -t x libfoo.so | head -n 2
+319 __gmon_start__
+328 _ITM_deregisterTMCloneTable
+```
+
+`x` 表示用十六进制显示字符串的 offset 。
+
 ### Dump 汇编代码
 
 ```bash
