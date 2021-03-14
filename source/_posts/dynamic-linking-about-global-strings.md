@@ -73,3 +73,52 @@ Relocation section '.rela.dyn' at offset 0x598 contains 13 entries:
 0000000000004040  0000000000000008 R_X86_64_RELATIVE                         2001
 0000000000003ff0  0000000c00000006 R_X86_64_GLOB_DAT      0000000000004040 var + 0
 ```
+
+# Non-static Global String
+
+```bash
+#include <iostream>
+const std::string var = "var";
+void foo() {
+    std::cout << var << std::endl;
+}
+```
+
+![](http://junbin-hexo-img.oss-cn-beijing.aliyuncs.com/dynamic-linking-about-global-strings/non-static-global-string.png)
+
+```bash
+(gdb) bt
+#0  0x00007ffff7f3304b in std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >::basic_string(char const*, std::allocator<char> const&) ()
+   from /usr/lib/x86_64-linux-gnu/libstdc++.so.6
+#1  0x00007ffff7fcb21c in __static_initialization_and_destruction_0 (__initialize_p=1, __priority=65535) at foo.cpp:2
+#2  0x00007ffff7fcb27a in _GLOBAL__sub_I_foo.cpp(void) () at foo.cpp:5
+#3  0x00007ffff7fe3d4c in call_init (l=<optimized out>, argc=argc@entry=1, argv=argv@entry=0x7fffffffece8, env=env@entry=0x7fffffffecf8) at dl-init.c:72
+#4  0x00007ffff7fe3e32 in _dl_init (main_map=0x7ffff7ffe1a0, argc=1, argv=0x7fffffffece8, env=0x7fffffffecf8) at dl-init.c:119
+#5  0x00007ffff7fd60ca in _dl_start_user () from /root/glibc/build/install/lib/ld-linux-x86-64.so.2
+```
+
+1. glibc 会负责调用 \.init 函数和 \.init\_array 指定的函数；
+2. gcc 使用 \.init\_array 指定初始化函数，\.init 函数只是一个空壳。
+
+```cpp
+void call_init(struct link_map* l, int argc, char** argv, char** env) {
+    // Now run the local constructors.  There are two forms of them:
+    // - the one named by DT_INIT
+    // - the others in the DT_INIT_ARRAY.
+    if (l->l_info[DT_INIT] != nullptr) {
+        DL_CALL_DT_INIT(
+            l, l->l_addr + l->l_info[DT_INIT]->d_un.d_ptr, argc, argv, env);
+    }
+
+    // Next see whether there is an array with initialization functions.
+    ElfW(Dyn)* init_array = l->l_info[DT_INIT_ARRAY];
+    if (init_array != nullptr) {
+        unsigned int jm =
+            l->l_info[DT_INIT_ARRAYSZ]->d_un.d_val / sizeof(ElfW(Addr));
+        ElfW(Addr)* addrs = (ElfW(Addr)*)(init_array->d_un.d_ptr + l->l_addr);
+        for (unsigned int j = 0; j < jm; ++j) {
+            ((init_t)addrs[j])(argc, argv, env);
+        }
+    }
+}
+```
