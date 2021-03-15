@@ -15,7 +15,7 @@ PRETTY_NAME="Debian GNU/Linux bullseye/sid"
 g++ (Debian 10.2.1-6) 10.2.1 20210110
 ```
 
-# Non-static Global Raw String
+# Global Raw String
 
 ```cpp
 # cat foo.cpp
@@ -26,7 +26,7 @@ void foo() {
 }
 ```
 
-![](http://junbin-hexo-img.oss-cn-beijing.aliyuncs.com/dynamic-linking-about-global-strings/non-static-global-raw-string.png)
+![](http://junbin-hexo-img.oss-cn-beijing.aliyuncs.com/dynamic-linking-about-global-strings/global-raw-string.png)
 
 ```bash
 # readelf --section-headers libfoo.so | grep -E -w "Nr|.got|.data|.rodata" -A1 | grep -v "\-\-"
@@ -74,7 +74,7 @@ Relocation section '.rela.dyn' at offset 0x598 contains 13 entries:
 0000000000003ff0  0000000c00000006 R_X86_64_GLOB_DAT      0000000000004040 var + 0
 ```
 
-# Non-static Global String
+# Global String
 
 ```bash
 #include <iostream>
@@ -84,7 +84,7 @@ void foo() {
 }
 ```
 
-![](http://junbin-hexo-img.oss-cn-beijing.aliyuncs.com/dynamic-linking-about-global-strings/non-static-global-string.png)
+![](http://junbin-hexo-img.oss-cn-beijing.aliyuncs.com/dynamic-linking-about-global-strings/global-string.png)
 
 ```bash
 (gdb) bt
@@ -122,3 +122,29 @@ void call_init(struct link_map* l, int argc, char** argv, char** env) {
     }
 }
 ```
+
+# Thread Local Raw String
+
+```cpp
+thread_local const char* tbss_var = nullptr;
+thread_local const char* tdata_var = "tdata_var";
+void foo() {
+    tbss_var = "tbss_var";
+    std::cout << tbss_var << std::endl;
+    std::cout << tdata_var << std::endl;
+}
+```
+
+![](http://junbin-hexo-img.oss-cn-beijing.aliyuncs.com/dynamic-linking-about-global-strings/thread-local-raw-string.png)
+
+为了保证 thread local 语义，ld 会将 \.tbss section 和 \.tdata section 中的数据拷贝到线程私有区域，详细信息请参考 [Chao-tic: A Deep dive into (implicit) Thread Local Storage](https://chao-tic.github.io/blog/2018/12/25/tls) 。
+
+# Thread Local String
+
+# Thread Local String In If Statement
+
+# 参考资料
+
++ [Chao-tic: A Deep dive into (implicit) Thread Local Storage](https://chao-tic.github.io/blog/2018/12/25/tls)
++ [ELF Handling For Thread-Local Storage](https://uclibc.org/docs/tls.pdf)
++ [Oracle: Thread-Local Storage](https://docs.oracle.com/cd/E19683-01/817-3677/chapter8-1/index.html)
