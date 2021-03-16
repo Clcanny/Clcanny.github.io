@@ -152,7 +152,7 @@ void foo() {
 
 1. 为了保证 thread local 语义，ld 会将 \.tbss section 和 \.tdata section 中的数据拷贝到线程私有区域，详细信息请参考 [Chao-tic: A Deep dive into (implicit) Thread Local Storage](https://chao-tic.github.io/blog/2018/12/25/tls) ；
 2. `__tls_get_addr` 是访问线程私有变量的两种方式之一，访问方式可以通过编译选项（`-ftls-model=initial-exec`）控制，详细信息请参考 [Stack Overflow: What is the performance penalty of C++11 thread\_local variables in GCC 4.8?](https://stackoverflow.com/questions/13106049/what-is-the-performance-penalty-of-c11-thread-local-variables-in-gcc-4-8) ；
-3. 使用选项 `-ftls-model=initial-exec` 编译的库带有 `STATIC_TLS` flag ，可通过命令 `readelf --dynamic <lib> | grep FLAGS` 识别。
+3. 使用选项 `-ftls-model=initial-exec` 编译的库带有 `STATIC_TLS` flag ，可以通过命令 `readelf --dynamic <lib> | grep FLAGS` 识别。
 
 # Thread Local String
 
