@@ -18,7 +18,6 @@ g++ (Debian 10.2.1-6) 10.2.1 20210110
 # Global Raw String
 
 ```cpp
-# cat foo.cpp
 #include <iostream>
 const char* var = "var";
 void foo() {
@@ -126,6 +125,7 @@ void call_init(struct link_map* l, int argc, char** argv, char** env) {
 # Thread Local Raw String
 
 ```cpp
+#include <iostream>
 thread_local const char* tbss_var = nullptr;
 thread_local const char* tdata_var = "tdata_var";
 void foo() {
@@ -137,14 +137,27 @@ void foo() {
 
 ![](http://junbin-hexo-img.oss-cn-beijing.aliyuncs.com/dynamic-linking-about-global-strings/thread-local-raw-string.png)
 
-为了保证 thread local 语义，ld 会将 \.tbss section 和 \.tdata section 中的数据拷贝到线程私有区域，详细信息请参考 [Chao-tic: A Deep dive into (implicit) Thread Local Storage](https://chao-tic.github.io/blog/2018/12/25/tls) 。
+1. 为了保证 thread local 语义，ld 会将 \.tbss section 和 \.tdata section 中的数据拷贝到线程私有区域，详细信息请参考 [Chao-tic: A Deep dive into (implicit) Thread Local Storage](https://chao-tic.github.io/blog/2018/12/25/tls) ；
+2. `__tls_get_addr` 是访问线程私有变量的两种方式之一，访问方式可以通过编译选项（`-ftls-model=initial-exec`）控制，详细信息请参考 [Stack Overflow: What is the performance penalty of C++11 thread\_local variables in GCC 4.8?](https://stackoverflow.com/questions/13106049/what-is-the-performance-penalty-of-c11-thread-local-variables-in-gcc-4-8) 。
 
 # Thread Local String
 
-# Thread Local String In If Statement
+```cpp
+#include <iostream>
+#include <string>
+thread_local std::string var = "var";
+void foo() {
+    std::cout << var << std::endl;
+}
+```
+
+![](http://junbin-hexo-img.oss-cn-beijing.aliyuncs.com/dynamic-linking-about-global-strings/thread-local-string.png)
+
+TLS init funtion 负责调用 thread local string 的构造函数，它使用一个 thread local bool 变量来记录构造函数是否已经被调用过，避免重复调用。
 
 # 参考资料
 
 + [Chao-tic: A Deep dive into (implicit) Thread Local Storage](https://chao-tic.github.io/blog/2018/12/25/tls)
 + [ELF Handling For Thread-Local Storage](https://uclibc.org/docs/tls.pdf)
 + [Oracle: Thread-Local Storage](https://docs.oracle.com/cd/E19683-01/817-3677/chapter8-1/index.html)
++ [Stack Overflow: What is the performance penalty of C++11 thread\_local variables in GCC 4.8?](https://stackoverflow.com/questions/13106049/what-is-the-performance-penalty-of-c11-thread-local-variables-in-gcc-4-8)
