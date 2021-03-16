@@ -8,11 +8,24 @@ tags:
 
 # 环境
 
+本文使用的环境与 [Dynamic Linking: Introduction To Elf File](https://clcanny.github.io/2020/11/24/dynamic-linking-introduction-to-elf-file/) 使用的环境一致。
+
 ```bash
 # cat /etc/os-release | head -n 1
 PRETTY_NAME="Debian GNU/Linux bullseye/sid"
 # g++ --version | head -n 1
 g++ (Debian 10.2.1-6) 10.2.1 20210110
+```
+
+```bash
+g++ -fPIC -ggdb -O0 -shared                                                 \
+    -Wl,--dynamic-linker=/root/glibc/build/install/lib/ld-linux-x86-64.so.2 \
+    foo.cpp -o libfoo.so
+g++ main.cpp                                                                \
+    -L$PWD -Wl,-rpath=$PWD                                                  \
+    -Wl,--dynamic-linker=/root/glibc/build/install/lib/ld-linux-x86-64.so.2 \
+    -lfoo -o main
+export LD_LIBRARY_PATH=/usr/lib/x86_64-linux-gnu:/lib/x86_64-linux-gnu
 ```
 
 # Global Raw String
@@ -138,7 +151,8 @@ void foo() {
 ![](http://junbin-hexo-img.oss-cn-beijing.aliyuncs.com/dynamic-linking-about-global-strings/thread-local-raw-string.png)
 
 1. 为了保证 thread local 语义，ld 会将 \.tbss section 和 \.tdata section 中的数据拷贝到线程私有区域，详细信息请参考 [Chao-tic: A Deep dive into (implicit) Thread Local Storage](https://chao-tic.github.io/blog/2018/12/25/tls) ；
-2. `__tls_get_addr` 是访问线程私有变量的两种方式之一，访问方式可以通过编译选项（`-ftls-model=initial-exec`）控制，详细信息请参考 [Stack Overflow: What is the performance penalty of C++11 thread\_local variables in GCC 4.8?](https://stackoverflow.com/questions/13106049/what-is-the-performance-penalty-of-c11-thread-local-variables-in-gcc-4-8) 。
+2. `__tls_get_addr` 是访问线程私有变量的两种方式之一，访问方式可以通过编译选项（`-ftls-model=initial-exec`）控制，详细信息请参考 [Stack Overflow: What is the performance penalty of C++11 thread\_local variables in GCC 4.8?](https://stackoverflow.com/questions/13106049/what-is-the-performance-penalty-of-c11-thread-local-variables-in-gcc-4-8) ；
+3. 使用选项 `-ftls-model=initial-exec` 编译的库带有 `STATIC_TLS` flag ，可通过命令 `readelf --dynamic <lib> | grep FLAGS` 识别。
 
 # Thread Local String
 
