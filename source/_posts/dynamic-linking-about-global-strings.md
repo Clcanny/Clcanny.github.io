@@ -175,3 +175,4 @@ TLS init funtion 负责调用 thread local string 的构造函数，它使用一
 + [ELF Handling For Thread-Local Storage](https://uclibc.org/docs/tls.pdf)
 + [Oracle: Thread-Local Storage](https://docs.oracle.com/cd/E19683-01/817-3677/chapter8-1/index.html)
 + [Stack Overflow: What is the performance penalty of C++11 thread\_local variables in GCC 4.8?](https://stackoverflow.com/questions/13106049/what-is-the-performance-penalty-of-c11-thread-local-variables-in-gcc-4-8)
++ [MaskRay: All about thread-local storage](https://maskray.me/blog/2021-02-14-all-about-thread-local-storage)
