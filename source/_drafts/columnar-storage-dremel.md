@@ -87,39 +87,41 @@ Name
 
 ![](http://junbin-hexo-img.oss-cn-beijing.aliyuncs.com/columnar-storage-dremel/r1-code-repetition-level-1.png)
 
-| value of Document.[Name].[Language].Code | repeated with | repeated at |  father  | repetition level |
-|                   :-:                    |      :-:      |     :-:     |   :-:    |       :-:        |
-|                  en-us                   |               |             |          |        0         |
-|                    en                    |     en-us     |  Language   |   Name   |        2         |
-|                  en-gb                   |      en       |    Name     | Document |        1         |
+![](http://junbin-hexo-img.oss-cn-beijing.aliyuncs.com/columnar-storage-dremel/r1-code-repetition-level-2.png)
+
+| value of Document.[Name].[Language].Code | repeated with | repeated at | common father of 'repeated at' | repetition level |
+|                   :-:                    |      :-:      |     :-:     |              :-:               |       :-:        |
+|                  en-us                   |               |             |                                |        0         |
+|                    en                    |     en-us     |  Language   |              Name              |        2         |
+|                  en-gb                   |      en       |    Name     |            Document            |        1         |
 
 ### Others
 
-| (Document.DocId) value | repeated with | nearest common ancestor |  x  | repetition level |
-|          :-:           |      :-:      |           :-:           | :-: |       :-:        |
-|           10           |               |                         |     |        0         |
+| value of Document.DocId | repeated with | repeated at | common father of 'repeated at' | repetition level |
+|           :-:           |      :-:      |     :-:     |              :-:               |       :-:        |
+|           10            |               |             |                                |        0         |
 
 ![](http://junbin-hexo-img.oss-cn-beijing.aliyuncs.com/columnar-storage-dremel/r1-forward-repetition-level.png)
 
-| (Document.[Links].[Forward]) value | repeated with | nearest common ancestor |  x  | repetition level |
-|                :-:                 |      :-:      |           :-:           | :-: |       :-:        |
-|                 20                 |               |                         |     |        0         |
-|                 40                 |      20       |          Links          |  1  |        1         |
-|                 60                 |      40       |          Links          |  1  |        1         |
+| value of Document.[Links].[Forward] | repeated with | repeated at | common father of 'repeated at' | repetition level |
+|                 :-:                 |      :-:      |     :-:     |              :-:               |       :-:        |
+|                 20                  |               |             |                                |        0         |
+|                 40                  |      20       |   Forward   |             Links              |        1         |
+|                 60                  |      40       |   Forward   |             Links              |        1         |
 
 ![](http://junbin-hexo-img.oss-cn-beijing.aliyuncs.com/columnar-storage-dremel/r1-country-repetition-level.png)
 
-| (Document.[Name].[Language].Country) value | repeated with | nearest common ancestor |  x  | repetition level |
-|                     :-:                      |      :-:      |           :-:           | :-: |       :-:        |
-|                      us                      |               |                         |     |        0         |
-|                      gb                      |      us       |        Document         |  0  |        1         |
+| value of Document.[Name].[Language].Country | repeated with | repeated at | common father of 'repeated at' | repetition level |
+|                     :-:                     |      :-:      |     :-:     |              :-:               |       :-:        |
+|                     us                      |               |             |                                |        0         |
+|                     gb                      |      us       |    Name     |            Document            |        1         |
 
 ![](http://junbin-hexo-img.oss-cn-beijing.aliyuncs.com/columnar-storage-dremel/r1-url-repetition-level.png)
 
-| (Document.[Name].Url) value | repeated with | nearest common ancestor |  x  | repetition level |
-|              :-:              |      :-:      |           :-:           | :-: |       :-:        |
-|          'http://A'           |               |                         |     |        0         |
-|          'http://B'           |  'http://A'   |        Document         |  0  |        1         |
+| value Document.[Name].Url | repeated with | repeated at | common father of 'repeated at' | repetition level |
+|            :-:            |      :-:      |     :-:     |              :-:               |       :-:        |
+|        'http://A'         |               |             |                                |        0         |
+|        'http://B'         |  'http://A'   |    Name     |            Document            |        1         |
 
 ## Definition Level
 
