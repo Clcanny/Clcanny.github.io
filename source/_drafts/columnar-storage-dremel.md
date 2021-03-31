@@ -163,7 +163,7 @@ Name
 1. 深度优先遍历树；
 2. 计算 repetition level ：
     1. 如果字段在本层重复，repetition level = tree depth ；
-    2. 如果字段未在本层重读，repetition level = repetition level of father ；
+    2. 如果字段未在本层重复，repetition level = repetition level of father ；
 3. 计算 definition level （略）。
 
 # Record Assembly
@@ -174,8 +174,8 @@ Name
 
 组装算法分为两部分：
 
-1. 创建有限状态机；
-2. 运行有限状态机：用 repetition level 判断哪些字段已经被“抽干了”，从而跳到下一个字段。
+1. 创建有限状态机：用 repetition level 判断当前 column 读完之后跳到哪一个祖先节点。
+2. 运行有限状态机。
 
 ## 运行有限状态机
 
@@ -185,15 +185,26 @@ Name
 
 ## 创建有限状态机
 
-> To sketch how FSM transitions are constructed, let l be the next repetition level returned by the current field reader for field f. Starting at f in the schema tree, we find its ancestor that repeats at level l and select the first leaf field n inside that ancestor. This gives us an FSM transition (f, l) -> n. For example, let l = 1 be the next repetition level read by f = Name.Language.Country. Its ancestor with repetition level 1 is Name, whose first leaf field is n = Name.Url.
+> To sketch how FSM transitions are constructed, let `l` be the next repetition level returned by the current field reader for field `f`. Starting at `f` in the schema tree, we find its ancestor that repeats at level `l` and select the first leaf field `n` inside that ancestor. This gives us an FSM transition (`f`, `l`) -> `n`. For example, let `l` = 1 be the next repetition level read by `f` = Name.Language.Country. Its ancestor with repetition level 1 is Name, whose first leaf field is `n` = Name.Url.
 
-definition level 能提供的更多信息在哪里？
+repetition level 告诉我们：当前节点读完之后，应该返回到哪一个祖先节点。
+
+## definition level 提供的信息用在哪里？
+
+判断在路径的哪一个层次上插入 null ？
+
+# 问题汇总
+
+1. 分割和组装算法是否可以并行化？
+2. 是否允许变更 schema ？比如：Document 下新增 Description 字段。
+3. definition level 提供的信息用在哪里？
 
 # 参考资料
 
 Dremel:
 
 + [Dremel: Interactive Analysis of Web-Scale Datasets](https://storage.googleapis.com/pub-tools-public-publication-data/pdf/36632.pdf)
++ [Twitter Engineering: Dremel made simple with Parquet](https://blog.twitter.com/engineering/en_us/a/2013/dremel-made-simple-with-parquet.html)
 
 Graphviz:
 
