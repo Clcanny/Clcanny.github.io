@@ -20,7 +20,7 @@ message Document {
             required string Code;
             optional string Country;
         }
-        optional string url;
+        optional string Url;
     }
 }
 ```
