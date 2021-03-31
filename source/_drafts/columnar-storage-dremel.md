@@ -73,29 +73,31 @@ Name
 论文以 Name.Language.Code 为例子解释了 repetition level ：
 
 > Now suppose we are scanning record r1 top down.
+>
 > When we encounter 'en-us', we have not seen any repeated fields, i.e., the repetition level is 0.
+>
 > When we see 'en', field Language has repeated, so the repetition level is 2.
+>
 > Finally, when we encounter 'en-gb', Name has repeated most recently (Language occurred only once after Name), so the repetition level is 1.
 
-笔者认为论文的解释有点模糊，按照以下步骤计算 repetition level 更为准确：
+笔者认为论文的解释有点模糊，按照以下步骤计算 repetition level 更为准确，深度优先遍历整棵树：
 
-1. 深度优先遍历整棵树：
-    1. 若字段是第一次出现，repetition level 记为 0 ；
-    2. 若字段不是第一次出现：
-        1. 找到上一次出现的同名字段；
-        2. 找到最近公共祖先；
-        3. 找到最近公共祖先的子节点；
-        4. 计算最近公共祖先子节点在路径上是第几个 repeated （不包括 optional ）字段。
+1. 若字段是第一次出现，repetition level 记为 0 ；
+2. 若字段不是第一次出现：
+    1. 找到上一次出现的同名字段；
+    2. 找到最近公共祖先；
+    3. 找到最近公共祖先的子节点；
+    4. 计算最近公共祖先的子节点在路径上是第几个 repeated （不包括 optional ）字段。
 
 ![](http://junbin-hexo-img.oss-cn-beijing.aliyuncs.com/columnar-storage-dremel/r1-code-repetition-level-1.png)
 
 ![](http://junbin-hexo-img.oss-cn-beijing.aliyuncs.com/columnar-storage-dremel/r1-code-repetition-level-2.png)
 
-| value of Document.[Name].[Language].Code | repeated with | repeated at | common father of 'repeated at' | repetition level |
-|                   :-:                    |      :-:      |     :-:     |              :-:               |       :-:        |
-|                  en-us                   |               |             |                                |        0         |
-|                    en                    |     en-us     |  Language   |              Name              |        2         |
-|                  en-gb                   |      en       |    Name     |            Document            |        1         |
+| value of Document.\[Name\].\[Language\].Code | repeated with | repeated at | common father of 'repeated at' | repetition level |
+|                     :-:                      |      :-:      |     :-:     |              :-:               |       :-:        |
+|                    en-us                     |               |             |                                |        0         |
+|                      en                      |     en-us     |  Language   |              Name              |        2         |
+|                    en-gb                     |      en       |    Name     |            Document            |        1         |
 
 ### Others
 
@@ -105,40 +107,39 @@ Name
 
 ![](http://junbin-hexo-img.oss-cn-beijing.aliyuncs.com/columnar-storage-dremel/r1-forward-repetition-level.png)
 
-| value of Document.[Links].[Forward] | repeated with | repeated at | common father of 'repeated at' | repetition level |
-|                 :-:                 |      :-:      |     :-:     |              :-:               |       :-:        |
-|                 20                  |               |             |                                |        0         |
-|                 40                  |      20       |   Forward   |             Links              |        1         |
-|                 60                  |      40       |   Forward   |             Links              |        1         |
+| value of Document.\[Links\].\[Forward\] | repeated with | repeated at | common father of 'repeated at' | repetition level |
+|                   :-:                   |      :-:      |     :-:     |              :-:               |       :-:        |
+|                   20                    |               |             |                                |        0         |
+|                   40                    |      20       |   Forward   |             Links              |        1         |
+|                   60                    |      40       |   Forward   |             Links              |        1         |
 
 ![](http://junbin-hexo-img.oss-cn-beijing.aliyuncs.com/columnar-storage-dremel/r1-country-repetition-level.png)
 
-| value of Document.[Name].[Language].Country | repeated with | repeated at | common father of 'repeated at' | repetition level |
-|                     :-:                     |      :-:      |     :-:     |              :-:               |       :-:        |
-|                     us                      |               |             |                                |        0         |
-|                     gb                      |      us       |    Name     |            Document            |        1         |
+| value of Document.\[Name\].\[Language\].Country | repeated with | repeated at | common father of 'repeated at' | repetition level |
+|                       :-:                       |      :-:      |     :-:     |              :-:               |       :-:        |
+|                       us                        |               |             |                                |        0         |
+|                       gb                        |      us       |    Name     |            Document            |        1         |
 
 ![](http://junbin-hexo-img.oss-cn-beijing.aliyuncs.com/columnar-storage-dremel/r1-url-repetition-level.png)
 
-| value of Document.[Name].Url | repeated with | repeated at | common father of 'repeated at' | repetition level |
-|             :-:              |      :-:      |     :-:     |              :-:               |       :-:        |
-|           http://A           |               |             |                                |        0         |
-|           http://B           |   http://A    |    Name     |            Document            |        1         |
+| value of Document.\[Name\].Url | repeated with | repeated at | common father of 'repeated at' | repetition level |
+|              :-:               |      :-:      |     :-:     |              :-:               |       :-:        |
+|            http://A            |               |             |                                |        0         |
+|            http://B            |   http://A    |    Name     |            Document            |        1         |
 
 ## Definition Level
 
-> Each value of a field with path p, **esp. every NULL**, has a definition level specifying how many fields in p that
-> **could be undefined** (because they are optional or repeated) are **actually present** in the record.
+> Each value of a field with path p, **esp. every NULL**, has a definition level specifying how many fields in p that **could be undefined** (because they are optional or repeated) are **actually present** in the record.
 
 在 Definition Level 小节，我们会使用 \[\] 和矩形表达 optional 字段**和** repeated 字段（注意与 Repetition Level 小节区分）。
 
 ![](http://junbin-hexo-img.oss-cn-beijing.aliyuncs.com/columnar-storage-dremel/r1-url-definition-level.png)
 
-| value of Document.[Name].[Url] | definition level |
-|              :-:               |       :-:        |
-|            http://A            |        2         |
-|            http://B            |        2         |
-|              null              |        1         |
+| value of Document.\[Name\].\[Url\] | definition level |
+|                :-:                 |       :-:        |
+|              http://A              |        2         |
+|              http://B              |        2         |
+|                null                |        1         |
 
 ![](http://junbin-hexo-img.oss-cn-beijing.aliyuncs.com/columnar-storage-dremel/r1-country-definition-level.png)
 
@@ -149,7 +150,13 @@ Name
 |                        null                         |      **1**       |
 |                         gb                          |        3         |
 
-# 作图工具
+为什么使用 definition level 而不是 bool 值来表达叶子节点是否出现？因为 definition level 能携带更多信息：
+
+> We use integer definition levels as opposed to is-null bits so that the data for a leaf field (e.g., Name.Language.Country) contains the information about the occurrences of its parent fields.
+
+## Encoding
+
+论文主要介绍了工程上优化存储的方法，对原理没有实质性影响，可忽略不看。
 
 # 参考资料
 
