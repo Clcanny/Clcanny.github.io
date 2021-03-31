@@ -158,9 +158,44 @@ Name
 
 论文主要介绍了工程上优化存储的方法，对原理没有实质性影响，可忽略不看。
 
+# Splitting Records into Columns
+
+1. 深度优先遍历树；
+2. 计算 repetition level ：
+    1. 如果字段在本层重复，repetition level = tree depth ；
+    2. 如果字段未在本层重读，repetition level = repetition level of father ；
+3. 计算 definition level （略）。
+
+# Record Assembly
+
+> Given a subset of fields, our goal is to reconstruct the original records as if they contained just the selected fields, with all other fields stripped away.
+>
+> The key idea is this: we create a finite state machine (FSM) that reads the field values and levels for each field, and appends the values sequentially to the output records. An FSM state corresponds to a field reader for each selected field. State transitions are labeled with repetition levels. Once a reader fetches a value, we look at the next repetition level to decide what next reader to use. The FSM is traversed from the start to end state once for each record.
+
+组装算法分为两部分：
+
+1. 创建有限状态机；
+2. 运行有限状态机：用 repetition level 判断哪些字段已经被“抽干了”，从而跳到下一个字段。
+
+## 运行有限状态机
+
+![](http://junbin-hexo-img.oss-cn-beijing.aliyuncs.com/columnar-storage-dremel/dfa.png)
+
+有限状态机只能依次读入 column （否则不知道 record 边界），有没有并行化的算法？
+
+## 创建有限状态机
+
+> To sketch how FSM transitions are constructed, let l be the next repetition level returned by the current field reader for field f. Starting at f in the schema tree, we find its ancestor that repeats at level l and select the first leaf field n inside that ancestor. This gives us an FSM transition (f, l) -> n. For example, let l = 1 be the next repetition level read by f = Name.Language.Country. Its ancestor with repetition level 1 is Name, whose first leaf field is n = Name.Url.
+
+definition level 能提供的更多信息在哪里？
+
 # 参考资料
 
+Dremel:
+
 + [Dremel: Interactive Analysis of Web-Scale Datasets](https://storage.googleapis.com/pub-tools-public-publication-data/pdf/36632.pdf)
-+ [How to convert JSON data into a tree image?](https://stackoverflow.com/questions/40118113/how-to-convert-json-data-into-a-tree-image)
+
+Graphviz:
+
 + [Graphviz - Graph Visualization Software: The DOT Language](https://graphviz.org/doc/info/lang.html)
 + [Stack Overflow: Why doesn't fill color work with graphviz?](https://stackoverflow.com/questions/17252630/why-doesnt-fillcolor-work-with-graphviz)
