@@ -189,7 +189,7 @@ Name
 
 repetition level 告诉我们：当前节点读完之后，应该返回到哪一个祖先节点。
 
-## definition level 提供的信息用在哪里？
+## Definition Level 提供的信息用在哪里？
 
 判断在路径的哪一个层次上插入 null ？
 
