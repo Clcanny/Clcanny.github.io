@@ -66,6 +66,8 @@ Name
 
 > It tells us at what repeated field in the field’s path the value has repeated.
 
+在 Repetition Level 小节，我们会使用 \[\] 和矩形表达 repeated 字段，**不包括** optional 字段（注意与 Definition Level 小节区分）。
+
 ### Name.Language.Code
 
 论文以 Name.Language.Code 为例子解释了 repetition level ：
@@ -75,15 +77,15 @@ Name
 > When we see 'en', field Language has repeated, so the repetition level is 2.
 > Finally, when we encounter 'en-gb', Name has repeated most recently (Language occurred only once after Name), so the repetition level is 1.
 
-笔者认为论文的解释并不通俗易懂，按照以下步骤计算 repetition level 是更为清晰的：
+笔者认为论文的解释有点模糊，按照以下步骤计算 repetition level 更为准确：
 
 1. 深度优先遍历整棵树：
     1. 若字段是第一次出现，repetition level 记为 0 ；
     2. 若字段不是第一次出现：
         1. 找到上一次出现的同名字段；
-        2. 找到两者的最近公共祖先；
-        3. 计算最近公共祖先是路径上的第几个重复字段，记为 x ；
-        4. `r = (x == 0) ? 1 : x` 。
+        2. 找到最近公共祖先；
+        3. 找到最近公共祖先的子节点；
+        4. 计算最近公共祖先子节点在路径上是第几个 repeated （不包括 optional ）字段。
 
 ![](http://junbin-hexo-img.oss-cn-beijing.aliyuncs.com/columnar-storage-dremel/r1-code-repetition-level-1.png)
 
@@ -118,15 +120,34 @@ Name
 
 ![](http://junbin-hexo-img.oss-cn-beijing.aliyuncs.com/columnar-storage-dremel/r1-url-repetition-level.png)
 
-| value Document.[Name].Url | repeated with | repeated at | common father of 'repeated at' | repetition level |
-|            :-:            |      :-:      |     :-:     |              :-:               |       :-:        |
-|        'http://A'         |               |             |                                |        0         |
-|        'http://B'         |  'http://A'   |    Name     |            Document            |        1         |
+| value of Document.[Name].Url | repeated with | repeated at | common father of 'repeated at' | repetition level |
+|             :-:              |      :-:      |     :-:     |              :-:               |       :-:        |
+|           http://A           |               |             |                                |        0         |
+|           http://B           |   http://A    |    Name     |            Document            |        1         |
 
 ## Definition Level
 
 > Each value of a field with path p, **esp. every NULL**, has a definition level specifying how many fields in p that
 > **could be undefined** (because they are optional or repeated) are **actually present** in the record.
+
+在 Definition Level 小节，我们会使用 \[\] 和矩形表达 optional 字段**和** repeated 字段（注意与 Repetition Level 小节区分）。
+
+![](http://junbin-hexo-img.oss-cn-beijing.aliyuncs.com/columnar-storage-dremel/r1-url-definition-level.png)
+
+| value of Document.[Name].[Url] | definition level |
+|              :-:               |       :-:        |
+|            http://A            |        2         |
+|            http://B            |        2         |
+|              null              |        1         |
+
+![](http://junbin-hexo-img.oss-cn-beijing.aliyuncs.com/columnar-storage-dremel/r1-country-definition-level.png)
+
+| value of Document.\[Name\].\[Language\].\[Country\] | definition level |
+|                         :-:                         |       :-:        |
+|                         us                          |        3         |
+|                        null                         |        2         |
+|                        null                         |      **1**       |
+|                         gb                          |        3         |
 
 # 作图工具
 
