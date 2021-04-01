@@ -6,6 +6,42 @@ tags:
   - columnar storage
 ---
 
+# 环境
+
+```dockerfile
+FROM ubuntu:groovy
+WORKDIR /root
+RUN apt-get update
+RUN apt-get install -y curl wget git
+
+RUN apt-get install -y openjdk-15-jdk
+ENV JAVA_HOME=/usr/lib/jvm/java-1.15.0-openjdk-amd64
+ENV PATH="$PATH:$JAVA_HOME/bin"
+RUN java --version
+
+RUN apt-get install -y python3 python3-distutils python3-apt
+RUN curl https://bootstrap.pypa.io/get-pip.py -o get-pip.py
+RUN python3 get-pip.py
+
+RUN wget https://mirror-hk.koddos.net/apache/spark/spark-3.1.1/spark-3.1.1-bin-hadoop2.7.tgz
+RUN tar -xzvf spark-3.1.1-bin-hadoop2.7.tgz
+
+RUN pip3 install parquet-cli
+
+RUN apt-get install -y build-essential cmake make gcc g++
+RUN git clone https://github.com/apache/arrow.git
+WORKDIR /root/arrow
+RUN git checkout 76d3c36006162766ec598442a0c0d2192f5e0d0b
+RUN cd cpp && mkdir -p debug && cd debug
+WORKDIR /root/arrow/cpp/debug
+RUN cmake -DCMAKE_BUILD_TYPE=Debug -DARROW_PARQUET=ON -DARROW_WITH_SNAPPY=ON ..
+RUN make -j8
+RUN make install
+ENV LD_LIBRARY_PATH="$LD_LIBRARY_PATH:/usr/local/lib"
+
+WORKDIR /root
+```
+
 # 文件格式
 
 # 读写 Parquet 文件
@@ -208,44 +244,6 @@ int main() {
 ```bash
 # parq /root/dremel-records.parquet/part-00000-14a09068-9f6d-4515-a176-dccf6836ee11-c000.snappy.parquet
 # parq /root/dremel-records.parquet/part-00000-14a09068-9f6d-4515-a176-dccf6836ee11-c000.snappy.parquet --schema
-```
-
-# 附录
-
-## 环境
-
-```dockerfile
-FROM ubuntu:groovy
-WORKDIR /root
-RUN apt-get update
-RUN apt-get install -y curl wget git
-
-RUN apt-get install -y openjdk-15-jdk
-ENV JAVA_HOME=/usr/lib/jvm/java-1.15.0-openjdk-amd64
-ENV PATH="$PATH:$JAVA_HOME/bin"
-RUN java --version
-
-RUN apt-get install -y python3 python3-distutils python3-apt
-RUN curl https://bootstrap.pypa.io/get-pip.py -o get-pip.py
-RUN python3 get-pip.py
-
-RUN wget https://mirror-hk.koddos.net/apache/spark/spark-3.1.1/spark-3.1.1-bin-hadoop2.7.tgz
-RUN tar -xzvf spark-3.1.1-bin-hadoop2.7.tgz
-
-RUN pip3 install parquet-cli
-
-RUN apt-get install -y build-essential cmake make gcc g++
-RUN git clone https://github.com/apache/arrow.git
-WORKDIR /root/arrow
-RUN git checkout 76d3c36006162766ec598442a0c0d2192f5e0d0b
-RUN cd cpp && mkdir -p debug && cd debug
-WORKDIR /root/arrow/cpp/debug
-RUN cmake -DCMAKE_BUILD_TYPE=Debug -DARROW_PARQUET=ON -DARROW_WITH_SNAPPY=ON ..
-RUN make -j8
-RUN make install
-ENV LD_LIBRARY_PATH="$LD_LIBRARY_PATH:/usr/local/lib"
-
-WORKDIR /root
 ```
 
 # 参考资料
