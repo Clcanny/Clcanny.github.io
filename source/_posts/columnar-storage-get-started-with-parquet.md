@@ -255,3 +255,4 @@ int main() {
 + [Medium: Install Apache Spark (pyspark) — Standalone mode](https://medium.com/@sivachaitanya/install-apache-spark-pyspark-standalone-mode-70d3c2dd8924)
 + [Techoral: OpenJDK 15 Download and Installation on Ubuntu](https://techoral.com/blog/java/install-openjdk-15-ubuntu.html)
 + [Apache Arrow: Building Arrow C++](https://arrow.apache.org/docs/developers/cpp/building.html)
++ [Apache Arrow: Reading and writing Parquet files](https://arrow.apache.org/docs/cpp/parquet.html)
