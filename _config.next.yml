@@ -13,5 +13,10 @@ menu:
   archives: /archives/ || fa fa-archive
   tags: /tags/ || fa fa-tags
 
+codeblock:
+  copy_button:
+    enable: true
+    show_result: true
+
 custom_file_path:
   style: styles.styl
