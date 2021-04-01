@@ -221,7 +221,7 @@ RUN apt-get update
 RUN apt-get install -y curl wget git
 
 RUN apt-get install -y openjdk-15-jdk
-ENV JAVA_HOME=/usr/lib/jvm/openjdk-15-jdk
+ENV JAVA_HOME=/usr/lib/jvm/java-1.15.0-openjdk-amd64
 ENV PATH="$PATH:$JAVA_HOME/bin"
 RUN java --version
 
@@ -242,6 +242,7 @@ RUN cd cpp && mkdir -p debug && cd debug
 WORKDIR /root/arrow/cpp/debug
 RUN cmake -DCMAKE_BUILD_TYPE=Debug -DARROW_PARQUET=ON -DARROW_WITH_SNAPPY=ON ..
 RUN make -j8
+RUN make install
 ENV LD_LIBRARY_PATH="$LD_LIBRARY_PATH:/usr/local/lib"
 
 WORKDIR /root
