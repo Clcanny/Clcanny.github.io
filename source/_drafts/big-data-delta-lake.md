@@ -8,9 +8,25 @@ tags:
 
 # 概述
 
+大数据掀起数据湖风潮，阿里、腾讯等巨头都发布了自己的数据湖产品。本文会以 Delta Lake 为例，探讨：
+
+1. 什么是 Lakehouse ？
+2. Lakehouse 架构。
+
+# 什么是 Lakehouse ？
+
+Lakehouse 是融合数据仓库和数据湖优势的大数据系统：
+
+开放性。对数据的掌控能力。
+
+1. 融合数据仓库优势：
+  1. 取得 SQL 优势。
+
 ![](http://junbin-hexo-img.oss-cn-beijing.aliyuncs.com/big-data-delta-lake/what-is-lakehouse.png)
 
 大纲笔记可访问[幕布](https://share.mubu.com/doc/7RYdZfE818f)。
+
+# 数据湖架构
 
 ![](http://junbin-hexo-img.oss-cn-beijing.aliyuncs.com/big-data-delta-lake/delta-lake-implementation.png)
 
