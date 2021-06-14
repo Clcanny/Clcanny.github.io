@@ -1,0 +1,482 @@
+<!DOCTYPE html>
+<html lang="zh-Hans">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 5.4.0">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+<link rel="stylesheet" href="//fonts.googleapis.com/css?family=Lato:300,300italic,400,400italic,700,700italic&display=swap&subset=latin,latin-ext">
+<link rel="stylesheet" href="/lib/font-awesome/css/all.min.css">
+
+<script id="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"clcanny.github.io","root":"/","scheme":"Muse","version":"7.8.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":true,"show_result":true,"style":null},"back2top":{"enable":true,"sidebar":false,"scrollpercent":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":false,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}}};
+  </script>
+
+  <meta name="description" content="导读 这篇文章探讨了目前链接器在各个文件之间查找符号的顺序，对于大多数链接过程：  可执行文件及其加载的动态链接库都会被加载到 id 为 LM_ID_BASE &#x3D; 0 的 namespace 下； 符号都能在 l_scope[0] 指向的已加载文件列表（即 global scope ）中找到； 查找符号的顺序是 main_map-&gt;l_searchlist 的顺序，也即广度优先遍历依赖树的顺">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Dynamic Linking: Symbol Search Order">
+<meta property="og:url" content="https://clcanny.github.io/2020/11/18/dynamic-linking-symbol-search-order/index.html">
+<meta property="og:site_name" content="On The Road">
+<meta property="og:description" content="导读 这篇文章探讨了目前链接器在各个文件之间查找符号的顺序，对于大多数链接过程：  可执行文件及其加载的动态链接库都会被加载到 id 为 LM_ID_BASE &#x3D; 0 的 namespace 下； 符号都能在 l_scope[0] 指向的已加载文件列表（即 global scope ）中找到； 查找符号的顺序是 main_map-&gt;l_searchlist 的顺序，也即广度优先遍历依赖树的顺">
+<meta property="og:locale">
+<meta property="og:image" content="http://junbin-hexo-img.oss-cn-beijing.aliyuncs.com/dynamic-linking-symbol-search-order/l-scope-point-to-l-searchlist.png">
+<meta property="og:image" content="http://junbin-hexo-img.oss-cn-beijing.aliyuncs.com/dynamic-linking-symbol-search-order/order.png">
+<meta property="og:image" content="http://junbin-hexo-img.oss-cn-beijing.aliyuncs.com/dynamic-linking-symbol-search-order/coredump.png">
+<meta property="article:published_time" content="2020-11-18T05:50:23.000Z">
+<meta property="article:modified_time" content="2021-05-26T05:47:06.354Z">
+<meta property="article:author" content="JunBin">
+<meta property="article:tag" content="dynamic linking">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="http://junbin-hexo-img.oss-cn-beijing.aliyuncs.com/dynamic-linking-symbol-search-order/l-scope-point-to-l-searchlist.png">
+
+<link rel="canonical" href="https://clcanny.github.io/2020/11/18/dynamic-linking-symbol-search-order/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'zh-Hans'
+  };
+</script>
+
+  <title>Dynamic Linking: Symbol Search Order | On The Road</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="Toggle navigation bar">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <span class="logo-line-before"><i></i></span>
+      <h1 class="site-title">On The Road</h1>
+      <span class="logo-line-after"><i></i></span>
+    </a>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+    </div>
+  </div>
+</div>
+
+
+
+
+<nav class="site-nav">
+  <ul id="menu" class="main-menu menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-home fa-fw"></i>Home</a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>Archives</a>
+
+  </li>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>Tags</a>
+
+  </li>
+  </ul>
+</nav>
+
+
+
+
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content post posts-expand">
+            
+
+    
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-Hans">
+    <link itemprop="mainEntityOfPage" href="https://clcanny.github.io/2020/11/18/dynamic-linking-symbol-search-order/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="JunBin">
+      <meta itemprop="description" content="a programmer's blog">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="On The Road">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          Dynamic Linking: Symbol Search Order
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">Posted on</span>
+
+              <time title="Created: 2020-11-18 13:50:23" itemprop="dateCreated datePublished" datetime="2020-11-18T13:50:23+08:00">2020-11-18</time>
+            </span>
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="far fa-calendar-check"></i>
+                </span>
+                <span class="post-meta-item-text">Edited on</span>
+                <time title="Modified: 2021-05-26 13:47:06" itemprop="dateModified" datetime="2021-05-26T13:47:06+08:00">2021-05-26</time>
+              </span>
+
+          <br>
+            <span class="post-meta-item" title="Symbols count in article">
+              <span class="post-meta-item-icon">
+                <i class="far fa-file-word"></i>
+              </span>
+                <span class="post-meta-item-text">Symbols count in article: </span>
+              <span>932</span>
+            </span>
+            <span class="post-meta-item" title="Reading time">
+              <span class="post-meta-item-icon">
+                <i class="far fa-clock"></i>
+              </span>
+                <span class="post-meta-item-text">Reading time &asymp;</span>
+              <span>2 mins.</span>
+            </span>
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <h1 id="导读">导读</h1>
+<p>这篇文章探讨了<strong>目前</strong>链接器在各个文件之间查找符号的顺序，对于大多数链接过程：</p>
+<ol>
+<li>可执行文件及其加载的动态链接库都会被加载到 id 为 <code>LM_ID_BASE</code> = 0 的 namespace 下；</li>
+<li>符号都能在 <code>l_scope[0]</code> 指向的已加载文件列表（即 global scope ）中找到；</li>
+<li>查找符号的顺序是 <code>main_map-&gt;l_searchlist</code> 的顺序，也即广度优先遍历依赖树的顺序：
+<ol>
+<li><code>link_map-&gt;l_scope[0]</code> 指向 <code>GL(dl_ns)[nsid]._ns_loaded-&gt;l_searchlist</code> ，又因为 <code>GL(dl_ns)[nsid]._ns_loaded</code> 是 <code>main_map</code> ，所以 <code>link_map-&gt;l_scope[0]</code> 指向 <code>main_map-&gt;l_searchlist</code> ；</li>
+<li>根据 <a href="https://clcanny.github.io/2020/11/15/dynamic-linking-init-order/">Dynamic Linking: Init Order</a> 的说法，<code>main_map-&gt;l_searchlist</code> 指向 <code>main_map-&gt;l_initfini</code> 的后半段，这部分未经 <code>_dl_sort_maps</code> 函数排序，仍然保持着广度优先遍历依赖树的顺序。</li>
+</ol>
+</li>
+</ol>
+<h1 id="Code">Code</h1>
+<h2 id="l-scope">l_scope</h2>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/* Structure to describe a single list of scope elements.  The lookup</span></span><br><span class="line"><span class="comment">   functions get passed an array of pointers to such structures.  */</span></span><br><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">r_scope_elem</span></span></span><br><span class="line"><span class="class">&#123;</span></span><br><span class="line">  <span class="comment">/* Array of maps for the scope.  */</span></span><br><span class="line">  <span class="class"><span class="keyword">struct</span> <span class="title">link_map</span> **<span class="title">r_list</span>;</span></span><br><span class="line">  <span class="comment">/* Number of entries in the scope.  */</span></span><br><span class="line">  <span class="keyword">unsigned</span> <span class="keyword">int</span> r_nlist;</span><br><span class="line">&#125;;</span><br><span class="line"></span><br><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">link_map</span></span></span><br><span class="line"><span class="class">  &#123;</span></span><br><span class="line">    <span class="comment">// ...</span></span><br><span class="line">    <span class="comment">/* Size of array allocated for &#x27;l_scope&#x27;.  */</span></span><br><span class="line">    <span class="keyword">size_t</span> l_scope_max;</span><br><span class="line">    <span class="comment">/* This is an array defining the lookup scope for this link map.</span></span><br><span class="line"><span class="comment">       There are initially at most three different scope lists.  */</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">r_scope_elem</span> **<span class="title">l_scope</span>;</span></span><br><span class="line">    <span class="comment">// ...</span></span><br><span class="line">  &#125;;</span><br></pre></td></tr></table></figure>
+<h2 id="赋值-l-scope">赋值 l_scope</h2>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/* Storage management for the chain of loaded shared objects.</span></span><br><span class="line"><span class="comment">   Copyright (C) 1995-2018 Free Software Foundation, Inc.</span></span><br><span class="line"><span class="comment">   This file is part of the GNU C Library.</span></span><br><span class="line"><span class="comment"></span></span><br><span class="line"><span class="comment">   The GNU C Library is free software; you can redistribute it and/or</span></span><br><span class="line"><span class="comment">   modify it under the terms of the GNU Lesser General Public</span></span><br><span class="line"><span class="comment">   License as published by the Free Software Foundation; either</span></span><br><span class="line"><span class="comment">   version 2.1 of the License, or (at your option) any later version.</span></span><br><span class="line"><span class="comment"></span></span><br><span class="line"><span class="comment">   The GNU C Library is distributed in the hope that it will be useful,</span></span><br><span class="line"><span class="comment">   but WITHOUT ANY WARRANTY; without even the implied warranty of</span></span><br><span class="line"><span class="comment">   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU</span></span><br><span class="line"><span class="comment">   Lesser General Public License for more details.</span></span><br><span class="line"><span class="comment"></span></span><br><span class="line"><span class="comment">   You should have received a copy of the GNU Lesser General Public</span></span><br><span class="line"><span class="comment">   License along with the GNU C Library; if not, see</span></span><br><span class="line"><span class="comment">   &lt;http://www.gnu.org/licenses/&gt;.  */</span></span><br><span class="line"></span><br><span class="line"><span class="comment">// Add the new link_map `new` to the end of the namespace list.</span></span><br><span class="line"><span class="keyword">void</span> _dl_add_to_namespace_list(struct link_map* <span class="keyword">new</span>, Lmid_t nsid) &#123;</span><br><span class="line">  _dl_debug_printf(</span><br><span class="line">      <span class="string">&quot;\nadding object %s to 0x%x as global scope with namespace id %u\n\n&quot;</span>,</span><br><span class="line">      <span class="built_in">strlen</span>(<span class="keyword">new</span>-&gt;l_name) == <span class="number">0</span> ? <span class="string">&quot;&lt;empty libname&gt;&quot;</span> : <span class="keyword">new</span>-&gt;l_name,</span><br><span class="line">      GL(dl_ns)[nsid]._ns_loaded,</span><br><span class="line">      nsid);</span><br><span class="line"></span><br><span class="line">  <span class="keyword">if</span> (GL(dl_ns)[nsid]._ns_loaded != <span class="literal">NULL</span>) &#123;</span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">link_map</span>* <span class="title">l</span> =</span> GL(dl_ns)[nsid]._ns_loaded;</span><br><span class="line">    <span class="keyword">while</span> (l-&gt;l_next != <span class="literal">NULL</span>)</span><br><span class="line">      l = l-&gt;l_next;</span><br><span class="line">    <span class="keyword">new</span>-&gt;l_prev = l;</span><br><span class="line">    <span class="keyword">new</span>-&gt;l_next = <span class="literal">NULL</span>;</span><br><span class="line">    l-&gt;l_next = <span class="keyword">new</span>;</span><br><span class="line">  &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">    GL(dl_ns)[nsid]._ns_loaded = <span class="keyword">new</span>;</span><br><span class="line">  &#125;</span><br><span class="line">  ++GL(dl_ns)[nsid]._ns_nloaded;</span><br><span class="line">  <span class="keyword">new</span>-&gt;l_serial = GL(dl_load_adds);</span><br><span class="line">  ++GL(dl_load_adds);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">link_map</span>* _<span class="title">dl_new_object</span>(<span class="title">char</span>* <span class="title">realname</span>,</span></span><br><span class="line"><span class="class">                                <span class="title">const</span> <span class="title">char</span>* <span class="title">libname</span>,</span></span><br><span class="line"><span class="class">                                <span class="title">int</span> <span class="title">type</span>,</span></span><br><span class="line"><span class="class">                                <span class="keyword">struct</span> <span class="title">link_map</span>* <span class="title">loader</span>,</span></span><br><span class="line"><span class="class">                                <span class="title">int</span> <span class="title">mode</span>,</span></span><br><span class="line"><span class="class">                                <span class="title">Lmid_t</span> <span class="title">nsid</span>) &#123;</span></span><br><span class="line">  _dl_debug_printf(<span class="string">&quot;\ncreating object of %s with namespace id %u\n\n&quot;</span>,</span><br><span class="line">                   <span class="built_in">strlen</span>(libname) == <span class="number">0</span> ? <span class="string">&quot;&lt;empty libname&gt;&quot;</span> : libname,</span><br><span class="line">                   nsid);</span><br><span class="line">  <span class="class"><span class="keyword">struct</span> <span class="title">link_map</span>* <span class="title">new</span> =</span> (struct link_map*)<span class="built_in">calloc</span>(</span><br><span class="line">      <span class="keyword">sizeof</span>(*<span class="keyword">new</span>) + audit_space + <span class="keyword">sizeof</span>(struct link_map*) + <span class="keyword">sizeof</span>(*newname) +</span><br><span class="line">          libname_len,</span><br><span class="line">      <span class="number">1</span>);</span><br><span class="line"></span><br><span class="line">  <span class="comment">// Counter for the scopes we have to handle.</span></span><br><span class="line">  <span class="keyword">int</span> idx = <span class="number">0</span>;</span><br><span class="line">  <span class="keyword">if</span> (GL(dl_ns)[nsid]._ns_loaded != <span class="literal">NULL</span>) &#123;</span><br><span class="line">    <span class="comment">// Add the global scope.</span></span><br><span class="line">    <span class="keyword">new</span>-&gt;l_scope[idx++] = &amp;GL(dl_ns)[nsid]._ns_loaded-&gt;l_searchlist;</span><br><span class="line">    _dl_debug_printf(<span class="string">&quot;\nassigning l_searchlist (0x%x) of 0x%x as global scope &quot;</span></span><br><span class="line">                     <span class="string">&quot;to l_scope[%u] of object %s\n\n&quot;</span>,</span><br><span class="line">                     &amp;GL(dl_ns)[nsid]._ns_loaded-&gt;l_searchlist,</span><br><span class="line">                     GL(dl_ns)[nsid]._ns_loaded,</span><br><span class="line">                     idx - <span class="number">1</span>,</span><br><span class="line">                     <span class="built_in">strlen</span>(libname) == <span class="number">0</span> ? <span class="string">&quot;&lt;empty libname&gt;&quot;</span> : libname);</span><br><span class="line">  &#125;</span><br><span class="line"></span><br><span class="line">  <span class="keyword">new</span>-&gt;l_local_scope[<span class="number">0</span>] = &amp;<span class="keyword">new</span>-&gt;l_searchlist;</span><br><span class="line">  <span class="keyword">return</span> <span class="keyword">new</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p><img src="http://junbin-hexo-img.oss-cn-beijing.aliyuncs.com/dynamic-linking-symbol-search-order/l-scope-point-to-l-searchlist.png" alt=""></p>
+<h1 id="证明">证明</h1>
+<h2 id="Namespace">Namespace</h2>
+<p>namespace 是链接器提供的隔离机制，根据 <a target="_blank" rel="noopener" href="https://sourceware.org/glibc/wiki/LinkerNamespaces">glic wiki: Linker Namespaces</a> 的说法，namespace 一开始用于隔离：</p>
+<ol>
+<li>可执行文件及其加载的动态链接库</li>
+<li>LD_AUDIT 及其加载的动态链接库</li>
+</ol>
+<p>正常情况下，可执行文件及其加载的动态链接库都会被加载到 id 为 <code>LM_ID_BASE</code> = 0 的 namespace 下，它们之间不存在隔离。</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// main.cpp</span></span><br><span class="line"><span class="function"><span class="keyword">int</span> <span class="title">main</span><span class="params">()</span> </span>&#123;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// lib.cpp</span></span><br></pre></td></tr></table></figure>
+<figure class="highlight makefile"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># Makefile</span></span><br><span class="line">all :</span><br><span class="line">    gcc lib.cpp -shared -fPIC -o liba.so</span><br><span class="line">    gcc lib.cpp -shared -fPIC -L<span class="variable">$(PWD)</span> -Wl,-rpath=<span class="variable">$(PWD)</span> -la -o libb.so</span><br><span class="line">    gcc lib.cpp -shared -fPIC -L<span class="variable">$(PWD)</span> -Wl,-rpath=<span class="variable">$(PWD)</span> -lb -o libe.so</span><br><span class="line">    gcc main.cpp                                                                        \</span><br><span class="line">            -Wl,--dynamic-linker=<span class="variable">$(PWD)</span>/../glibc/build/install/lib/ld-linux-x86-64.so.2 \</span><br><span class="line">            -L<span class="variable">$(PWD)</span> -Wl,-rpath=<span class="variable">$(PWD)</span> -le                                              \</span><br><span class="line">            -o main</span><br><span class="line">    LD_DEBUG=all ./main 2&gt;&amp;1 | grep <span class="string">&quot;creating object&quot;</span></span><br></pre></td></tr></table></figure>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># make</span></span><br><span class="line">LD_DEBUG=all ./main 2&gt;&amp;1 | grep <span class="string">&quot;creating object&quot;</span></span><br><span class="line">      2313:     creating object of &lt;empty libname&gt; with namespace id 0</span><br><span class="line">      2313:     creating object of &lt;empty libname&gt; with namespace id 0</span><br><span class="line">      2313:     creating object of libe.so with namespace id 0</span><br><span class="line">      2313:     creating object of libc.so.6 with namespace id 0</span><br><span class="line">      2313:     creating object of libb.so with namespace id 0</span><br><span class="line">      2313:     creating object of liba.so with namespace id 0</span><br></pre></td></tr></table></figure>
+<p>各个动态链接库都使用了 id 为 0 的 namespace 。</p>
+<h2 id="Scope">Scope</h2>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># LD_DEBUG=all ./main 2&gt;&amp;1 | grep -E &quot;creating main map |assigning&quot;</span></span><br><span class="line">      2390:     creating main map at: 0x57cde190</span><br><span class="line">      2390:     assigning l_searchlist (0x57cde450) of 0x57cde190 as global scope to l_scope[0] of object &lt;empty libname&gt;</span><br><span class="line">      2390:     assigning l_searchlist (0x57cde450) of 0x57cde190 as global scope to l_scope[0] of object libe.so</span><br><span class="line">      2390:     assigning l_searchlist (0x57cde450) of 0x57cde190 as global scope to l_scope[0] of object libc.so.6</span><br><span class="line">      2390:     assigning l_searchlist (0x57cde450) of 0x57cde190 as global scope to l_scope[0] of object libb.so</span><br><span class="line">      2390:     assigning l_searchlist (0x57cde450) of 0x57cde190 as global scope to l_scope[0] of object liba.so</span><br></pre></td></tr></table></figure>
+<p>各个动态链接库都使用了可执行文件的 <code>l_searchlist</code> 作为 <code>l_scope[0]</code> 。</p>
+<h2 id="Order">Order</h2>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// main.cpp</span></span><br><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">sayHello</span><span class="params">()</span></span>;</span><br><span class="line"><span class="function"><span class="keyword">int</span> <span class="title">main</span><span class="params">()</span> </span>&#123;</span><br><span class="line">  <span class="built_in">sayHello</span>();</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// b.cpp</span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">include</span> <span class="meta-string">&lt;iostream&gt;</span></span></span><br><span class="line"><span class="keyword">extern</span> <span class="keyword">const</span> <span class="keyword">char</span>* var;</span><br><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">sayHello</span><span class="params">()</span> </span>&#123;</span><br><span class="line">  std::cout &lt;&lt; var &lt;&lt; std::endl;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// f.cpp</span></span><br><span class="line"><span class="keyword">const</span> <span class="keyword">char</span>* var = <span class="string">&quot;I&#x27;m in f.&quot;</span>;</span><br></pre></td></tr></table></figure>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// g.cpp</span></span><br><span class="line"><span class="keyword">const</span> <span class="keyword">char</span>* var = <span class="string">&quot;I&#x27;m in g.&quot;</span>;</span><br></pre></td></tr></table></figure>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// empty.cpp</span></span><br></pre></td></tr></table></figure>
+<figure class="highlight makefile"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># Makefile</span></span><br><span class="line">all :</span><br><span class="line">    g++ -std=c++11 empty.cpp -shared -fPIC -o libe.so</span><br><span class="line">    g++ -std=c++11 f.cpp -shared -fPIC -o libf.so</span><br><span class="line">    g++ -std=c++11 g.cpp -shared -fPIC -o libg.so</span><br><span class="line">    g++ -std=c++11 empty.cpp -shared -fPIC -o libh.so</span><br><span class="line">    g++ -std=c++11 empty.cpp -shared -fPIC -L<span class="variable">$(PWD)</span> -Wl,-rpath=<span class="variable">$(PWD)</span> -le -lf -o liba.so</span><br><span class="line">    g++ -std=c++11 b.cpp -shared -fPIC -L<span class="variable">$(PWD)</span> -Wl,-rpath=<span class="variable">$(PWD)</span> -lg -lh -o libb.so</span><br><span class="line">    g++ -std=c++11 -L<span class="variable">$(PWD)</span> -Wl,-rpath=<span class="variable">$(PWD)</span> -la -lb main.cpp -o main</span><br><span class="line">    LD_DEBUG=all ./main 2&gt;&amp;1 | grep -E <span class="string">&quot;var|I&#x27;m in&quot;</span></span><br></pre></td></tr></table></figure>
+<p><img src="http://junbin-hexo-img.oss-cn-beijing.aliyuncs.com/dynamic-linking-symbol-search-order/order.png" alt=""></p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># make</span></span><br><span class="line">LD_DEBUG=all ./main 2&gt;&amp;1 | grep -E <span class="string">&quot;var|I&#x27;m in&quot;</span></span><br><span class="line">      6382:     symbol=var;  lookup <span class="keyword">in</span> file=./main [0]</span><br><span class="line">      6382:     symbol=var;  lookup <span class="keyword">in</span> file=/home/demons/_dl_map_objects_validate/search_symbol_order/liba.so [0]</span><br><span class="line">      6382:     symbol=var;  lookup <span class="keyword">in</span> file=/home/demons/_dl_map_objects_validate/search_symbol_order/libb.so [0]</span><br><span class="line">      6382:     symbol=var;  lookup <span class="keyword">in</span> file=/usr/lib/x86_64-linux-gnu/libstdc++.so.6 [0]</span><br><span class="line">      6382:     symbol=var;  lookup <span class="keyword">in</span> file=/lib/x86_64-linux-gnu/libm.so.6 [0]</span><br><span class="line">      6382:     symbol=var;  lookup <span class="keyword">in</span> file=/lib/x86_64-linux-gnu/libgcc_s.so.1 [0]</span><br><span class="line">      6382:     symbol=var;  lookup <span class="keyword">in</span> file=/lib/x86_64-linux-gnu/libc.so.6 [0]</span><br><span class="line">      6382:     symbol=var;  lookup <span class="keyword">in</span> file=/home/demons/_dl_map_objects_validate/search_symbol_order/libe.so [0]</span><br><span class="line">      6382:     symbol=var;  lookup <span class="keyword">in</span> file=/home/demons/_dl_map_objects_validate/search_symbol_order/libf.so [0]</span><br><span class="line">      6382:     binding file /home/demons/_dl_map_objects_validate/search_symbol_order/libb.so [0] to /home/demons/_dl_map_objects_validate/search_symbol_order/libf.so [0]: normal symbol `var<span class="string">&#x27;</span></span><br><span class="line"><span class="string">I&#x27;</span>m <span class="keyword">in</span> f.</span><br></pre></td></tr></table></figure>
+<h1 id="A-coredump">A coredump</h1>
+<p><img src="http://junbin-hexo-img.oss-cn-beijing.aliyuncs.com/dynamic-linking-symbol-search-order/coredump.png" alt=""></p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// main.cpp</span></span><br><span class="line"><span class="function"><span class="keyword">int</span> <span class="title">main</span><span class="params">()</span> </span>&#123;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// a.cpp</span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">include</span> <span class="meta-string">&lt;iostream&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">include</span> <span class="meta-string">&lt;string&gt;</span></span></span><br><span class="line"></span><br><span class="line"><span class="keyword">namespace</span> &#123;</span><br><span class="line"><span class="keyword">const</span> std::string var = <span class="string">&quot;I&#x27;m in a.&quot;</span>;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">accessVar</span><span class="params">()</span> </span>&#123;</span><br><span class="line">  std::cout &lt;&lt; var[<span class="number">0</span>] &lt;&lt; std::endl;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// b.cpp</span></span><br><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">accessVar</span><span class="params">()</span></span>;</span><br><span class="line"></span><br><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">AccessVar</span> &#123;</span></span><br><span class="line">  <span class="built_in">AccessVar</span>() &#123;</span><br><span class="line">    <span class="built_in">accessVar</span>();</span><br><span class="line">  &#125;</span><br><span class="line">&#125; _;</span><br></pre></td></tr></table></figure>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// e.cpp</span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">include</span> <span class="meta-string">&lt;iostream&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">include</span> <span class="meta-string">&lt;string&gt;</span></span></span><br><span class="line"></span><br><span class="line"><span class="keyword">namespace</span> &#123;</span><br><span class="line"><span class="keyword">const</span> std::string var = <span class="string">&quot;I&#x27;m in e.&quot;</span>;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">accessVar</span><span class="params">()</span> </span>&#123;</span><br><span class="line">  std::cout &lt;&lt; var[<span class="number">0</span>] &lt;&lt; std::endl;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<figure class="highlight makefile"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># Makefile</span></span><br><span class="line">all :</span><br><span class="line">    g++ e.cpp -shared -fPIC -O3 -o libe.so</span><br><span class="line">    g++ a.cpp -shared -fPIC -O3 -o liba.so</span><br><span class="line">    g++ b.cpp -shared -fPIC -L<span class="variable">$(PWD)</span> -Wl,-rpath=<span class="variable">$(PWD)</span> -le -O3 -o libb.so</span><br><span class="line">    g++ main.cpp -L<span class="variable">$(PWD)</span> -Wl,-rpath=<span class="variable">$(PWD)</span> -la -lb -O3 -o main</span><br><span class="line">    LD_DEBUG=all ./main 2&gt;&amp;1 | grep -E <span class="string">&quot;calling init|accessVar&quot;</span></span><br></pre></td></tr></table></figure>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line">Segmentation fault</span><br><span class="line">     14934:     calling init: /lib/x86_64-linux-gnu/libc.so.6</span><br><span class="line">     14934:     calling init: /lib/x86_64-linux-gnu/libm.so.6</span><br><span class="line">     14934:     calling init: /lib/x86_64-linux-gnu/libgcc_s.so.1</span><br><span class="line">     14934:     calling init: /usr/lib/x86_64-linux-gnu/libstdc++.so.6</span><br><span class="line">     14934:     calling init: /home/demons/_dl_map_objects_validate/search_symbol_order/libe.so</span><br><span class="line">     14934:     calling init: /home/demons/_dl_map_objects_validate/search_symbol_order/libb.so</span><br><span class="line">     14934:     symbol=_Z9accessVarv;  lookup <span class="keyword">in</span> file=./main [0]</span><br><span class="line">     14934:     symbol=_Z9accessVarv;  lookup <span class="keyword">in</span> file=/home/demons/_dl_map_objects_validate/search_symbol_order/liba.so [0]</span><br><span class="line">     14934:     binding file /home/demons/_dl_map_objects_validate/search_symbol_order/libb.so [0] to /home/demons/_dl_map_objects_validate/search_symbol_order/liba.so [0]: normal symbol `_Z9accessVarv<span class="string">&#x27;</span></span><br></pre></td></tr></table></figure>
+<p>初始化的顺序是 eba ，查找符号的顺序是 abe ，因此初始化 <a target="_blank" rel="noopener" href="http://libb.so">libb.so</a> 的时候用到了来自 <a target="_blank" rel="noopener" href="http://liba.so">liba.so</a> 的、尚未初始化的 <code>var</code> 变量，导致 coredump 。</p>
+<h1 id="More">More</h1>
+<p>关于 Namespace 和 Scope 的 corner case ，后续会另写一篇文章来探讨。</p>
+<h1 id="参考资料">参考资料</h1>
+<ul>
+<li><a target="_blank" rel="noopener" href="https://sourceware.org/glibc/wiki/LinkerNamespaces">glic wiki: Linker Namespaces</a></li>
+<li><a target="_blank" rel="noopener" href="https://docs.oracle.com/cd/E19120-01/open.solaris/819-0690/chapter6-1243/index.html">Oracle: Establishing a Namespace</a></li>
+</ul>
+
+    </div>
+
+    
+    
+    
+
+      <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/dynamic-linking/" rel="tag"># dynamic linking</a>
+          </div>
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2020/11/15/dynamic-linking-init-order/" rel="prev" title="Dynamic Linking: Init Order">
+      <i class="fa fa-chevron-left"></i> Dynamic Linking: Init Order
+    </a></div>
+      <div class="post-nav-item">
+    <a href="/2020/11/20/dynamic-linking-search-symbols-in-one-binary/" rel="next" title="Dynamic Linking: Search Symbols In One Binary">
+      Dynamic Linking: Search Symbols In One Binary <i class="fa fa-chevron-right"></i>
+    </a></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+
+
+          </div>
+          
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          Table of Contents
+        </li>
+        <li class="sidebar-nav-overview">
+          Overview
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#%E5%AF%BC%E8%AF%BB"><span class="nav-number">1.</span> <span class="nav-text">导读</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#Code"><span class="nav-number">2.</span> <span class="nav-text">Code</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#l-scope"><span class="nav-number">2.1.</span> <span class="nav-text">l_scope</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E8%B5%8B%E5%80%BC-l-scope"><span class="nav-number">2.2.</span> <span class="nav-text">赋值 l_scope</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#%E8%AF%81%E6%98%8E"><span class="nav-number">3.</span> <span class="nav-text">证明</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#Namespace"><span class="nav-number">3.1.</span> <span class="nav-text">Namespace</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Scope"><span class="nav-number">3.2.</span> <span class="nav-text">Scope</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Order"><span class="nav-number">3.3.</span> <span class="nav-text">Order</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#A-coredump"><span class="nav-number">4.</span> <span class="nav-text">A coredump</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#More"><span class="nav-number">5.</span> <span class="nav-text">More</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#%E5%8F%82%E8%80%83%E8%B5%84%E6%96%99"><span class="nav-number">6.</span> <span class="nav-text">参考资料</span></a></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+  <p class="site-author-name" itemprop="name">JunBin</p>
+  <div class="site-description" itemprop="description">a programmer's blog</div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">21</span>
+          <span class="site-state-item-name">posts</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+          
+        <span class="site-state-item-count">11</span>
+        <span class="site-state-item-name">tags</span></a>
+      </div>
+  </nav>
+</div>
+
+
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+        
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2021</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">JunBin</span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item-icon">
+      <i class="fa fa-chart-area"></i>
+    </span>
+    <span title="Symbols count total">42k</span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item-icon">
+      <i class="fa fa-coffee"></i>
+    </span>
+    <span title="Reading time total">1:09</span>
+</div>
+  <div class="powered-by">Powered by <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> & <a href="https://muse.theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Muse</a>
+  </div>
+
+        
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/muse.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+</body>
+</html>

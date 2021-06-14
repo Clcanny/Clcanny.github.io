@@ -1,0 +1,524 @@
+<!DOCTYPE html>
+<html lang="zh-Hans">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 5.4.0">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+<link rel="stylesheet" href="//fonts.googleapis.com/css?family=Lato:300,300italic,400,400italic,700,700italic&display=swap&subset=latin,latin-ext">
+<link rel="stylesheet" href="/lib/font-awesome/css/all.min.css">
+
+<script id="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"clcanny.github.io","root":"/","scheme":"Muse","version":"7.8.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":true,"show_result":true,"style":null},"back2top":{"enable":true,"sidebar":false,"scrollpercent":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":false,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}}};
+  </script>
+
+  <meta name="description" content="开始重定位：.plt .got.plt .plt 和 .got.plt 配合完成 lazy binding ，图片摘抄自 LIEF: 05 - Infecting the plt&#x2F;got ：  With lazy binding, the first time that the function is called the got entry redirects to the plt instru">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Dynamic Linking: Relocation Across Files">
+<meta property="og:url" content="https://clcanny.github.io/2020/11/21/dynamic-linking-relocation-across-files/index.html">
+<meta property="og:site_name" content="On The Road">
+<meta property="og:description" content="开始重定位：.plt .got.plt .plt 和 .got.plt 配合完成 lazy binding ，图片摘抄自 LIEF: 05 - Infecting the plt&#x2F;got ：  With lazy binding, the first time that the function is called the got entry redirects to the plt instru">
+<meta property="og:locale">
+<meta property="og:image" content="http://junbin-hexo-img.oss-cn-beijing.aliyuncs.com/dynamic-linking-relocation-across-files/plt-got-mechanism-first-time-call.jpg">
+<meta property="og:image" content="http://junbin-hexo-img.oss-cn-beijing.aliyuncs.com/dynamic-linking-relocation-across-files/plt-got-mechanism-second-time-call.jpg">
+<meta property="article:published_time" content="2020-11-20T16:11:51.000Z">
+<meta property="article:modified_time" content="2021-05-26T05:47:06.353Z">
+<meta property="article:author" content="JunBin">
+<meta property="article:tag" content="dynamic linking">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="http://junbin-hexo-img.oss-cn-beijing.aliyuncs.com/dynamic-linking-relocation-across-files/plt-got-mechanism-first-time-call.jpg">
+
+<link rel="canonical" href="https://clcanny.github.io/2020/11/21/dynamic-linking-relocation-across-files/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'zh-Hans'
+  };
+</script>
+
+  <title>Dynamic Linking: Relocation Across Files | On The Road</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="Toggle navigation bar">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <span class="logo-line-before"><i></i></span>
+      <h1 class="site-title">On The Road</h1>
+      <span class="logo-line-after"><i></i></span>
+    </a>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+    </div>
+  </div>
+</div>
+
+
+
+
+<nav class="site-nav">
+  <ul id="menu" class="main-menu menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-home fa-fw"></i>Home</a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>Archives</a>
+
+  </li>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>Tags</a>
+
+  </li>
+  </ul>
+</nav>
+
+
+
+
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content post posts-expand">
+            
+
+    
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-Hans">
+    <link itemprop="mainEntityOfPage" href="https://clcanny.github.io/2020/11/21/dynamic-linking-relocation-across-files/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="JunBin">
+      <meta itemprop="description" content="a programmer's blog">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="On The Road">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          Dynamic Linking: Relocation Across Files
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">Posted on</span>
+
+              <time title="Created: 2020-11-21 00:11:51" itemprop="dateCreated datePublished" datetime="2020-11-21T00:11:51+08:00">2020-11-21</time>
+            </span>
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="far fa-calendar-check"></i>
+                </span>
+                <span class="post-meta-item-text">Edited on</span>
+                <time title="Modified: 2021-05-26 13:47:06" itemprop="dateModified" datetime="2021-05-26T13:47:06+08:00">2021-05-26</time>
+              </span>
+
+          <br>
+            <span class="post-meta-item" title="Symbols count in article">
+              <span class="post-meta-item-icon">
+                <i class="far fa-file-word"></i>
+              </span>
+                <span class="post-meta-item-text">Symbols count in article: </span>
+              <span>2.9k</span>
+            </span>
+            <span class="post-meta-item" title="Reading time">
+              <span class="post-meta-item-icon">
+                <i class="far fa-clock"></i>
+              </span>
+                <span class="post-meta-item-text">Reading time &asymp;</span>
+              <span>5 mins.</span>
+            </span>
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <h1 id="开始重定位：-plt-got-plt">开始重定位：.plt .got.plt</h1>
+<p>.plt 和 .got.plt 配合完成 lazy binding ，图片摘抄自 <a target="_blank" rel="noopener" href="https://lief.quarkslab.com/doc/latest/tutorials/05_elf_infect_plt_got.html">LIEF: 05 - Infecting the plt/got</a> ：</p>
+<p><img src="http://junbin-hexo-img.oss-cn-beijing.aliyuncs.com/dynamic-linking-relocation-across-files/plt-got-mechanism-first-time-call.jpg" alt=""></p>
+<p><em>With lazy binding, the first time that the function is called the</em> <code>got</code> <em>entry redirects to the plt instruction.</em></p>
+<p><img src="http://junbin-hexo-img.oss-cn-beijing.aliyuncs.com/dynamic-linking-relocation-across-files/plt-got-mechanism-second-time-call.jpg" alt=""></p>
+<p><em>The Second time,</em> <code>got</code> <em>entry holds the address in the shared library.</em></p>
+<p>以 main 调用 foo 为例：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"># objdump -d -j .text main</span><br><span class="line">0000000000001135 &lt;main&gt;:</span><br><span class="line">    1135:   55                      push   %rbp</span><br><span class="line">    1136:   48 89 e5                mov    %rsp,%rbp</span><br><span class="line">    1139:   e8 f2 fe ff ff          callq  1030 &lt;_Z3foov@plt&gt;</span><br></pre></td></tr></table></figure>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line"># objdump -d -j .plt main</span><br><span class="line">0000000000001020 &lt;.plt&gt;:</span><br><span class="line">    1020:   ff 35 e2 2f 00 00       pushq  0x2fe2(%rip) # 4008 &lt;_GLOBAL_OFFSET_TABLE_+0x8&gt;</span><br><span class="line">    1026:   ff 25 e4 2f 00 00       jmpq   *0x2fe4(%rip) # 4010 &lt;_GLOBAL_OFFSET_TABLE_+0x10&gt;</span><br><span class="line">    102c:   0f 1f 40 00             nopl   0x0(%rax)</span><br><span class="line"></span><br><span class="line">0000000000001030 &lt;_Z3foov@plt&gt;:</span><br><span class="line">    1030:   ff 25 e2 2f 00 00       jmpq   *0x2fe2(%rip) # 4018 &lt;_Z3foov&gt;</span><br><span class="line">    1036:   68 00 00 00 00          pushq  $0x0</span><br><span class="line">    103b:   e9 e0 ff ff ff          jmpq   1020 &lt;.plt&gt;</span><br></pre></td></tr></table></figure>
+<p>rip + 0x2fe2 是重定位实现 lazy binding 留下的一个占位符，这个占位符的初始值指向 plt 的第二条指令（1036），第一次调用发生后，它会被链接器修改成 foo 函数的地址，从而完成重定位。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># readelf --section-headers main | grep -E &quot;Nr|.got.plt&quot; -A1</span></span><br><span class="line">  [Nr] Name              Type             Address           Offset</span><br><span class="line">       Size              EntSize          Flags  Link  Info  Align</span><br><span class="line">--</span><br><span class="line">  [23] .got.plt          PROGBITS         0000000000004000  00003000</span><br><span class="line">       0000000000000020  0000000000000008  WA       0     0     8</span><br></pre></td></tr></table></figure>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># od --skip-bytes=$((0x1036 + 0x2fe2 - 0x4000 + 0x3000)) --read-bytes=8 --format=xL main</span></span><br><span class="line">0030030 0000000000001036</span><br><span class="line">0030040</span><br></pre></td></tr></table></figure>
+<p>0x1020 是所有 plt 程序共用的部分，rip + 0x2fe2 指向 link_map ，rip + 0x2fe4 指向 <code>_dl_runtime_resolve_xsave</code> ，这两个地址都由链接器负责填写。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># od --skip-bytes=$((0x1026 + 0x2fe2 - 0x4000 + 0x3000)) --read-bytes=8 --format=xL main</span></span><br><span class="line">0030010 0000000000000000</span><br><span class="line">0030020</span><br><span class="line"><span class="comment"># od --skip-bytes=$((0x102c + 0x2fe4 - 0x4000 + 0x3000)) --read-bytes=8 --format=xL main</span></span><br><span class="line">0030020 0000000000000000</span><br><span class="line">0030030</span><br></pre></td></tr></table></figure>
+<p>剩下两个未解之谜：</p>
+<ol>
+<li>link_map 是怎么构造出来的？</li>
+<li><code>_dl_runtime_resolve_xsave</code> 做了些什么？</li>
+</ol>
+<h1 id="dl-runtime-resolve-xsave-before-dl-fixup">_dl_runtime_resolve_xsave: before _dl_fixup</h1>
+<p><code>_dl_runtime_resolve_xsave</code> 定义于 /root/glibc/glibc-2.28/sysdeps/x86_64/dl-trampoline.h ，不过文件内大量使用 <code>#if</code> 语句，并不适合直接阅读。</p>
+<p>_dl_runtime_resolve_xsave 在调用 _dl_fixup 之前的主要工作是：保存寄存器。</p>
+<h1 id="dl-fixup">_dl_fixup</h1>
+<p><code>_dl_runtime_resolve_xsave</code> 的核心是位于 elf/dl-runtime.c 的 <code>_dl_fixup</code> ，<code>_dl_fixup</code> 的执行过程如下：</p>
+<ol>
+<li>用 <code>link_map</code> 访问 .dynamic ，分别取出 .rela.plt / .dynsym / .dynstr 的地址；</li>
+<li>.rela.plt + 参数 <code>reloc_arg</code> ，求出当前函数的重定位表项 Elf64_Rela 的指针，记作 reloc ；</li>
+<li>以 <code>ELFW(R_SYM) (reloc-&gt;r_info)</code> 作为 .dynsym 的下标，求出当前函数的符号表项 <code>Elf64_Sym</code> 的指针，记作 <code>sym</code> ；</li>
+<li><code>.dynstr + sym-&gt;st_name</code> 得出符号名字 ；</li>
+<li>在动态链接库中查找这个函数的地址，并且把地址赋值给 <code>*(reloc-&gt;r_offset)</code> ，即 .got.plt 表项 。</li>
+</ol>
+<h2 id="访问-dynamic-表项">访问 .dynamic 表项</h2>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">typedef</span> <span class="class"><span class="keyword">struct</span></span></span><br><span class="line"><span class="class">&#123;</span></span><br><span class="line">  Elf64_Sxword  d_tag;                  <span class="comment">/* Dynamic entry type */</span></span><br><span class="line">  <span class="class"><span class="keyword">union</span></span></span><br><span class="line"><span class="class">    &#123;</span></span><br><span class="line">      Elf64_Xword d_val;                <span class="comment">/* Integer value */</span></span><br><span class="line">      Elf64_Addr d_ptr;                 <span class="comment">/* Address value */</span></span><br><span class="line">    &#125; d_un;</span><br><span class="line">&#125; Elf64_Dyn;</span><br></pre></td></tr></table></figure>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">link_map</span></span></span><br><span class="line"><span class="class">  &#123;</span></span><br><span class="line">    <span class="comment">/* These first few members are part of the protocol with the debugger.</span></span><br><span class="line"><span class="comment">       This is the same format used in SVR4.  */</span></span><br><span class="line"></span><br><span class="line">    <span class="built_in">ElfW</span>(Addr) l_addr;          <span class="comment">/* Difference between the address in the ELF</span></span><br><span class="line"><span class="comment">                                   file and the addresses in memory.  */</span></span><br><span class="line">    <span class="keyword">char</span> *l_name;               <span class="comment">/* Absolute file name object was found in.  */</span></span><br><span class="line">    <span class="built_in">ElfW</span>(Dyn) *l_ld;            <span class="comment">/* Dynamic section of the shared object.  */</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">link_map</span> *<span class="title">l_next</span>, *<span class="title">l_prev</span>;</span> <span class="comment">/* Chain of loaded objects.  */</span></span><br><span class="line">    <span class="comment">// ...</span></span><br><span class="line">    <span class="comment">/* Indexed pointers to dynamic section. */</span></span><br><span class="line">    <span class="built_in">ElfW</span>(Dyn) *l_info[DT_NUM + DT_THISPROCNUM + DT_VERSIONTAGNUM</span><br><span class="line">                      + DT_EXTRANUM + DT_VALNUM + DT_ADDRNUM];</span><br><span class="line">    <span class="comment">// ...</span></span><br><span class="line">  &#125;;</span><br></pre></td></tr></table></figure>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// D_PTR 的两个定义用于：完成重定位之后和完成重定位之前，区别在于有没有加上 difference 。</span></span><br><span class="line"><span class="comment">/* All references to the value of l_info[DT_PLTGOT],</span></span><br><span class="line"><span class="comment">  l_info[DT_STRTAB], l_info[DT_SYMTAB], l_info[DT_RELA],</span></span><br><span class="line"><span class="comment">  l_info[DT_REL], l_info[DT_JMPREL], and l_info[VERSYMIDX (DT_VERSYM)]</span></span><br><span class="line"><span class="comment">  have to be accessed via the D_PTR macro.  The macro is needed since for</span></span><br><span class="line"><span class="comment">  most architectures the entry is already relocated - but for some not</span></span><br><span class="line"><span class="comment">  and we need to relocate at access time.  */</span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">ifdef</span> DL_RO_DYN_SECTION</span></span><br><span class="line"><span class="meta"># <span class="meta-keyword">define</span> D_PTR(map, i) ((map)-&gt;i-&gt;d_un.d_ptr + (map)-&gt;l_addr)</span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">else</span></span></span><br><span class="line"><span class="meta"># <span class="meta-keyword">define</span> D_PTR(map, i) (map)-&gt;i-&gt;d_un.d_ptr</span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">endif</span></span></span><br></pre></td></tr></table></figure>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># readelf --dynamic main | head -n 8 | tail -n 6</span></span><br><span class="line">  Tag        Type                         Name/Value</span><br><span class="line"> 0x0000000000000001 (NEEDED)             Shared library: [libfoo.so]</span><br><span class="line"> 0x0000000000000001 (NEEDED)             Shared library: [libc.so.6]</span><br><span class="line"> 0x000000000000001d (RUNPATH)            Library runpath: [/root/<span class="built_in">test</span>]</span><br><span class="line"> 0x000000000000000c (INIT)               0x1000</span><br><span class="line"> 0x000000000000000d (FINI)               0x11b4</span><br></pre></td></tr></table></figure>
+<h2 id="对比-dynamic-与-section-headers">对比 .dynamic 与 section headers</h2>
+<p>初次接触 ELF 文件会被 .dynamic 和 section headers 的区别坑到，我们不禁想问：既然有 section headers 指明每个 sections 的起始地址，为什么还需要 .dynamic ？</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># readelf --section-headers main | grep -E &quot;Nr|.symtab&quot; -A1 | grep -v &quot;\-\-&quot;</span></span><br><span class="line">  [Nr] Name              Type             Address           Offset</span><br><span class="line">       Size              EntSize          Flags  Link  Info  Align</span><br><span class="line">  [27] .symtab           SYMTAB           0000000000000000  00003050</span><br><span class="line">       0000000000000600  0000000000000018          28    45     8</span><br></pre></td></tr></table></figure>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># readelf --dynamic main | grep -E &quot;Tag|SYMTAB&quot;</span></span><br><span class="line">  Tag        Type                         Name/Value</span><br><span class="line"> 0x0000000000000006 (SYMTAB)             0x348</span><br></pre></td></tr></table></figure>
+<p>Section header 说 .symtab 的起始地址是 0x3050 ，.dynamic 表说 .symtab 的起始地址是 0x348 ，两者为什么会不一致？</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># readelf --section-headers main | grep -E &quot;Nr|348&quot; -A1 | grep -v &quot;\-\-&quot;</span></span><br><span class="line">  [Nr] Name              Type             Address           Offset</span><br><span class="line">       Size              EntSize          Flags  Link  Info  Align</span><br><span class="line">  [ 5] .dynsym           DYNSYM           0000000000000348  00000348</span><br><span class="line">       00000000000000a8  0000000000000018   A       6     1     8</span><br></pre></td></tr></table></figure>
+<p>事实上，0x348 是 .dynsym 的起始地址，即 .dynamic 表和 section headers 都使用了 symtab 这个名字，但两者完全不是一个意思。</p>
+<p>同样的情况也发生在 strtab 上：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># readelf --section-headers main | grep -E &quot;Nr|.strtab&quot; -A1 | grep -v &quot;\-\-&quot;</span></span><br><span class="line">  [Nr] Name              Type             Address           Offset</span><br><span class="line">       Size              EntSize          Flags  Link  Info  Align</span><br><span class="line">  [28] .strtab           STRTAB           0000000000000000  00003650</span><br><span class="line">       00000000000001fa  0000000000000000           0     0     1</span><br><span class="line">  [29] .shstrtab         STRTAB           0000000000000000  0000384a</span><br><span class="line">       0000000000000107  0000000000000000           0     0     1</span><br></pre></td></tr></table></figure>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># readelf --dynamic main | grep -E &quot;Tag|STRTAB&quot;</span></span><br><span class="line">  Tag        Type                         Name/Value</span><br><span class="line"> 0x0000000000000005 (STRTAB)             0x3f0</span><br></pre></td></tr></table></figure>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># readelf --section-headers main | grep -E &quot;Nr|3f0&quot; -A1 | grep -v &quot;\-\-&quot;</span></span><br><span class="line">  [Nr] Name              Type             Address           Offset</span><br><span class="line">       Size              EntSize          Flags  Link  Info  Align</span><br><span class="line">  [ 6] .dynstr           STRTAB           00000000000003f0  000003f0</span><br><span class="line">       000000000000009a  0000000000000000   A       0     0     1</span><br></pre></td></tr></table></figure>
+<p>.dynamic 表和 section headers 都使用了 strtab 这个名字，但两者完全不是一个意思。</p>
+<h2 id="访问-rela-plt-表项">访问 .rela.plt 表项</h2>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// reloc_offset = reloc_arg ，是 _dl_fixup 的第二个参数。</span></span><br><span class="line"><span class="keyword">const</span> PLTREL *<span class="keyword">const</span> reloc</span><br><span class="line">  = (<span class="keyword">const</span> <span class="keyword">void</span> *) (<span class="built_in">D_PTR</span> (l, l_info[DT_JMPREL]) + reloc_offset);</span><br></pre></td></tr></table></figure>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/* Relocation table entry with addend (in section of type SHT_RELA).  */</span></span><br><span class="line"><span class="keyword">typedef</span> <span class="class"><span class="keyword">struct</span></span></span><br><span class="line"><span class="class">&#123;</span></span><br><span class="line">  Elf64_Addr    r_offset;               <span class="comment">/* Address */</span></span><br><span class="line">  Elf64_Xword   r_info;                 <span class="comment">/* Relocation type and symbol index */</span></span><br><span class="line">  Elf64_Sxword  r_addend;               <span class="comment">/* Addend */</span></span><br><span class="line">&#125; Elf64_Rela;</span><br></pre></td></tr></table></figure>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># readelf --dynamic main | grep -E &quot;Tag|JMPREL&quot;</span></span><br><span class="line">  Tag        Type                         Name/Value</span><br><span class="line"> 0x0000000000000017 (JMPREL)             0x578</span><br></pre></td></tr></table></figure>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># readelf --section-headers main | grep -E &quot;Nr|578&quot; -A1 | grep -v &quot;\-\-&quot;</span></span><br><span class="line">  [Nr] Name              Type             Address           Offset</span><br><span class="line">       Size              EntSize          Flags  Link  Info  Align</span><br><span class="line">  [10] .rela.plt         RELA             0000000000000578  00000578</span><br><span class="line">       0000000000000018  0000000000000018  AI       5    23     8</span><br></pre></td></tr></table></figure>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># export reloc_table_start_addr=0x578</span></span><br><span class="line"><span class="comment"># export reloc_entry_size=0x18</span></span><br><span class="line"><span class="comment"># export reloc_offset=0</span></span><br><span class="line"><span class="comment"># od --skip-bytes=$(($reloc_table_start_addr + $reloc_entry_size * $reloc_offset)) --read-bytes=$reloc_entry_size --format=xL main</span></span><br><span class="line">0002570 0000000000004018 0000000400000007</span><br><span class="line">0002610 0000000000000000</span><br></pre></td></tr></table></figure>
+<p>对照 <code>Elf64_Rela</code> 的定义，<code>r_info</code> 的值是 0x4 &lt;&lt; 32 + 0x7 。</p>
+<h2 id="访问-dynsym-表项">访问 .dynsym 表项</h2>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/* We use this macro to refer to ELF macros independent of the native</span></span><br><span class="line"><span class="comment">   wordsize.  `ELFW(R_TYPE)&#x27; is used in place of `ELF32_R_TYPE&#x27; or</span></span><br><span class="line"><span class="comment">   `ELF64_R_TYPE&#x27;.  */</span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">define</span> ELFW(type)      _ElfW (ELF, __ELF_NATIVE_CLASS, type)</span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">define</span> ELF64_R_SYM(i)          ((i) &gt;&gt; 32)</span></span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">const</span> <span class="title">ElfW</span><span class="params">(Sym)</span> *<span class="keyword">const</span> symtab</span></span><br><span class="line"><span class="function">  </span>= (<span class="keyword">const</span> <span class="keyword">void</span> *) <span class="built_in">D_PTR</span> (l, l_info[DT_SYMTAB]);</span><br><span class="line"><span class="function"><span class="keyword">const</span> <span class="title">ElfW</span><span class="params">(Sym)</span> *sym </span>= &amp;symtab[<span class="built_in">ELFW</span>(R_SYM) (reloc-&gt;r_info)];</span><br></pre></td></tr></table></figure>
+<p>所以 <code>ELFW(R_SYM) (reloc-&gt;r_info) == 4</code> 。</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">typedef</span> <span class="keyword">uint32_t</span> Elf64_Word;</span><br><span class="line"><span class="keyword">typedef</span> <span class="keyword">uint64_t</span> Elf64_Xword;</span><br><span class="line"><span class="keyword">typedef</span> <span class="keyword">uint16_t</span> Elf64_Section;</span><br><span class="line"><span class="keyword">typedef</span> <span class="class"><span class="keyword">struct</span></span></span><br><span class="line"><span class="class">&#123;</span></span><br><span class="line">  Elf64_Word    st_name;                <span class="comment">/* Symbol name (string tbl index) */</span></span><br><span class="line">  <span class="keyword">unsigned</span> <span class="keyword">char</span> st_info;                <span class="comment">/* Symbol type and binding */</span></span><br><span class="line">  <span class="keyword">unsigned</span> <span class="keyword">char</span> st_other;               <span class="comment">/* Symbol visibility */</span></span><br><span class="line">  Elf64_Section st_shndx;               <span class="comment">/* Section index */</span></span><br><span class="line">  Elf64_Addr    st_value;               <span class="comment">/* Symbol value */</span></span><br><span class="line">  Elf64_Xword   st_size;                <span class="comment">/* Symbol size */</span></span><br><span class="line">&#125; Elf64_Sym;</span><br></pre></td></tr></table></figure>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># readelf --dynamic main | grep -E &quot;Tag|SYMTAB&quot;</span></span><br><span class="line">  Tag        Type                         Name/Value</span><br><span class="line"> 0x0000000000000006 (SYMTAB)             0x348</span><br></pre></td></tr></table></figure>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># readelf --section-headers main | grep -E &quot;Nr|348&quot; -A1 | grep -v &quot;\-\-&quot;</span></span><br><span class="line">  [Nr] Name              Type             Address           Offset</span><br><span class="line">       Size              EntSize          Flags  Link  Info  Align</span><br><span class="line">  [ 5] .dynsym           DYNSYM           0000000000000348  00000348</span><br><span class="line">       00000000000000a8  0000000000000018   A       6     1     8</span><br></pre></td></tr></table></figure>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># export symbol_table_start_addr=0x348</span></span><br><span class="line"><span class="comment"># export symbol_table_entry_size=0x18</span></span><br><span class="line"><span class="comment"># export symbol_table_entry_index=0x4</span></span><br><span class="line"><span class="comment"># od --skip-bytes=$(($symbol_table_start_addr + $symbol_table_entry_size * $symbol_table_entry_index)) --read-bytes=$symbol_table_entry_size --format=xL main</span></span><br><span class="line">0001650 0000001200000050 0000000000000000</span><br><span class="line">0001670 0000000000000000</span><br></pre></td></tr></table></figure>
+<p>对照 <code>Elf64_Sym</code> 的定义，<code>st_name</code> 的值是 0x50 。</p>
+<h2 id="访问-dynstr-表项">访问 .dynstr 表项</h2>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">const</span> <span class="keyword">char</span> *strtab = (<span class="keyword">const</span> <span class="keyword">void</span> *) <span class="built_in">D_PTR</span> (l, l_info[DT_STRTAB]);</span><br><span class="line">result = _dl_lookup_symbol_x (strtab + sym-&gt;st_name, l, &amp;sym, l-&gt;l_scope,</span><br><span class="line">                              version, ELF_RTYPE_CLASS_PLT, flags, <span class="literal">NULL</span>);</span><br></pre></td></tr></table></figure>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># readelf --dynamic main | grep -E &quot;Tag|STRTAB&quot;</span></span><br><span class="line">  Tag        Type                         Name/Value</span><br><span class="line"> 0x0000000000000005 (STRTAB)             0x3f0</span><br></pre></td></tr></table></figure>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># readelf --section-headers main | grep -E &quot;Nr|3f0&quot; -A1 | grep -v &quot;\-\-&quot;</span></span><br><span class="line">  [Nr] Name              Type             Address           Offset</span><br><span class="line">       Size              EntSize          Flags  Link  Info  Align</span><br><span class="line">  [ 6] .dynstr           STRTAB           00000000000003f0  000003f0</span><br><span class="line">       000000000000009a  0000000000000000   A       0     0     1</span><br></pre></td></tr></table></figure>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># export string_table_start_addr=0x3f0</span></span><br><span class="line"><span class="comment"># export st_name=0x50</span></span><br><span class="line"><span class="comment"># od --skip-bytes=$(($string_table_start_addr + $st_name)) --read-bytes=0x8 --format=xC -c main</span></span><br><span class="line">0002100  5f  5a  33  66  6f  6f  76  00</span><br><span class="line">          _   Z   3   f   o   o   v  \0</span><br></pre></td></tr></table></figure>
+<p>函数 <code>foo</code> 在 mangle 后的名字是 <code>_Z3fooV</code> 。</p>
+<h2 id="查找符号">查找符号</h2>
+<p><code>_dl_lookup_symbol_x</code> 遍历 <code>l-&gt;l_scope</code> ，对于每一个 <code>scope</code> 调用 <code>do_lookup_x</code> 函数寻找符号：</p>
+<ol>
+<li><a href="https://clcanny.github.io/2020/11/18/dynamic-linking-symbol-search-order/">Dynamic Linking: Symbol Search Order</a> 探讨了在多个文件间查找符号的顺序；</li>
+<li><a href="https://clcanny.github.io/2020/11/20/dynamic-linking-search-symbols-in-one-binary/">Dynamic Linking: Search Symbols In One Binary</a> 探讨了在多个文件间查找符号的顺序。</li>
+</ol>
+<h3 id="l-scope">l_scope</h3>
+<p>摘抄自 <a target="_blank" rel="noopener" href="http://log.or.cz/?p=129">ld.so Scopes</a> ：</p>
+<blockquote>
+<p>The scope describes which libraries should be searched for symbol lookups occuring within the scope owner. (By the way, given that lookup scope may differ by caller, implementing <code>dlsym()</code> is not <em>that</em> trivial.) It is further divided into <strong>scope elements (struct r_scope_elem)</strong> – a single scope element basically describes a single search list of libraries, and the scope (<strong>link_map.l_scope</strong> is the scope used for symbol lookup) is list of such scope elements.</p>
+</blockquote>
+<blockquote>
+<p>To reiterate, a symbol lookup scope is a list of lists! Then, when looking up a symbol, the linker walks the lists in the order they are listed in the scope. But what really are the scope elements? There are two usual kinds:</p>
+<ul>
+<li>The “global scope” – all libraries (ahem, link_maps) that have been requested to be loaded by the main program (what ldd on the binary file of the main program would print out, plus dlopen()ed stuff).</li>
+<li>The “local scope” – DT_NEEDED library dependencies of the current link_map (what ldd on the binary file of the library would print out, plus dlopen()ed stuff).</li>
+</ul>
+</blockquote>
+<blockquote>
+<p>The global scope is shared between all link_maps (in the current namespace), while the local scope is owned by a particular library.</p>
+</blockquote>
+<h2 id="回填-got-plt-表项">回填 .got.plt 表项</h2>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">const</span> PLTREL *<span class="keyword">const</span> reloc</span><br><span class="line">  = (<span class="keyword">const</span> <span class="keyword">void</span> *) (<span class="built_in">D_PTR</span> (l, l_info[DT_JMPREL]) + reloc_offset);</span><br><span class="line"><span class="keyword">void</span> *<span class="keyword">const</span> rel_addr = (<span class="keyword">void</span> *)(l-&gt;l_addr + reloc-&gt;r_offset);</span><br><span class="line"><span class="comment">/* Finally, fix up the plt itself.  */</span></span><br><span class="line"><span class="keyword">if</span> (__glibc_unlikely (<span class="built_in">GLRO</span>(dl_bind_not)))</span><br><span class="line">  <span class="keyword">return</span> value;</span><br><span class="line"><span class="keyword">return</span> <span class="built_in">elf_machine_fixup_plt</span> (l, result, refsym, sym, reloc, rel_addr, value);</span><br><span class="line"></span><br><span class="line"><span class="comment">// sysdeps/x86_64/dl-machine.h</span></span><br><span class="line"><span class="function"><span class="keyword">static</span> <span class="keyword">inline</span> <span class="title">ElfW</span><span class="params">(Addr)</span></span></span><br><span class="line"><span class="function"><span class="title">elf_machine_fixup_plt</span> <span class="params">(struct link_map *map, <span class="keyword">lookup_t</span> t,</span></span></span><br><span class="line"><span class="params"><span class="function">                       <span class="keyword">const</span> ElfW(Sym) *refsym, <span class="keyword">const</span> ElfW(Sym) *sym,</span></span></span><br><span class="line"><span class="params"><span class="function">                       <span class="keyword">const</span> ElfW(Rela) *reloc,</span></span></span><br><span class="line"><span class="params"><span class="function">                       ElfW(Addr) *reloc_addr, ElfW(Addr) value)</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">  <span class="keyword">return</span> *reloc_addr = value;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/* Relocation table entry with addend (in section of type SHT_RELA).  */</span></span><br><span class="line"><span class="keyword">typedef</span> <span class="class"><span class="keyword">struct</span></span></span><br><span class="line"><span class="class">&#123;</span></span><br><span class="line">  Elf64_Addr    r_offset;               <span class="comment">/* Address */</span></span><br><span class="line">  Elf64_Xword   r_info;                 <span class="comment">/* Relocation type and symbol index */</span></span><br><span class="line">  Elf64_Sxword  r_addend;               <span class="comment">/* Addend */</span></span><br><span class="line">&#125; Elf64_Rela;</span><br></pre></td></tr></table></figure>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># readelf --dynamic main | grep -E &quot;Tag|JMPREL&quot;</span></span><br><span class="line">  Tag        Type                         Name/Value</span><br><span class="line"> 0x0000000000000017 (JMPREL)             0x578</span><br></pre></td></tr></table></figure>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># readelf --section-headers main | grep -E &quot;Nr|578&quot; -A1 | grep -v &quot;\-\-&quot;</span></span><br><span class="line">  [Nr] Name              Type             Address           Offset</span><br><span class="line">       Size              EntSize          Flags  Link  Info  Align</span><br><span class="line">  [10] .rela.plt         RELA             0000000000000578  00000578</span><br><span class="line">       0000000000000018  0000000000000018  AI       5    23     8</span><br></pre></td></tr></table></figure>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># export reloc_table_start_addr=0x578</span></span><br><span class="line"><span class="comment"># export reloc_entry_size=0x18</span></span><br><span class="line"><span class="comment"># export reloc_offset=0</span></span><br><span class="line"><span class="comment"># od --skip-bytes=$(($reloc_table_start_addr + $reloc_entry_size * $reloc_offset)) --read-bytes=$reloc_entry_size --format=xL main</span></span><br><span class="line">0002570 0000000000004018 0000000400000007</span><br><span class="line">0002610 0000000000000000</span><br></pre></td></tr></table></figure>
+<p>对比 <code>Elf64_Rela</code> 的定义，<code>r_offset</code> 的值是 0x4018 ，而 0x4018 恰好是 .got.plt 表为函数 foo 预留的占位符。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># objdump -d -j .plt main | tail -n 3</span></span><br><span class="line">    1030:   ff 25 e2 2f 00 00       jmpq   *0x2fe2(%rip)        <span class="comment"># 4018 &lt;_Z3foov&gt;</span></span><br><span class="line">    1036:   68 00 00 00 00          pushq  <span class="variable">$0x0</span></span><br><span class="line">    103b:   e9 e0 ff ff ff          jmpq   1020 &lt;.plt&gt;</span><br></pre></td></tr></table></figure>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># readelf --section-headers main | grep -E &quot;Nr|.got.plt&quot; -A1 | grep -v &quot;\-\-&quot;</span></span><br><span class="line">  [Nr] Name              Type             Address           Offset</span><br><span class="line">       Size              EntSize          Flags  Link  Info  Align</span><br><span class="line">  [23] .got.plt          PROGBITS         0000000000004000  00003000</span><br><span class="line">       0000000000000020  0000000000000008  WA       0     0     8</span><br></pre></td></tr></table></figure>
+<h1 id="dl-runtime-resolve-xsave-after-dl-fixup">_dl_runtime_resolve_xsave: after _dl_fixup</h1>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">jmp *%r11               # Jump to function address.</span><br></pre></td></tr></table></figure>
+<p><code>_dl_runtime_resolve_xsave</code> 在调用 <code>_dl_fixup</code> 之后的主要工作是：调用函数。</p>
+
+    </div>
+
+    
+    
+    
+
+      <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/dynamic-linking/" rel="tag"># dynamic linking</a>
+          </div>
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2020/11/20/dynamic-linking-search-symbols-in-one-binary/" rel="prev" title="Dynamic Linking: Search Symbols In One Binary">
+      <i class="fa fa-chevron-left"></i> Dynamic Linking: Search Symbols In One Binary
+    </a></div>
+      <div class="post-nav-item">
+    <a href="/2020/11/24/dynamic-linking-introduction-to-elf-file/" rel="next" title="Dynamic Linking: Introduction To Elf File">
+      Dynamic Linking: Introduction To Elf File <i class="fa fa-chevron-right"></i>
+    </a></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+
+
+          </div>
+          
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          Table of Contents
+        </li>
+        <li class="sidebar-nav-overview">
+          Overview
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#%E5%BC%80%E5%A7%8B%E9%87%8D%E5%AE%9A%E4%BD%8D%EF%BC%9A-plt-got-plt"><span class="nav-number">1.</span> <span class="nav-text">开始重定位：.plt .got.plt</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#dl-runtime-resolve-xsave-before-dl-fixup"><span class="nav-number">2.</span> <span class="nav-text">_dl_runtime_resolve_xsave: before _dl_fixup</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#dl-fixup"><span class="nav-number">3.</span> <span class="nav-text">_dl_fixup</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E8%AE%BF%E9%97%AE-dynamic-%E8%A1%A8%E9%A1%B9"><span class="nav-number">3.1.</span> <span class="nav-text">访问 .dynamic 表项</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%AF%B9%E6%AF%94-dynamic-%E4%B8%8E-section-headers"><span class="nav-number">3.2.</span> <span class="nav-text">对比 .dynamic 与 section headers</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E8%AE%BF%E9%97%AE-rela-plt-%E8%A1%A8%E9%A1%B9"><span class="nav-number">3.3.</span> <span class="nav-text">访问 .rela.plt 表项</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E8%AE%BF%E9%97%AE-dynsym-%E8%A1%A8%E9%A1%B9"><span class="nav-number">3.4.</span> <span class="nav-text">访问 .dynsym 表项</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E8%AE%BF%E9%97%AE-dynstr-%E8%A1%A8%E9%A1%B9"><span class="nav-number">3.5.</span> <span class="nav-text">访问 .dynstr 表项</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%9F%A5%E6%89%BE%E7%AC%A6%E5%8F%B7"><span class="nav-number">3.6.</span> <span class="nav-text">查找符号</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#l-scope"><span class="nav-number">3.6.1.</span> <span class="nav-text">l_scope</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%9B%9E%E5%A1%AB-got-plt-%E8%A1%A8%E9%A1%B9"><span class="nav-number">3.7.</span> <span class="nav-text">回填 .got.plt 表项</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#dl-runtime-resolve-xsave-after-dl-fixup"><span class="nav-number">4.</span> <span class="nav-text">_dl_runtime_resolve_xsave: after _dl_fixup</span></a></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+  <p class="site-author-name" itemprop="name">JunBin</p>
+  <div class="site-description" itemprop="description">a programmer's blog</div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">21</span>
+          <span class="site-state-item-name">posts</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+          
+        <span class="site-state-item-count">11</span>
+        <span class="site-state-item-name">tags</span></a>
+      </div>
+  </nav>
+</div>
+
+
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+        
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2021</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">JunBin</span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item-icon">
+      <i class="fa fa-chart-area"></i>
+    </span>
+    <span title="Symbols count total">42k</span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item-icon">
+      <i class="fa fa-coffee"></i>
+    </span>
+    <span title="Reading time total">1:09</span>
+</div>
+  <div class="powered-by">Powered by <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> & <a href="https://muse.theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Muse</a>
+  </div>
+
+        
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/muse.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+</body>
+</html>

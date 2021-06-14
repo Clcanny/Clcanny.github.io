@@ -1,0 +1,253 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  
+  <url>
+    <loc>https://clcanny.github.io/2021/05/23/big-data-delta-lake/</loc>
+    
+    <lastmod>2021-06-14</lastmod>
+    
+  </url>
+  
+  <url>
+    <loc>https://clcanny.github.io/2020/06/14/useful-vim-plugin/</loc>
+    
+    <lastmod>2021-05-26</lastmod>
+    
+  </url>
+  
+  <url>
+    <loc>https://clcanny.github.io/2019/07/16/useful-and-easy-new-features-of-Cpp11/</loc>
+    
+    <lastmod>2021-05-26</lastmod>
+    
+  </url>
+  
+  <url>
+    <loc>https://clcanny.github.io/google05435c427f494d89.html</loc>
+    
+    <lastmod>2021-05-26</lastmod>
+    
+  </url>
+  
+  <url>
+    <loc>https://clcanny.github.io/tags/index.html</loc>
+    
+    <lastmod>2021-05-26</lastmod>
+    
+  </url>
+  
+  <url>
+    <loc>https://clcanny.github.io/2020/05/03/spark-useful-tips/</loc>
+    
+    <lastmod>2021-05-26</lastmod>
+    
+  </url>
+  
+  <url>
+    <loc>https://clcanny.github.io/2020/02/16/string-literal-in-Cpp11/</loc>
+    
+    <lastmod>2021-05-26</lastmod>
+    
+  </url>
+  
+  <url>
+    <loc>https://clcanny.github.io/2020/06/19/perf-without-programming/</loc>
+    
+    <lastmod>2021-05-26</lastmod>
+    
+  </url>
+  
+  <url>
+    <loc>https://clcanny.github.io/2020/02/17/tcmalloc-in-toma/</loc>
+    
+    <lastmod>2021-05-26</lastmod>
+    
+  </url>
+  
+  <url>
+    <loc>https://clcanny.github.io/2020/11/18/dynamic-linking-symbol-search-order/</loc>
+    
+    <lastmod>2021-05-26</lastmod>
+    
+  </url>
+  
+  <url>
+    <loc>https://clcanny.github.io/2021/01/30/dynamic-linking-the-first-three-items-of-got/</loc>
+    
+    <lastmod>2021-05-26</lastmod>
+    
+  </url>
+  
+  <url>
+    <loc>https://clcanny.github.io/2020/04/24/mmap-analyser-v1/</loc>
+    
+    <lastmod>2021-05-26</lastmod>
+    
+  </url>
+  
+  <url>
+    <loc>https://clcanny.github.io/2020/12/03/dynamic-linking-relocation-types/</loc>
+    
+    <lastmod>2021-05-26</lastmod>
+    
+  </url>
+  
+  <url>
+    <loc>https://clcanny.github.io/2020/11/20/dynamic-linking-search-symbols-in-one-binary/</loc>
+    
+    <lastmod>2021-05-26</lastmod>
+    
+  </url>
+  
+  <url>
+    <loc>https://clcanny.github.io/2020/11/24/dynamic-linking-introduction-to-elf-file/</loc>
+    
+    <lastmod>2021-05-26</lastmod>
+    
+  </url>
+  
+  <url>
+    <loc>https://clcanny.github.io/2020/11/21/dynamic-linking-relocation-across-files/</loc>
+    
+    <lastmod>2021-05-26</lastmod>
+    
+  </url>
+  
+  <url>
+    <loc>https://clcanny.github.io/2021/03/31/columnar-storage-get-started-with-parquet/</loc>
+    
+    <lastmod>2021-05-26</lastmod>
+    
+  </url>
+  
+  <url>
+    <loc>https://clcanny.github.io/2021/03/12/dynamic-linking-about-global-strings/</loc>
+    
+    <lastmod>2021-05-26</lastmod>
+    
+  </url>
+  
+  <url>
+    <loc>https://clcanny.github.io/2020/12/22/dynamic-linking-compatibility-of-hash-tables/</loc>
+    
+    <lastmod>2021-05-26</lastmod>
+    
+  </url>
+  
+  <url>
+    <loc>https://clcanny.github.io/2020/11/15/dynamic-linking-init-order/</loc>
+    
+    <lastmod>2021-05-26</lastmod>
+    
+  </url>
+  
+  <url>
+    <loc>https://clcanny.github.io/2020/09/13/a-simple-example-of-ANTLR4-and-C++/</loc>
+    
+    <lastmod>2021-05-26</lastmod>
+    
+  </url>
+  
+  <url>
+    <loc>https://clcanny.github.io/2020/10/24/build-OpenJDK/</loc>
+    
+    <lastmod>2021-05-26</lastmod>
+    
+  </url>
+  
+  <url>
+    <loc>https://clcanny.github.io/2021/03/29/columnar-storage-dremel/</loc>
+    
+    <lastmod>2021-05-26</lastmod>
+    
+  </url>
+  
+
+  <url>
+    <loc>https://clcanny.github.io/</loc>
+    <lastmod>2021-06-14</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>1.0</priority>
+  </url>
+
+  
+  <url>
+    <loc>https://clcanny.github.io/tags/columnar-storage/</loc>
+    <lastmod>2021-06-14</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.6</priority>
+  </url>
+  
+  <url>
+    <loc>https://clcanny.github.io/tags/dynamic-linking/</loc>
+    <lastmod>2021-06-14</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.6</priority>
+  </url>
+  
+  <url>
+    <loc>https://clcanny.github.io/tags/c-11/</loc>
+    <lastmod>2021-06-14</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.6</priority>
+  </url>
+  
+  <url>
+    <loc>https://clcanny.github.io/tags/antlr4/</loc>
+    <lastmod>2021-06-14</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.6</priority>
+  </url>
+  
+  <url>
+    <loc>https://clcanny.github.io/tags/big-data/</loc>
+    <lastmod>2021-06-14</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.6</priority>
+  </url>
+  
+  <url>
+    <loc>https://clcanny.github.io/tags/OpenJDK/</loc>
+    <lastmod>2021-06-14</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.6</priority>
+  </url>
+  
+  <url>
+    <loc>https://clcanny.github.io/tags/memory-analyse/</loc>
+    <lastmod>2021-06-14</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.6</priority>
+  </url>
+  
+  <url>
+    <loc>https://clcanny.github.io/tags/Spark/</loc>
+    <lastmod>2021-06-14</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.6</priority>
+  </url>
+  
+  <url>
+    <loc>https://clcanny.github.io/tags/vim/</loc>
+    <lastmod>2021-06-14</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.6</priority>
+  </url>
+  
+  <url>
+    <loc>https://clcanny.github.io/tags/tool/</loc>
+    <lastmod>2021-06-14</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.6</priority>
+  </url>
+  
+  <url>
+    <loc>https://clcanny.github.io/tags/perf/</loc>
+    <lastmod>2021-06-14</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.6</priority>
+  </url>
+  
+
+  
+</urlset>

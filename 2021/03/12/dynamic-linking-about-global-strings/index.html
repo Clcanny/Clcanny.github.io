@@ -1,0 +1,463 @@
+<!DOCTYPE html>
+<html lang="zh-Hans">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 5.4.0">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+<link rel="stylesheet" href="//fonts.googleapis.com/css?family=Lato:300,300italic,400,400italic,700,700italic&display=swap&subset=latin,latin-ext">
+<link rel="stylesheet" href="/lib/font-awesome/css/all.min.css">
+
+<script id="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"clcanny.github.io","root":"/","scheme":"Muse","version":"7.8.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":true,"show_result":true,"style":null},"back2top":{"enable":true,"sidebar":false,"scrollpercent":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":false,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}}};
+  </script>
+
+  <meta name="description" content="环境 本文使用的环境与 Dynamic Linking: Introduction To Elf File 使用的环境一致。 1234# cat &#x2F;etc&#x2F;os-release | head -n 1PRETTY_NAME&#x3D;&quot;Debian GNU&#x2F;Linux bullseye&#x2F;sid&quot;# g++ --version | head -n 1g++ (Debian 10.2.1-6">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Dynamic Linking: About Global Strings">
+<meta property="og:url" content="https://clcanny.github.io/2021/03/12/dynamic-linking-about-global-strings/index.html">
+<meta property="og:site_name" content="On The Road">
+<meta property="og:description" content="环境 本文使用的环境与 Dynamic Linking: Introduction To Elf File 使用的环境一致。 1234# cat &#x2F;etc&#x2F;os-release | head -n 1PRETTY_NAME&#x3D;&quot;Debian GNU&#x2F;Linux bullseye&#x2F;sid&quot;# g++ --version | head -n 1g++ (Debian 10.2.1-6">
+<meta property="og:locale">
+<meta property="og:image" content="http://junbin-hexo-img.oss-cn-beijing.aliyuncs.com/dynamic-linking-about-global-strings/global-raw-string.png">
+<meta property="og:image" content="http://junbin-hexo-img.oss-cn-beijing.aliyuncs.com/dynamic-linking-about-global-strings/global-string.png">
+<meta property="og:image" content="http://junbin-hexo-img.oss-cn-beijing.aliyuncs.com/dynamic-linking-about-global-strings/thread-local-raw-string.png">
+<meta property="og:image" content="http://junbin-hexo-img.oss-cn-beijing.aliyuncs.com/dynamic-linking-about-global-strings/thread-local-string.png">
+<meta property="article:published_time" content="2021-03-12T09:16:31.000Z">
+<meta property="article:modified_time" content="2021-05-26T05:47:06.352Z">
+<meta property="article:author" content="JunBin">
+<meta property="article:tag" content="dynamic linking">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="http://junbin-hexo-img.oss-cn-beijing.aliyuncs.com/dynamic-linking-about-global-strings/global-raw-string.png">
+
+<link rel="canonical" href="https://clcanny.github.io/2021/03/12/dynamic-linking-about-global-strings/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'zh-Hans'
+  };
+</script>
+
+  <title>Dynamic Linking: About Global Strings | On The Road</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="Toggle navigation bar">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <span class="logo-line-before"><i></i></span>
+      <h1 class="site-title">On The Road</h1>
+      <span class="logo-line-after"><i></i></span>
+    </a>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+    </div>
+  </div>
+</div>
+
+
+
+
+<nav class="site-nav">
+  <ul id="menu" class="main-menu menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-home fa-fw"></i>Home</a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>Archives</a>
+
+  </li>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>Tags</a>
+
+  </li>
+  </ul>
+</nav>
+
+
+
+
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content post posts-expand">
+            
+
+    
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-Hans">
+    <link itemprop="mainEntityOfPage" href="https://clcanny.github.io/2021/03/12/dynamic-linking-about-global-strings/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="JunBin">
+      <meta itemprop="description" content="a programmer's blog">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="On The Road">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          Dynamic Linking: About Global Strings
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">Posted on</span>
+
+              <time title="Created: 2021-03-12 17:16:31" itemprop="dateCreated datePublished" datetime="2021-03-12T17:16:31+08:00">2021-03-12</time>
+            </span>
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="far fa-calendar-check"></i>
+                </span>
+                <span class="post-meta-item-text">Edited on</span>
+                <time title="Modified: 2021-05-26 13:47:06" itemprop="dateModified" datetime="2021-05-26T13:47:06+08:00">2021-05-26</time>
+              </span>
+
+          <br>
+            <span class="post-meta-item" title="Symbols count in article">
+              <span class="post-meta-item-icon">
+                <i class="far fa-file-word"></i>
+              </span>
+                <span class="post-meta-item-text">Symbols count in article: </span>
+              <span>876</span>
+            </span>
+            <span class="post-meta-item" title="Reading time">
+              <span class="post-meta-item-icon">
+                <i class="far fa-clock"></i>
+              </span>
+                <span class="post-meta-item-text">Reading time &asymp;</span>
+              <span>1 mins.</span>
+            </span>
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <h1 id="环境">环境</h1>
+<p>本文使用的环境与 <a href="https://clcanny.github.io/2020/11/24/dynamic-linking-introduction-to-elf-file/">Dynamic Linking: Introduction To Elf File</a> 使用的环境一致。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># cat /etc/os-release | head -n 1</span></span><br><span class="line">PRETTY_NAME=<span class="string">&quot;Debian GNU/Linux bullseye/sid&quot;</span></span><br><span class="line"><span class="comment"># g++ --version | head -n 1</span></span><br><span class="line">g++ (Debian 10.2.1-6) 10.2.1 20210110</span><br></pre></td></tr></table></figure>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">g++ -fPIC -ggdb -O0 -shared                                                 \</span><br><span class="line">    -Wl,--dynamic-linker=/root/glibc/build/install/lib/ld-linux-x86-64.so.2 \</span><br><span class="line">    foo.cpp -o libfoo.so</span><br><span class="line">g++ main.cpp                                                                \</span><br><span class="line">    -L<span class="variable">$PWD</span> -Wl,-rpath=<span class="variable">$PWD</span>                                                  \</span><br><span class="line">    -Wl,--dynamic-linker=/root/glibc/build/install/lib/ld-linux-x86-64.so.2 \</span><br><span class="line">    -lfoo -o main</span><br><span class="line"><span class="built_in">export</span> LD_LIBRARY_PATH=/usr/lib/x86_64-linux-gnu:/lib/x86_64-linux-gnu</span><br></pre></td></tr></table></figure>
+<h1 id="Global-Raw-String">Global Raw String</h1>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#<span class="meta-keyword">include</span> <span class="meta-string">&lt;iostream&gt;</span></span></span><br><span class="line"><span class="keyword">const</span> <span class="keyword">char</span>* var = <span class="string">&quot;var&quot;</span>;</span><br><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">foo</span><span class="params">()</span> </span>&#123;</span><br><span class="line">    std::cout &lt;&lt; var &lt;&lt; std::endl;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p><img src="http://junbin-hexo-img.oss-cn-beijing.aliyuncs.com/dynamic-linking-about-global-strings/global-raw-string.png" alt=""></p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># readelf --section-headers libfoo.so | grep -E -w &quot;Nr|.got|.data|.rodata&quot; -A1 | grep -v &quot;\-\-&quot;</span></span><br><span class="line">  [Nr] Name              Type             Address           Offset</span><br><span class="line">       Size              EntSize          Flags  Link  Info  Align</span><br><span class="line">  [14] .rodata           PROGBITS         0000000000002000  00002000</span><br><span class="line">       0000000000000005  0000000000000000   A       0     0     1</span><br><span class="line">  [20] .got              PROGBITS         0000000000003fc0  00002fc0</span><br><span class="line">       0000000000000040  0000000000000008  WA       0     0     8</span><br><span class="line">  [22] .data             PROGBITS         0000000000004038  00003038</span><br><span class="line">       0000000000000010  0000000000000000  WA       0     0     8</span><br></pre></td></tr></table></figure>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># objdump -d -j .text libfoo.so | grep &quot;&lt;_Z3foov&gt;:&quot; -A16</span></span><br><span class="line">0000000000001135 &lt;_Z3foov&gt;:</span><br><span class="line">    1135:       55                      push   %rbp</span><br><span class="line">    1136:       48 89 e5                mov    %rsp,%rbp</span><br><span class="line">    1139:       48 8b 05 b0 2e 00 00    mov    0x2eb0(%rip),%rax        <span class="comment"># 3ff0 &lt;var@@Base-0x50&gt;</span></span><br><span class="line">    1140:       48 8b 00                mov    (%rax),%rax</span><br><span class="line">    1143:       48 89 c6                mov    %rax,%rsi</span><br><span class="line">    1146:       48 8b 05 9b 2e 00 00    mov    0x2e9b(%rip),%rax        <span class="comment"># 3fe8 &lt;_ZSt4cout@GLIBCXX_3.4&gt;</span></span><br><span class="line">    114d:       48 89 c7                mov    %rax,%rdi</span><br><span class="line">    1150:       e8 fb fe ff ff          callq  1050 &lt;_ZStlsISt11char_traitsIcEERSt13basic_ostreamIcT_ES5_PKc@plt&gt;</span><br><span class="line">    1155:       48 89 c2                mov    %rax,%rdx</span><br><span class="line">    1158:       48 8b 05 99 2e 00 00    mov    0x2e99(%rip),%rax        <span class="comment"># 3ff8 &lt;_ZSt4endlIcSt11char_traitsIcEERSt13basic_ostreamIT_T0_ES6_@GLIBCXX_3.4&gt;</span></span><br><span class="line">    115f:       48 89 c6                mov    %rax,%rsi</span><br><span class="line">    1162:       48 89 d7                mov    %rdx,%rdi</span><br><span class="line">    1165:       e8 f6 fe ff ff          callq  1060 &lt;_ZNSolsEPFRSoS_E@plt&gt;</span><br><span class="line">    116a:       90                      nop</span><br><span class="line">    116b:       5d                      pop    %rbp</span><br><span class="line">    116c:       c3                      retq</span><br><span class="line"><span class="comment"># od --skip-bytes=$((0x4040 - 0x4038 + 0x3038)) --read-bytes=8 --format=xL libfoo.so</span></span><br><span class="line">0030100 0000000000002001</span><br><span class="line"><span class="comment"># od --skip-bytes=$((0x2001 - 0x2000 + 0x2000)) --read-bytes=4 --format=xC -c libfoo.so</span></span><br><span class="line">0020001  76  61  72  00</span><br><span class="line">          v   a   r  \0</span><br></pre></td></tr></table></figure>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># readelf --wide --relocs libfoo.so</span></span><br><span class="line">Relocation section <span class="string">&#x27;.rela.dyn&#x27;</span> at offset 0x598 contains 13 entries:</span><br><span class="line">    Offset             Info             Type               Symbol<span class="string">&#x27;s Value  Symbol&#x27;</span>s Name + Addend</span><br><span class="line">0000000000004040  0000000000000008 R_X86_64_RELATIVE                         2001</span><br><span class="line">0000000000003ff0  0000000c00000006 R_X86_64_GLOB_DAT      0000000000004040 var + 0</span><br></pre></td></tr></table></figure>
+<h1 id="Global-String">Global String</h1>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">#include &lt;iostream&gt;</span></span><br><span class="line">const std::string var = <span class="string">&quot;var&quot;</span>;</span><br><span class="line">void <span class="function"><span class="title">foo</span></span>() &#123;</span><br><span class="line">    std::cout &lt;&lt; <span class="string">var &lt;&lt; std::endl;</span></span><br><span class="line"><span class="string">&#125;</span></span><br></pre></td></tr></table></figure>
+<p><img src="http://junbin-hexo-img.oss-cn-beijing.aliyuncs.com/dynamic-linking-about-global-strings/global-string.png" alt=""></p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">(gdb) bt</span><br><span class="line"><span class="comment">#0  0x00007ffff7f3304b in std::__cxx11::basic_string&lt;char, std::char_traits&lt;char&gt;, std::allocator&lt;char&gt; &gt;::basic_string(char const*, std::allocator&lt;char&gt; const&amp;) ()</span></span><br><span class="line">   from /usr/lib/x86_64-linux-gnu/libstdc++.so.6</span><br><span class="line"><span class="comment">#1  0x00007ffff7fcb21c in __static_initialization_and_destruction_0 (__initialize_p=1, __priority=65535) at foo.cpp:2</span></span><br><span class="line"><span class="comment">#2  0x00007ffff7fcb27a in _GLOBAL__sub_I_foo.cpp(void) () at foo.cpp:5</span></span><br><span class="line"><span class="comment">#3  0x00007ffff7fe3d4c in call_init (l=&lt;optimized out&gt;, argc=argc@entry=1, argv=argv@entry=0x7fffffffece8, env=env@entry=0x7fffffffecf8) at dl-init.c:72</span></span><br><span class="line"><span class="comment">#4  0x00007ffff7fe3e32 in _dl_init (main_map=0x7ffff7ffe1a0, argc=1, argv=0x7fffffffece8, env=0x7fffffffecf8) at dl-init.c:119</span></span><br><span class="line"><span class="comment">#5  0x00007ffff7fd60ca in _dl_start_user () from /root/glibc/build/install/lib/ld-linux-x86-64.so.2</span></span><br></pre></td></tr></table></figure>
+<ol>
+<li>glibc 会负责调用 .init 函数和 .init_array 指定的函数；</li>
+<li>gcc 使用 .init_array 指定初始化函数，.init 函数只是一个空壳。</li>
+</ol>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">call_init</span><span class="params">(struct link_map* l, <span class="keyword">int</span> argc, <span class="keyword">char</span>** argv, <span class="keyword">char</span>** env)</span> </span>&#123;</span><br><span class="line">    <span class="comment">// Now run the local constructors.  There are two forms of them:</span></span><br><span class="line">    <span class="comment">// - the one named by DT_INIT</span></span><br><span class="line">    <span class="comment">// - the others in the DT_INIT_ARRAY.</span></span><br><span class="line">    <span class="keyword">if</span> (l-&gt;l_info[DT_INIT] != <span class="literal">nullptr</span>) &#123;</span><br><span class="line">        <span class="built_in">DL_CALL_DT_INIT</span>(</span><br><span class="line">            l, l-&gt;l_addr + l-&gt;l_info[DT_INIT]-&gt;d_un.d_ptr, argc, argv, env);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// Next see whether there is an array with initialization functions.</span></span><br><span class="line">    <span class="built_in">ElfW</span>(Dyn)* init_array = l-&gt;l_info[DT_INIT_ARRAY];</span><br><span class="line">    <span class="keyword">if</span> (init_array != <span class="literal">nullptr</span>) &#123;</span><br><span class="line">        <span class="keyword">unsigned</span> <span class="keyword">int</span> jm =</span><br><span class="line">            l-&gt;l_info[DT_INIT_ARRAYSZ]-&gt;d_un.d_val / <span class="built_in"><span class="keyword">sizeof</span></span>(<span class="built_in">ElfW</span>(Addr));</span><br><span class="line">        <span class="built_in">ElfW</span>(Addr)* addrs = (<span class="built_in">ElfW</span>(Addr)*)(init_array-&gt;d_un.d_ptr + l-&gt;l_addr);</span><br><span class="line">        <span class="keyword">for</span> (<span class="keyword">unsigned</span> <span class="keyword">int</span> j = <span class="number">0</span>; j &lt; jm; ++j) &#123;</span><br><span class="line">            ((<span class="keyword">init_t</span>)addrs[j])(argc, argv, env);</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<h1 id="Thread-Local-Raw-String">Thread Local Raw String</h1>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#<span class="meta-keyword">include</span> <span class="meta-string">&lt;iostream&gt;</span></span></span><br><span class="line"><span class="keyword">thread_local</span> <span class="keyword">const</span> <span class="keyword">char</span>* tbss_var = <span class="literal">nullptr</span>;</span><br><span class="line"><span class="keyword">thread_local</span> <span class="keyword">const</span> <span class="keyword">char</span>* tdata_var = <span class="string">&quot;tdata_var&quot;</span>;</span><br><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">foo</span><span class="params">()</span> </span>&#123;</span><br><span class="line">    tbss_var = <span class="string">&quot;tbss_var&quot;</span>;</span><br><span class="line">    std::cout &lt;&lt; tbss_var &lt;&lt; std::endl;</span><br><span class="line">    std::cout &lt;&lt; tdata_var &lt;&lt; std::endl;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p><img src="http://junbin-hexo-img.oss-cn-beijing.aliyuncs.com/dynamic-linking-about-global-strings/thread-local-raw-string.png" alt=""></p>
+<ol>
+<li>为了保证 thread local 语义，ld 会将 .tbss section 和 .tdata section 中的数据拷贝到线程私有区域，详细信息请参考 <a target="_blank" rel="noopener" href="https://chao-tic.github.io/blog/2018/12/25/tls">Chao-tic: A Deep dive into (implicit) Thread Local Storage</a> ；</li>
+<li><code>__tls_get_addr</code> 是访问线程私有变量的两种方式之一，访问方式可以通过编译选项（<code>-ftls-model=initial-exec</code>）控制，详细信息请参考 <a target="_blank" rel="noopener" href="https://stackoverflow.com/questions/13106049/what-is-the-performance-penalty-of-c11-thread-local-variables-in-gcc-4-8">Stack Overflow: What is the performance penalty of C++11 thread_local variables in GCC 4.8?</a> ；</li>
+<li>使用选项 <code>-ftls-model=initial-exec</code> 编译的库带有 <code>STATIC_TLS</code> flag ，可以通过命令 <code>readelf --dynamic &lt;lib&gt; | grep FLAGS</code> 识别。</li>
+</ol>
+<h1 id="Thread-Local-String">Thread Local String</h1>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#<span class="meta-keyword">include</span> <span class="meta-string">&lt;iostream&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">include</span> <span class="meta-string">&lt;string&gt;</span></span></span><br><span class="line"><span class="keyword">thread_local</span> std::string var = <span class="string">&quot;var&quot;</span>;</span><br><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">foo</span><span class="params">()</span> </span>&#123;</span><br><span class="line">    std::cout &lt;&lt; var &lt;&lt; std::endl;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p><img src="http://junbin-hexo-img.oss-cn-beijing.aliyuncs.com/dynamic-linking-about-global-strings/thread-local-string.png" alt=""></p>
+<p>TLS init funtion 负责调用 thread local string 的构造函数，它使用一个 thread local bool 变量来记录构造函数是否已经被调用过，避免重复调用。</p>
+<h1 id="参考资料">参考资料</h1>
+<ul>
+<li><a target="_blank" rel="noopener" href="https://chao-tic.github.io/blog/2018/12/25/tls">Chao-tic: A Deep dive into (implicit) Thread Local Storage</a></li>
+<li><a target="_blank" rel="noopener" href="https://uclibc.org/docs/tls.pdf">ELF Handling For Thread-Local Storage</a></li>
+<li><a target="_blank" rel="noopener" href="https://docs.oracle.com/cd/E19683-01/817-3677/chapter8-1/index.html">Oracle: Thread-Local Storage</a></li>
+<li><a target="_blank" rel="noopener" href="https://stackoverflow.com/questions/13106049/what-is-the-performance-penalty-of-c11-thread-local-variables-in-gcc-4-8">Stack Overflow: What is the performance penalty of C++11 thread_local variables in GCC 4.8?</a></li>
+<li><a target="_blank" rel="noopener" href="https://maskray.me/blog/2021-02-14-all-about-thread-local-storage">MaskRay: All about thread-local storage</a></li>
+</ul>
+
+    </div>
+
+    
+    
+    
+
+      <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/dynamic-linking/" rel="tag"># dynamic linking</a>
+          </div>
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2021/01/30/dynamic-linking-the-first-three-items-of-got/" rel="prev" title="Dynamic Linking: The First Three Items Of GOT">
+      <i class="fa fa-chevron-left"></i> Dynamic Linking: The First Three Items Of GOT
+    </a></div>
+      <div class="post-nav-item">
+    <a href="/2021/03/29/columnar-storage-dremel/" rel="next" title="Columnar Storage: Dremel">
+      Columnar Storage: Dremel <i class="fa fa-chevron-right"></i>
+    </a></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+
+
+          </div>
+          
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          Table of Contents
+        </li>
+        <li class="sidebar-nav-overview">
+          Overview
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#%E7%8E%AF%E5%A2%83"><span class="nav-number">1.</span> <span class="nav-text">环境</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#Global-Raw-String"><span class="nav-number">2.</span> <span class="nav-text">Global Raw String</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#Global-String"><span class="nav-number">3.</span> <span class="nav-text">Global String</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#Thread-Local-Raw-String"><span class="nav-number">4.</span> <span class="nav-text">Thread Local Raw String</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#Thread-Local-String"><span class="nav-number">5.</span> <span class="nav-text">Thread Local String</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#%E5%8F%82%E8%80%83%E8%B5%84%E6%96%99"><span class="nav-number">6.</span> <span class="nav-text">参考资料</span></a></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+  <p class="site-author-name" itemprop="name">JunBin</p>
+  <div class="site-description" itemprop="description">a programmer's blog</div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">21</span>
+          <span class="site-state-item-name">posts</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+          
+        <span class="site-state-item-count">11</span>
+        <span class="site-state-item-name">tags</span></a>
+      </div>
+  </nav>
+</div>
+
+
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+        
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2021</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">JunBin</span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item-icon">
+      <i class="fa fa-chart-area"></i>
+    </span>
+    <span title="Symbols count total">42k</span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item-icon">
+      <i class="fa fa-coffee"></i>
+    </span>
+    <span title="Reading time total">1:09</span>
+</div>
+  <div class="powered-by">Powered by <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> & <a href="https://muse.theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Muse</a>
+  </div>
+
+        
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/muse.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+</body>
+</html>

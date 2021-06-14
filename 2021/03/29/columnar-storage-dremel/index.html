@@ -1,0 +1,718 @@
+<!DOCTYPE html>
+<html lang="zh-Hans">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 5.4.0">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+<link rel="stylesheet" href="//fonts.googleapis.com/css?family=Lato:300,300italic,400,400italic,700,700italic&display=swap&subset=latin,latin-ext">
+<link rel="stylesheet" href="/lib/font-awesome/css/all.min.css">
+
+<script id="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"clcanny.github.io","root":"/","scheme":"Muse","version":"7.8.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":true,"show_result":true,"style":null},"back2top":{"enable":true,"sidebar":false,"scrollpercent":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":false,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}}};
+  </script>
+
+  <meta name="description" content="Repetition and Definition Levels 1234567891011121314message Document &amp;#123;    required int64 DocId;    optional group Links &amp;#123;        repeated int64 Backward;        repeated int64 Forward;    &amp;#">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Columnar Storage: Dremel">
+<meta property="og:url" content="https://clcanny.github.io/2021/03/29/columnar-storage-dremel/index.html">
+<meta property="og:site_name" content="On The Road">
+<meta property="og:description" content="Repetition and Definition Levels 1234567891011121314message Document &amp;#123;    required int64 DocId;    optional group Links &amp;#123;        repeated int64 Backward;        repeated int64 Forward;    &amp;#">
+<meta property="og:locale">
+<meta property="og:image" content="http://junbin-hexo-img.oss-cn-beijing.aliyuncs.com/columnar-storage-dremel/r1.png">
+<meta property="og:image" content="http://junbin-hexo-img.oss-cn-beijing.aliyuncs.com/columnar-storage-dremel/r2.png">
+<meta property="og:image" content="http://junbin-hexo-img.oss-cn-beijing.aliyuncs.com/columnar-storage-dremel/r1-code-repetition-level-1.png">
+<meta property="og:image" content="http://junbin-hexo-img.oss-cn-beijing.aliyuncs.com/columnar-storage-dremel/r1-code-repetition-level-2.png">
+<meta property="og:image" content="http://junbin-hexo-img.oss-cn-beijing.aliyuncs.com/columnar-storage-dremel/r1-forward-repetition-level.png">
+<meta property="og:image" content="http://junbin-hexo-img.oss-cn-beijing.aliyuncs.com/columnar-storage-dremel/r1-country-repetition-level.png">
+<meta property="og:image" content="http://junbin-hexo-img.oss-cn-beijing.aliyuncs.com/columnar-storage-dremel/r1-url-repetition-level.png">
+<meta property="og:image" content="http://junbin-hexo-img.oss-cn-beijing.aliyuncs.com/columnar-storage-dremel/r1-url-definition-level.png">
+<meta property="og:image" content="http://junbin-hexo-img.oss-cn-beijing.aliyuncs.com/columnar-storage-dremel/r1-country-definition-level.png">
+<meta property="og:image" content="http://junbin-hexo-img.oss-cn-beijing.aliyuncs.com/columnar-storage-dremel/dfa.png">
+<meta property="article:published_time" content="2021-03-29T08:31:00.000Z">
+<meta property="article:modified_time" content="2021-05-26T05:47:06.351Z">
+<meta property="article:author" content="JunBin">
+<meta property="article:tag" content="columnar storage">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="http://junbin-hexo-img.oss-cn-beijing.aliyuncs.com/columnar-storage-dremel/r1.png">
+
+<link rel="canonical" href="https://clcanny.github.io/2021/03/29/columnar-storage-dremel/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'zh-Hans'
+  };
+</script>
+
+  <title>Columnar Storage: Dremel | On The Road</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="Toggle navigation bar">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <span class="logo-line-before"><i></i></span>
+      <h1 class="site-title">On The Road</h1>
+      <span class="logo-line-after"><i></i></span>
+    </a>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+    </div>
+  </div>
+</div>
+
+
+
+
+<nav class="site-nav">
+  <ul id="menu" class="main-menu menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-home fa-fw"></i>Home</a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>Archives</a>
+
+  </li>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>Tags</a>
+
+  </li>
+  </ul>
+</nav>
+
+
+
+
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content post posts-expand">
+            
+
+    
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-Hans">
+    <link itemprop="mainEntityOfPage" href="https://clcanny.github.io/2021/03/29/columnar-storage-dremel/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="JunBin">
+      <meta itemprop="description" content="a programmer's blog">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="On The Road">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          Columnar Storage: Dremel
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">Posted on</span>
+
+              <time title="Created: 2021-03-29 16:31:00" itemprop="dateCreated datePublished" datetime="2021-03-29T16:31:00+08:00">2021-03-29</time>
+            </span>
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="far fa-calendar-check"></i>
+                </span>
+                <span class="post-meta-item-text">Edited on</span>
+                <time title="Modified: 2021-05-26 13:47:06" itemprop="dateModified" datetime="2021-05-26T13:47:06+08:00">2021-05-26</time>
+              </span>
+
+          <br>
+            <span class="post-meta-item" title="Symbols count in article">
+              <span class="post-meta-item-icon">
+                <i class="far fa-file-word"></i>
+              </span>
+                <span class="post-meta-item-text">Symbols count in article: </span>
+              <span>3.6k</span>
+            </span>
+            <span class="post-meta-item" title="Reading time">
+              <span class="post-meta-item-icon">
+                <i class="far fa-clock"></i>
+              </span>
+                <span class="post-meta-item-text">Reading time &asymp;</span>
+              <span>6 mins.</span>
+            </span>
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <h1 id="Repetition-and-Definition-Levels">Repetition and Definition Levels</h1>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line">message Document &#123;</span><br><span class="line">    required int64 DocId;</span><br><span class="line">    optional group Links &#123;</span><br><span class="line">        repeated int64 Backward;</span><br><span class="line">        repeated int64 Forward;</span><br><span class="line">    &#125;</span><br><span class="line">    repeated group Name &#123;</span><br><span class="line">        repeated group Language &#123;</span><br><span class="line">            required string Code;</span><br><span class="line">            optional string Country;</span><br><span class="line">        &#125;</span><br><span class="line">        optional string Url;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br></pre></td><td class="code"><pre><span class="line"># r1</span><br><span class="line">DocId: 10</span><br><span class="line">Links</span><br><span class="line">    Forward: 20</span><br><span class="line">    Forward: 40</span><br><span class="line">    Forward: 60</span><br><span class="line">Name</span><br><span class="line">    Language</span><br><span class="line">        Code: &#x27;en-us&#x27;</span><br><span class="line">        Country: &#x27;us&#x27;</span><br><span class="line">    Language</span><br><span class="line">        Code: &#x27;en&#x27;</span><br><span class="line">    Url: &#x27;http://A&#x27;</span><br><span class="line">Name</span><br><span class="line">    Url: &#x27;http://B&#x27;</span><br><span class="line">Name</span><br><span class="line">    Language</span><br><span class="line">        Code: &#x27;en-gb&#x27;</span><br><span class="line">        Country: &#x27;gb&#x27;</span><br></pre></td></tr></table></figure>
+<p><img src="http://junbin-hexo-img.oss-cn-beijing.aliyuncs.com/columnar-storage-dremel/r1.png" alt=""></p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"># r2</span><br><span class="line">DocId: 20</span><br><span class="line">Links</span><br><span class="line">    Backward: 10</span><br><span class="line">    Backward: 30</span><br><span class="line">    Backward: 80</span><br><span class="line">Name</span><br><span class="line">    Url: &#x27;http://C&#x27;</span><br></pre></td></tr></table></figure>
+<p><img src="http://junbin-hexo-img.oss-cn-beijing.aliyuncs.com/columnar-storage-dremel/r2.png" alt=""></p>
+<h2 id="Repetition-Level">Repetition Level</h2>
+<blockquote>
+<p>It tells us at what repeated field in the field’s path the value has repeated.</p>
+</blockquote>
+<p>在 Repetition Level 小节，我们会使用 [] 和矩形表达 repeated 字段，<strong>不包括</strong> optional 字段（注意与 Definition Level 小节区分）。</p>
+<h3 id="Name-Language-Code">Name.Language.Code</h3>
+<p>论文以 Name.Language.Code 为例子解释了 repetition level ：</p>
+<blockquote>
+<p>Now suppose we are scanning record r1 top down.</p>
+<p>When we encounter ‘en-us’, we have not seen any repeated fields, i.e., the repetition level is 0.</p>
+<p>When we see ‘en’, field Language has repeated, so the repetition level is 2.</p>
+<p>Finally, when we encounter ‘en-gb’, Name has repeated most recently (Language occurred only once after Name), so the repetition level is 1.</p>
+</blockquote>
+<p>笔者认为论文的解释有点模糊，按照以下步骤计算 repetition level 更为准确，深度优先遍历整棵树：</p>
+<ol>
+<li>若字段是第一次出现，repetition level 记为 0 ；</li>
+<li>若字段不是第一次出现：
+<ol>
+<li>找到上一次出现的同名字段；</li>
+<li>找到最近公共祖先；</li>
+<li>找到最近公共祖先的子节点；</li>
+<li>计算最近公共祖先的子节点在路径上是第几个 repeated （不包括 optional ）字段。</li>
+</ol>
+</li>
+</ol>
+<p><img src="http://junbin-hexo-img.oss-cn-beijing.aliyuncs.com/columnar-storage-dremel/r1-code-repetition-level-1.png" alt=""></p>
+<p><img src="http://junbin-hexo-img.oss-cn-beijing.aliyuncs.com/columnar-storage-dremel/r1-code-repetition-level-2.png" alt=""></p>
+<table>
+<thead>
+<tr>
+<th style="text-align:center">value of Document.[Name].[Language].Code</th>
+<th style="text-align:center">repeated with</th>
+<th style="text-align:center">repeated at</th>
+<th style="text-align:center">common father of ‘repeated at’</th>
+<th style="text-align:center">repetition level</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align:center">en-us</td>
+<td style="text-align:center"></td>
+<td style="text-align:center"></td>
+<td style="text-align:center"></td>
+<td style="text-align:center">0</td>
+</tr>
+<tr>
+<td style="text-align:center">en</td>
+<td style="text-align:center">en-us</td>
+<td style="text-align:center">Language</td>
+<td style="text-align:center">Name</td>
+<td style="text-align:center">2</td>
+</tr>
+<tr>
+<td style="text-align:center">en-gb</td>
+<td style="text-align:center">en</td>
+<td style="text-align:center">Name</td>
+<td style="text-align:center">Document</td>
+<td style="text-align:center">1</td>
+</tr>
+</tbody>
+</table>
+<h3 id="Others">Others</h3>
+<table>
+<thead>
+<tr>
+<th style="text-align:center">value of Document.DocId</th>
+<th style="text-align:center">repeated with</th>
+<th style="text-align:center">repeated at</th>
+<th style="text-align:center">common father of ‘repeated at’</th>
+<th style="text-align:center">repetition level</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align:center">10</td>
+<td style="text-align:center"></td>
+<td style="text-align:center"></td>
+<td style="text-align:center"></td>
+<td style="text-align:center">0</td>
+</tr>
+</tbody>
+</table>
+<p><img src="http://junbin-hexo-img.oss-cn-beijing.aliyuncs.com/columnar-storage-dremel/r1-forward-repetition-level.png" alt=""></p>
+<table>
+<thead>
+<tr>
+<th style="text-align:center">value of Document.[Links].[Forward]</th>
+<th style="text-align:center">repeated with</th>
+<th style="text-align:center">repeated at</th>
+<th style="text-align:center">common father of ‘repeated at’</th>
+<th style="text-align:center">repetition level</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align:center">20</td>
+<td style="text-align:center"></td>
+<td style="text-align:center"></td>
+<td style="text-align:center"></td>
+<td style="text-align:center">0</td>
+</tr>
+<tr>
+<td style="text-align:center">40</td>
+<td style="text-align:center">20</td>
+<td style="text-align:center">Forward</td>
+<td style="text-align:center">Links</td>
+<td style="text-align:center">1</td>
+</tr>
+<tr>
+<td style="text-align:center">60</td>
+<td style="text-align:center">40</td>
+<td style="text-align:center">Forward</td>
+<td style="text-align:center">Links</td>
+<td style="text-align:center">1</td>
+</tr>
+</tbody>
+</table>
+<p><img src="http://junbin-hexo-img.oss-cn-beijing.aliyuncs.com/columnar-storage-dremel/r1-country-repetition-level.png" alt=""></p>
+<table>
+<thead>
+<tr>
+<th style="text-align:center">value of Document.[Name].[Language].Country</th>
+<th style="text-align:center">repeated with</th>
+<th style="text-align:center">repeated at</th>
+<th style="text-align:center">common father of ‘repeated at’</th>
+<th style="text-align:center">repetition level</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align:center">us</td>
+<td style="text-align:center"></td>
+<td style="text-align:center"></td>
+<td style="text-align:center"></td>
+<td style="text-align:center">0</td>
+</tr>
+<tr>
+<td style="text-align:center">gb</td>
+<td style="text-align:center">us</td>
+<td style="text-align:center">Name</td>
+<td style="text-align:center">Document</td>
+<td style="text-align:center">1</td>
+</tr>
+</tbody>
+</table>
+<p><img src="http://junbin-hexo-img.oss-cn-beijing.aliyuncs.com/columnar-storage-dremel/r1-url-repetition-level.png" alt=""></p>
+<table>
+<thead>
+<tr>
+<th style="text-align:center">value of Document.[Name].Url</th>
+<th style="text-align:center">repeated with</th>
+<th style="text-align:center">repeated at</th>
+<th style="text-align:center">common father of ‘repeated at’</th>
+<th style="text-align:center">repetition level</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align:center"><a target="_blank" rel="noopener" href="http://A">http://A</a></td>
+<td style="text-align:center"></td>
+<td style="text-align:center"></td>
+<td style="text-align:center"></td>
+<td style="text-align:center">0</td>
+</tr>
+<tr>
+<td style="text-align:center"><a target="_blank" rel="noopener" href="http://B">http://B</a></td>
+<td style="text-align:center"><a target="_blank" rel="noopener" href="http://A">http://A</a></td>
+<td style="text-align:center">Name</td>
+<td style="text-align:center">Document</td>
+<td style="text-align:center">1</td>
+</tr>
+</tbody>
+</table>
+<h2 id="Definition-Level">Definition Level</h2>
+<blockquote>
+<p>Each value of a field with path p, <strong>esp. every NULL</strong>, has a definition level specifying how many fields in p that <strong>could be undefined</strong> (because they are optional or repeated) are <strong>actually present</strong> in the record.</p>
+</blockquote>
+<p>在 Definition Level 小节，我们会使用 [] 和矩形表达 optional 字段<strong>和</strong> repeated 字段（注意与 Repetition Level 小节区分）。</p>
+<p><img src="http://junbin-hexo-img.oss-cn-beijing.aliyuncs.com/columnar-storage-dremel/r1-url-definition-level.png" alt=""></p>
+<table>
+<thead>
+<tr>
+<th style="text-align:center">value of Document.[Name].[Url]</th>
+<th style="text-align:center">definition level</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align:center"><a target="_blank" rel="noopener" href="http://A">http://A</a></td>
+<td style="text-align:center">2</td>
+</tr>
+<tr>
+<td style="text-align:center"><a target="_blank" rel="noopener" href="http://B">http://B</a></td>
+<td style="text-align:center">2</td>
+</tr>
+<tr>
+<td style="text-align:center">null</td>
+<td style="text-align:center">1</td>
+</tr>
+</tbody>
+</table>
+<p><img src="http://junbin-hexo-img.oss-cn-beijing.aliyuncs.com/columnar-storage-dremel/r1-country-definition-level.png" alt=""></p>
+<table>
+<thead>
+<tr>
+<th style="text-align:center">value of Document.[Name].[Language].[Country]</th>
+<th style="text-align:center">definition level</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align:center">us</td>
+<td style="text-align:center">3</td>
+</tr>
+<tr>
+<td style="text-align:center">null</td>
+<td style="text-align:center">2</td>
+</tr>
+<tr>
+<td style="text-align:center">null</td>
+<td style="text-align:center"><strong>1</strong></td>
+</tr>
+<tr>
+<td style="text-align:center">gb</td>
+<td style="text-align:center">3</td>
+</tr>
+</tbody>
+</table>
+<p>为什么使用 definition level 而不是 bool 值来表达叶子节点是否出现？因为 definition level 能携带更多信息：</p>
+<blockquote>
+<p>We use integer definition levels as opposed to is-null bits so that the data for a leaf field (e.g., Name.Language.Country) contains the information about the occurrences of its parent fields.</p>
+</blockquote>
+<h2 id="Encoding">Encoding</h2>
+<p>论文主要介绍了工程上优化存储的方法，对原理没有实质性影响，可忽略不看。</p>
+<h1 id="Splitting-Records-into-Columns">Splitting Records into Columns</h1>
+<ol>
+<li>深度优先遍历树；</li>
+<li>计算 repetition level ：
+<ol>
+<li>如果字段在本层重复，repetition level = tree depth ；</li>
+<li>如果字段未在本层重复，repetition level = repetition level of father ；</li>
+</ol>
+</li>
+<li>计算 definition level （略）。</li>
+</ol>
+<h1 id="Record-Assembly">Record Assembly</h1>
+<blockquote>
+<p>Given a subset of fields, our goal is to reconstruct the original records as if they contained just the selected fields, with all other fields stripped away.</p>
+<p>The key idea is this: we create a finite state machine (FSM) that reads the field values and levels for each field, and appends the values sequentially to the output records. An FSM state corresponds to a field reader for each selected field. State transitions are labeled with repetition levels. Once a reader fetches a value, we look at the next repetition level to decide what next reader to use. The FSM is traversed from the start to end state once for each record.</p>
+</blockquote>
+<p>组装算法分为两部分：</p>
+<ol>
+<li>创建有限状态机：用 repetition level 判断当前 column 读完之后跳到哪一个祖先节点。</li>
+<li>运行有限状态机。</li>
+</ol>
+<h2 id="运行有限状态机">运行有限状态机</h2>
+<p><img src="http://junbin-hexo-img.oss-cn-beijing.aliyuncs.com/columnar-storage-dremel/dfa.png" alt=""></p>
+<p>有限状态机只能依次读入 column （否则不知道 record 边界），有没有并行化的算法？</p>
+<h2 id="创建有限状态机">创建有限状态机</h2>
+<blockquote>
+<p>To sketch how FSM transitions are constructed, let <code>l</code> be the next repetition level returned by the current field reader for field <code>f</code>. Starting at <code>f</code> in the schema tree, we find its ancestor that repeats at level <code>l</code> and select the first leaf field <code>n</code> inside that ancestor. This gives us an FSM transition (<code>f</code>, <code>l</code>) -&gt; <code>n</code>. For example, let <code>l</code> = 1 be the next repetition level read by <code>f</code> = Name.Language.Country. Its ancestor with repetition level 1 is Name, whose first leaf field is <code>n</code> = Name.Url.</p>
+</blockquote>
+<p>repetition level 告诉我们：当前节点读完之后，应该返回到哪一个祖先节点。</p>
+<h2 id="Definition-Level-提供的信息用在哪里？">Definition Level 提供的信息用在哪里？</h2>
+<p>判断在路径的哪一个层次上插入 null ？</p>
+<h1 id="问题汇总">问题汇总</h1>
+<ol>
+<li>分割和组装算法是否可以并行化？</li>
+<li>是否允许变更 schema ？比如：Document 下新增 Description 字段。</li>
+<li>definition level 提供的信息用在哪里？</li>
+</ol>
+<h1 id="参考资料">参考资料</h1>
+<p>Dremel:</p>
+<ul>
+<li><a target="_blank" rel="noopener" href="https://storage.googleapis.com/pub-tools-public-publication-data/pdf/36632.pdf">Dremel: Interactive Analysis of Web-Scale Datasets</a></li>
+<li><a target="_blank" rel="noopener" href="https://blog.twitter.com/engineering/en_us/a/2013/dremel-made-simple-with-parquet.html">Twitter Engineering: Dremel made simple with Parquet</a></li>
+</ul>
+<p>Graphviz:</p>
+<ul>
+<li><a target="_blank" rel="noopener" href="https://graphviz.org/doc/info/lang.html">Graphviz - Graph Visualization Software: The DOT Language</a></li>
+<li><a target="_blank" rel="noopener" href="https://stackoverflow.com/questions/17252630/why-doesnt-fillcolor-work-with-graphviz">Stack Overflow: Why doesn’t fill color work with graphviz?</a></li>
+</ul>
+
+    </div>
+
+    
+    
+    
+
+      <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/columnar-storage/" rel="tag"># columnar storage</a>
+          </div>
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2021/03/12/dynamic-linking-about-global-strings/" rel="prev" title="Dynamic Linking: About Global Strings">
+      <i class="fa fa-chevron-left"></i> Dynamic Linking: About Global Strings
+    </a></div>
+      <div class="post-nav-item">
+    <a href="/2021/03/31/columnar-storage-get-started-with-parquet/" rel="next" title="Columnar Storage: Get Started With Parquet">
+      Columnar Storage: Get Started With Parquet <i class="fa fa-chevron-right"></i>
+    </a></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+
+
+          </div>
+          
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          Table of Contents
+        </li>
+        <li class="sidebar-nav-overview">
+          Overview
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#Repetition-and-Definition-Levels"><span class="nav-number">1.</span> <span class="nav-text">Repetition and Definition Levels</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#Repetition-Level"><span class="nav-number">1.1.</span> <span class="nav-text">Repetition Level</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#Name-Language-Code"><span class="nav-number">1.1.1.</span> <span class="nav-text">Name.Language.Code</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#Others"><span class="nav-number">1.1.2.</span> <span class="nav-text">Others</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Definition-Level"><span class="nav-number">1.2.</span> <span class="nav-text">Definition Level</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Encoding"><span class="nav-number">1.3.</span> <span class="nav-text">Encoding</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#Splitting-Records-into-Columns"><span class="nav-number">2.</span> <span class="nav-text">Splitting Records into Columns</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#Record-Assembly"><span class="nav-number">3.</span> <span class="nav-text">Record Assembly</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E8%BF%90%E8%A1%8C%E6%9C%89%E9%99%90%E7%8A%B6%E6%80%81%E6%9C%BA"><span class="nav-number">3.1.</span> <span class="nav-text">运行有限状态机</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%88%9B%E5%BB%BA%E6%9C%89%E9%99%90%E7%8A%B6%E6%80%81%E6%9C%BA"><span class="nav-number">3.2.</span> <span class="nav-text">创建有限状态机</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Definition-Level-%E6%8F%90%E4%BE%9B%E7%9A%84%E4%BF%A1%E6%81%AF%E7%94%A8%E5%9C%A8%E5%93%AA%E9%87%8C%EF%BC%9F"><span class="nav-number">3.3.</span> <span class="nav-text">Definition Level 提供的信息用在哪里？</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#%E9%97%AE%E9%A2%98%E6%B1%87%E6%80%BB"><span class="nav-number">4.</span> <span class="nav-text">问题汇总</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#%E5%8F%82%E8%80%83%E8%B5%84%E6%96%99"><span class="nav-number">5.</span> <span class="nav-text">参考资料</span></a></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+  <p class="site-author-name" itemprop="name">JunBin</p>
+  <div class="site-description" itemprop="description">a programmer's blog</div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">21</span>
+          <span class="site-state-item-name">posts</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+          
+        <span class="site-state-item-count">11</span>
+        <span class="site-state-item-name">tags</span></a>
+      </div>
+  </nav>
+</div>
+
+
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+        
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2021</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">JunBin</span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item-icon">
+      <i class="fa fa-chart-area"></i>
+    </span>
+    <span title="Symbols count total">42k</span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item-icon">
+      <i class="fa fa-coffee"></i>
+    </span>
+    <span title="Reading time total">1:09</span>
+</div>
+  <div class="powered-by">Powered by <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> & <a href="https://muse.theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Muse</a>
+  </div>
+
+        
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/muse.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+</body>
+</html>

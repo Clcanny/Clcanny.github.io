@@ -1,0 +1,548 @@
+<!DOCTYPE html>
+<html lang="zh-Hans">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 5.4.0">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+<link rel="stylesheet" href="//fonts.googleapis.com/css?family=Lato:300,300italic,400,400italic,700,700italic&display=swap&subset=latin,latin-ext">
+<link rel="stylesheet" href="/lib/font-awesome/css/all.min.css">
+
+<script id="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"clcanny.github.io","root":"/","scheme":"Muse","version":"7.8.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":true,"show_result":true,"style":null},"back2top":{"enable":true,"sidebar":false,"scrollpercent":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":false,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}}};
+  </script>
+
+  <meta name="description" content="导读  指定编译选项 -Wl,--hash-style&#x3D;both 时，dynsym section 的符号排列顺序需要满足 gnu hash table 的要求，具体可参考 Dynamic Linking: Search Symbols In One Binary ：  LOCAL 符号排在 GLOBAL 符号之前； 导入符号排在导出符号之前； 导出符号按桶排序；   ELF: symbol lo">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Dynamic Linking: Compatibility Of Hash Tables">
+<meta property="og:url" content="https://clcanny.github.io/2020/12/22/dynamic-linking-compatibility-of-hash-tables/index.html">
+<meta property="og:site_name" content="On The Road">
+<meta property="og:description" content="导读  指定编译选项 -Wl,--hash-style&#x3D;both 时，dynsym section 的符号排列顺序需要满足 gnu hash table 的要求，具体可参考 Dynamic Linking: Search Symbols In One Binary ：  LOCAL 符号排在 GLOBAL 符号之前； 导入符号排在导出符号之前； 导出符号按桶排序；   ELF: symbol lo">
+<meta property="og:locale">
+<meta property="og:image" content="https://junbin-hexo-img.oss-cn-beijing.aliyuncs.com/dynamic-linking-compatibility-of-hash-tables/hash-table.png">
+<meta property="article:published_time" content="2020-12-22T02:43:35.000Z">
+<meta property="article:modified_time" content="2021-05-26T05:47:06.352Z">
+<meta property="article:author" content="JunBin">
+<meta property="article:tag" content="dynamic linking">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://junbin-hexo-img.oss-cn-beijing.aliyuncs.com/dynamic-linking-compatibility-of-hash-tables/hash-table.png">
+
+<link rel="canonical" href="https://clcanny.github.io/2020/12/22/dynamic-linking-compatibility-of-hash-tables/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'zh-Hans'
+  };
+</script>
+
+  <title>Dynamic Linking: Compatibility Of Hash Tables | On The Road</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="Toggle navigation bar">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <span class="logo-line-before"><i></i></span>
+      <h1 class="site-title">On The Road</h1>
+      <span class="logo-line-after"><i></i></span>
+    </a>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+    </div>
+  </div>
+</div>
+
+
+
+
+<nav class="site-nav">
+  <ul id="menu" class="main-menu menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-home fa-fw"></i>Home</a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>Archives</a>
+
+  </li>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>Tags</a>
+
+  </li>
+  </ul>
+</nav>
+
+
+
+
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content post posts-expand">
+            
+
+    
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-Hans">
+    <link itemprop="mainEntityOfPage" href="https://clcanny.github.io/2020/12/22/dynamic-linking-compatibility-of-hash-tables/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="JunBin">
+      <meta itemprop="description" content="a programmer's blog">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="On The Road">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          Dynamic Linking: Compatibility Of Hash Tables
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">Posted on</span>
+
+              <time title="Created: 2020-12-22 10:43:35" itemprop="dateCreated datePublished" datetime="2020-12-22T10:43:35+08:00">2020-12-22</time>
+            </span>
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="far fa-calendar-check"></i>
+                </span>
+                <span class="post-meta-item-text">Edited on</span>
+                <time title="Modified: 2021-05-26 13:47:06" itemprop="dateModified" datetime="2021-05-26T13:47:06+08:00">2021-05-26</time>
+              </span>
+
+          <br>
+            <span class="post-meta-item" title="Symbols count in article">
+              <span class="post-meta-item-icon">
+                <i class="far fa-file-word"></i>
+              </span>
+                <span class="post-meta-item-text">Symbols count in article: </span>
+              <span>812</span>
+            </span>
+            <span class="post-meta-item" title="Reading time">
+              <span class="post-meta-item-icon">
+                <i class="far fa-clock"></i>
+              </span>
+                <span class="post-meta-item-text">Reading time &asymp;</span>
+              <span>1 mins.</span>
+            </span>
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <h1 id="导读">导读</h1>
+<ol>
+<li>指定编译选项 <code>-Wl,--hash-style=both</code> 时，dynsym section 的符号排列顺序需要满足 gnu hash table 的要求，具体可参考 <a href="https://clcanny.github.io/2020/11/20/dynamic-linking-search-symbols-in-one-binary/">Dynamic Linking: Search Symbols In One Binary</a> ：
+<ol>
+<li>LOCAL 符号排在 GLOBAL 符号之前；</li>
+<li>导入符号排在导出符号之前；</li>
+<li>导出符号按桶排序；</li>
+</ol>
+</li>
+<li><a target="_blank" rel="noopener" href="https://flapenguin.me/elf-dt-hash">ELF: symbol lookup via DT_HASH</a> 将 SysV hash table 讲得非常清楚：
+<ol>
+<li>SysV hash table 的长度和 dynamic symbol table 的长度相同；</li>
+<li>bucket 记录每个桶的起始符号；</li>
+<li>chain 是 dynamic symbol table 的附属指针数组；</li>
+<li>chain[id] 将 Ndx = STN_UNDEF 的符号作为结束符。</li>
+</ol>
+</li>
+</ol>
+<h1 id="SysV-hash-table-详解">SysV hash table 详解</h1>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// test_hash.cpp</span></span><br><span class="line"><span class="comment">// g++ -std=c++11 -shared -fPIC -Wl,--hash-style=both test_hash.cpp -o libtest_hash.so</span></span><br><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">foo</span><span class="params">()</span> </span>&#123;&#125;</span><br><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">bar</span><span class="params">()</span> </span>&#123;&#125;</span><br><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">test</span><span class="params">()</span> </span>&#123;&#125;</span><br><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">haha</span><span class="params">()</span> </span>&#123;&#125;</span><br><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">more</span><span class="params">()</span> </span>&#123;&#125;</span><br></pre></td></tr></table></figure>
+<h2 id="元数据">元数据</h2>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">void</span> _dl_setup_hash(struct link_map* <span class="built_in">map</span>) &#123;</span><br><span class="line">  <span class="keyword">if</span> (__glibc_likely(<span class="built_in">map</span>-&gt;l_info[ADDRIDX(DT_GNU_HASH)] != <span class="literal">NULL</span>)) &#123;</span><br><span class="line">    <span class="comment">// ...</span></span><br><span class="line">    <span class="keyword">return</span>;</span><br><span class="line">  &#125;</span><br><span class="line"></span><br><span class="line">  <span class="keyword">if</span> (!<span class="built_in">map</span>-&gt;l_info[DT_HASH]) &#123;</span><br><span class="line">    <span class="keyword">return</span>;</span><br><span class="line">  &#125;</span><br><span class="line">  <span class="comment">// The entries in the .hash table always have a size of 32 bits.</span></span><br><span class="line">  Elf_Symndx* hash = (<span class="keyword">void</span>*)D_PTR(<span class="built_in">map</span>, l_info[DT_HASH]);</span><br><span class="line">  <span class="built_in">map</span>-&gt;l_nbuckets = *hash++;</span><br><span class="line">  <span class="comment">// Skip nchain.</span></span><br><span class="line">  hash++;</span><br><span class="line">  <span class="built_in">map</span>-&gt;l_buckets = hash;</span><br><span class="line">  hash += <span class="built_in">map</span>-&gt;l_nbuckets;</span><br><span class="line">  <span class="built_in">map</span>-&gt;l_chain = hash;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">elf_hash_table</span> &#123;</span></span><br><span class="line">  <span class="keyword">uint32_t</span> nbucket;</span><br><span class="line">  <span class="keyword">uint32_t</span> nchain;</span><br><span class="line">  <span class="keyword">uint32_t</span> bucket[nbucket];</span><br><span class="line">  <span class="keyword">uint32_t</span> chain[nchain];</span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># readelf --section-headers libtest_hash.so  | grep -E &quot;Nr|hash&quot; -A1 | grep -v &quot;\-\-&quot;</span></span><br><span class="line">  [Nr] Name              Type             Address           Offset</span><br><span class="line">       Size              EntSize          Flags  Link  Info  Align</span><br><span class="line">  [ 2] .<span class="built_in">hash</span>             HASH             00000000000001b8  000001b8</span><br><span class="line">       0000000000000058  0000000000000004   A       4     0     8</span><br><span class="line">  [ 3] .gnu.hash         GNU_HASH         0000000000000210  00000210</span><br><span class="line">       000000000000004c  0000000000000000   A       4     0     8</span><br><span class="line"><span class="comment"># export hash_start_addr=0x1b8</span></span><br><span class="line"><span class="comment"># export hash_size=0x58</span></span><br><span class="line"><span class="comment"># od --skip-bytes=$hash_start_addr --read-bytes=$hash_size --format=xI libtest_hash.so</span></span><br><span class="line">0000670 00000003 00000011 0000000f 0000000a</span><br><span class="line">0000710 0000000e 00000000 00000000 00000000</span><br><span class="line">0000730 00000002 00000009 00000004 00000008</span><br><span class="line">0000750 00000000 00000000 00000010 00000005</span><br><span class="line">0000770 0000000d 00000003 0000000c 00000006</span><br><span class="line">0001010 0000000b 00000007</span><br></pre></td></tr></table></figure>
+<table>
+<thead>
+<tr>
+<th style="text-align:center">nbucket</th>
+<th style="text-align:center">nchain</th>
+<th style="text-align:center">bucket[bucket]</th>
+<th style="text-align:center">chain[nchain]</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align:center">0x3</td>
+<td style="text-align:center">0x11</td>
+<td style="text-align:center">[0xf, 0xa, 0xe]</td>
+<td style="text-align:center">[0x0, …]</td>
+</tr>
+</tbody>
+</table>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># readelf --dyn-syms libtest_hash.so</span></span><br><span class="line">Symbol table <span class="string">&#x27;.dynsym&#x27;</span> contains 17 entries:</span><br><span class="line">   Num:    Value          Size Type    Bind   Vis      Ndx Name</span><br><span class="line">     0: 0000000000000000     0 NOTYPE  LOCAL  DEFAULT  UND</span><br><span class="line">     1: 0000000000000608     0 SECTION LOCAL  DEFAULT   10</span><br><span class="line">     2: 0000000000000000     0 NOTYPE  WEAK   DEFAULT  UND __gmon_start__</span><br><span class="line">     3: 0000000000000000     0 NOTYPE  WEAK   DEFAULT  UND _Jv_RegisterClasses</span><br><span class="line">     4: 0000000000000000     0 NOTYPE  WEAK   DEFAULT  UND _ITM_deregisterTMCloneTab</span><br><span class="line">     5: 0000000000000000     0 NOTYPE  WEAK   DEFAULT  UND _ITM_registerTMCloneTable</span><br><span class="line">     6: 0000000000000000     0 FUNC    WEAK   DEFAULT  UND __cxa_finalize@GLIBC_2.2.5 (2)</span><br><span class="line">     7: 000000000000075a     6 FUNC    GLOBAL DEFAULT   12 _Z4hahav</span><br><span class="line">     8: 0000000000000760     6 FUNC    GLOBAL DEFAULT   12 _Z4morev</span><br><span class="line">     9: 0000000000000754     6 FUNC    GLOBAL DEFAULT   12 _Z4testv</span><br><span class="line">    10: 0000000000200b08     0 NOTYPE  GLOBAL DEFAULT   23 _end</span><br><span class="line">    11: 0000000000200b00     0 NOTYPE  GLOBAL DEFAULT   22 _edata</span><br><span class="line">    12: 000000000000074e     6 FUNC    GLOBAL DEFAULT   12 _Z3barv</span><br><span class="line">    13: 0000000000000748     6 FUNC    GLOBAL DEFAULT   12 _Z3foov</span><br><span class="line">    14: 0000000000200b00     0 NOTYPE  GLOBAL DEFAULT   23 __bss_start</span><br><span class="line">    15: 0000000000000608     0 FUNC    GLOBAL DEFAULT   10 _init</span><br><span class="line">    16: 0000000000000768     0 FUNC    GLOBAL DEFAULT   13 _fini</span><br></pre></td></tr></table></figure>
+<p>nchain 是 17 ，chain 的长度是 17 ，dynamic symbol table 有 17 个 entries 。</p>
+<h2 id="哈希函数">哈希函数</h2>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#<span class="meta-keyword">include</span> <span class="meta-string">&lt;cstdint&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">include</span> <span class="meta-string">&lt;ios&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">include</span> <span class="meta-string">&lt;iostream&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">include</span> <span class="meta-string">&lt;vector&gt;</span></span></span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">uint32_t</span> <span class="title">elf_hash</span><span class="params">(<span class="keyword">const</span> <span class="keyword">char</span>* name)</span> </span>&#123;</span><br><span class="line">  <span class="keyword">uint32_t</span> h = <span class="number">0</span>, g;</span><br><span class="line">  <span class="keyword">for</span> (; *name; name++) &#123;</span><br><span class="line">    h = (h &lt;&lt; <span class="number">4</span>) + *name;</span><br><span class="line">    <span class="keyword">if</span> (g = h &amp; <span class="number">0xf0000000</span>) &#123;</span><br><span class="line">      h ^= g &gt;&gt; <span class="number">24</span>;</span><br><span class="line">    &#125;</span><br><span class="line">    h &amp;= ~g;</span><br><span class="line">  &#125;</span><br><span class="line">  <span class="keyword">return</span> h;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">int</span> <span class="title">main</span><span class="params">()</span> </span>&#123;</span><br><span class="line">  std::cout &lt;&lt; std::hex;</span><br><span class="line">  std::vector&lt;<span class="keyword">const</span> <span class="keyword">char</span>*&gt; symbol_names&#123;<span class="string">&quot;_Z4hahav&quot;</span>,</span><br><span class="line">                                        <span class="string">&quot;_Z4morev&quot;</span>,</span><br><span class="line">                                        <span class="string">&quot;_Z4testv&quot;</span>,</span><br><span class="line">                                        <span class="string">&quot;_Z3barv&quot;</span>,</span><br><span class="line">                                        <span class="string">&quot;_Z3foov&quot;</span>,</span><br><span class="line">                                        <span class="string">&quot;_end&quot;</span>,</span><br><span class="line">                                        <span class="string">&quot;_edata&quot;</span>,</span><br><span class="line">                                        <span class="string">&quot;__bss_start&quot;</span>,</span><br><span class="line">                                        <span class="string">&quot;_init&quot;</span>,</span><br><span class="line">                                        <span class="string">&quot;_fini&quot;</span>&#125;;</span><br><span class="line">  <span class="keyword">for</span> (<span class="keyword">const</span> <span class="keyword">char</span>* symbol_name : symbol_names) &#123;</span><br><span class="line">    std::cout &lt;&lt; <span class="string">&quot;0x&quot;</span> &lt;&lt; <span class="built_in">elf_hash</span>(symbol_name) &lt;&lt; std::endl;</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<table>
+<thead>
+<tr>
+<th style="text-align:center">dynsym_id</th>
+<th style="text-align:center">symbol_name</th>
+<th style="text-align:center">hash_value</th>
+<th style="text-align:center">bucket_id</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align:center">7</td>
+<td style="text-align:center">_Z4hahav</td>
+<td style="text-align:center">0xdae78c6</td>
+<td style="text-align:center">1</td>
+</tr>
+<tr>
+<td style="text-align:center">8</td>
+<td style="text-align:center">_Z4morev</td>
+<td style="text-align:center">0xdb46e86</td>
+<td style="text-align:center">2</td>
+</tr>
+<tr>
+<td style="text-align:center">9</td>
+<td style="text-align:center">_Z4testv</td>
+<td style="text-align:center">0xdbaccf6</td>
+<td style="text-align:center">1</td>
+</tr>
+<tr>
+<td style="text-align:center">10</td>
+<td style="text-align:center">_end</td>
+<td style="text-align:center">0x65c44</td>
+<td style="text-align:center">1</td>
+</tr>
+<tr>
+<td style="text-align:center">11</td>
+<td style="text-align:center">_edata</td>
+<td style="text-align:center">0x65ba8a1</td>
+<td style="text-align:center">0</td>
+</tr>
+<tr>
+<td style="text-align:center">12</td>
+<td style="text-align:center">_Z3barv</td>
+<td style="text-align:center">0x4d988f6</td>
+<td style="text-align:center">0</td>
+</tr>
+<tr>
+<td style="text-align:center">13</td>
+<td style="text-align:center">_Z3foov</td>
+<td style="text-align:center">0x4d9d606</td>
+<td style="text-align:center">0</td>
+</tr>
+<tr>
+<td style="text-align:center">14</td>
+<td style="text-align:center">__bss_start</td>
+<td style="text-align:center">0x90ff134</td>
+<td style="text-align:center">2</td>
+</tr>
+<tr>
+<td style="text-align:center">15</td>
+<td style="text-align:center">_init</td>
+<td style="text-align:center">0x660504</td>
+<td style="text-align:center">0</td>
+</tr>
+<tr>
+<td style="text-align:center">16</td>
+<td style="text-align:center">_fini</td>
+<td style="text-align:center">0x65d049</td>
+<td style="text-align:center">1</td>
+</tr>
+</tbody>
+</table>
+<h2 id="哈希表">哈希表</h2>
+<p><img src="https://junbin-hexo-img.oss-cn-beijing.aliyuncs.com/dynamic-linking-compatibility-of-hash-tables/hash-table.png" alt=""></p>
+<h1 id="参考资料">参考资料</h1>
+<ul>
+<li><a target="_blank" rel="noopener" href="https://flapenguin.me/elf-dt-hash">ELF: symbol lookup via DT_HASH</a></li>
+<li><a target="_blank" rel="noopener" href="https://elinux.org/images/1/18/C_AMOROSO_Fast_lkm_loader_ELC-E_2009.pdf">A Fast LKM loader based on SysV ELF hash table</a></li>
+<li><a target="_blank" rel="noopener" href="https://answerywj.com/2020/05/14/ld-hash-style/">AnSwEr’s Blog ：--hash-style 兼容性问题</a></li>
+<li><a target="_blank" rel="noopener" href="https://docs.oracle.com/cd/E23824_01/html/819-0690/chapter6-48031.html">Oracle: Hash Table Section</a></li>
+</ul>
+
+    </div>
+
+    
+    
+    
+
+      <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/dynamic-linking/" rel="tag"># dynamic linking</a>
+          </div>
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2020/12/03/dynamic-linking-relocation-types/" rel="prev" title="Dynamic Linking: Relocation Types">
+      <i class="fa fa-chevron-left"></i> Dynamic Linking: Relocation Types
+    </a></div>
+      <div class="post-nav-item">
+    <a href="/2021/01/30/dynamic-linking-the-first-three-items-of-got/" rel="next" title="Dynamic Linking: The First Three Items Of GOT">
+      Dynamic Linking: The First Three Items Of GOT <i class="fa fa-chevron-right"></i>
+    </a></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+
+
+          </div>
+          
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          Table of Contents
+        </li>
+        <li class="sidebar-nav-overview">
+          Overview
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#%E5%AF%BC%E8%AF%BB"><span class="nav-number">1.</span> <span class="nav-text">导读</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#SysV-hash-table-%E8%AF%A6%E8%A7%A3"><span class="nav-number">2.</span> <span class="nav-text">SysV hash table 详解</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%85%83%E6%95%B0%E6%8D%AE"><span class="nav-number">2.1.</span> <span class="nav-text">元数据</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%93%88%E5%B8%8C%E5%87%BD%E6%95%B0"><span class="nav-number">2.2.</span> <span class="nav-text">哈希函数</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%93%88%E5%B8%8C%E8%A1%A8"><span class="nav-number">2.3.</span> <span class="nav-text">哈希表</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#%E5%8F%82%E8%80%83%E8%B5%84%E6%96%99"><span class="nav-number">3.</span> <span class="nav-text">参考资料</span></a></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+  <p class="site-author-name" itemprop="name">JunBin</p>
+  <div class="site-description" itemprop="description">a programmer's blog</div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">21</span>
+          <span class="site-state-item-name">posts</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+          
+        <span class="site-state-item-count">11</span>
+        <span class="site-state-item-name">tags</span></a>
+      </div>
+  </nav>
+</div>
+
+
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+        
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2021</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">JunBin</span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item-icon">
+      <i class="fa fa-chart-area"></i>
+    </span>
+    <span title="Symbols count total">42k</span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item-icon">
+      <i class="fa fa-coffee"></i>
+    </span>
+    <span title="Reading time total">1:09</span>
+</div>
+  <div class="powered-by">Powered by <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> & <a href="https://muse.theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Muse</a>
+  </div>
+
+        
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/muse.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+</body>
+</html>
