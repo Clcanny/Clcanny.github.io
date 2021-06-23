@@ -1,6 +1,6 @@
 ---
 layout: post
-title: "Dynamic Linking: Relocation Across Files"
+title: Relocation Across Files
 date: 2020-11-21 00:11:51
 categories:
   - [Computer Science, Dynamic Linking]

@@ -1,5 +1,5 @@
 ---
-title: Spark useful tips
+title: Spark Useful Tips
 date: 2020-05-3 12:50:00
 categories:
   - [Computer Science, Big Data, Spark]

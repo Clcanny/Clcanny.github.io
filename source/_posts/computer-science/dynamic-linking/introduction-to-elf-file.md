@@ -1,6 +1,6 @@
 ---
 layout: post
-title: "Dynamic Linking: Introduction To Elf File"
+title: Introduction To Elf File
 date: 2020-11-24 10:42:03
 categories:
   - [Computer Science, Dynamic Linking]

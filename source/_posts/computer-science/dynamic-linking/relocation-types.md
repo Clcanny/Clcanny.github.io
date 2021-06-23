@@ -1,6 +1,6 @@
 ---
 layout: post
-title: "Dynamic Linking: Relocation Types"
+title: Relocation Types
 date: 2020-12-03 01:47:10
 categories:
   - [Computer Science, Dynamic Linking]

@@ -1,5 +1,5 @@
 ---
-title: "Dynamic Linking: Init Order"
+title: Init Order
 date: 2020-11-15 18:30:00
 categories:
   - [Computer Science, Dynamic Linking]

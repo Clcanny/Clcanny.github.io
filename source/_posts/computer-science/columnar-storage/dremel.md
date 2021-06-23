@@ -1,6 +1,6 @@
 ---
 layout: post
-title: "Columnar Storage: Dremel"
+title: Dremel
 date: 2021-03-29 16:31:00
 categories:
   - [Computer Science, Big Data, Columnar Storage]

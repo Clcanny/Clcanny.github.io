@@ -1,5 +1,5 @@
 ---
-title: useful-vim-plugin.md
+title: Useful Vim Plugins
 date: 2020-06-14 05:01:26
 categories:
   - [Computer Science, Tools, Vim]

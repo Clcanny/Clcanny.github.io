@@ -1,6 +1,6 @@
 ---
 layout: post
-title: "Dynamic Linking: About Global Strings"
+title: About Global Strings
 date: 2021-03-12 17:16:31
 categories:
   - [Computer Science, Dynamic Linking]

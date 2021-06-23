@@ -1,5 +1,5 @@
 ---
-title: string literal in Cpp11
+title: String Literal In Cpp11
 date: 2020-02-16 22:38:00
 categories:
   - [Computer Science, Programming Language, C++]
