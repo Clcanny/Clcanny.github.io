@@ -2,8 +2,8 @@
 layout: post
 title: "Columnar Storage: Get Started With Parquet"
 date: 2021-03-31 18:44:24
-tags:
-  - columnar storage
+categories:
+  - [Computer Science, Big Data, Columnar Storage]
 ---
 
 # 环境

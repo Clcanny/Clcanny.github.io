@@ -1,8 +1,8 @@
 ---
 title: Useful And Easy New Features Of Cpp11
 date: 2019-07-16 22:14:15
-tags:
-  - c++11
+categories:
+  - [Computer Science, Programming Language, C++]
 ---
 <!--more-->
 

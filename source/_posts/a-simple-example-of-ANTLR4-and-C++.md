@@ -1,9 +1,8 @@
 ---
 title: A Simple Example of ANTLR4 and C++
 date: 2020-09-13 15:00:00
-tags:
-  - c++11
-  - antlr4
+categories:
+  - [Computer Science, Programming Language, C++]
 ---
 <!--more-->
 

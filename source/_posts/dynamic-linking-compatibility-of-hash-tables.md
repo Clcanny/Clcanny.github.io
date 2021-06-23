@@ -2,8 +2,8 @@
 layout: post
 title: "Dynamic Linking: Compatibility Of Hash Tables"
 date: 2020-12-22 10:43:35
-tags:
-  - dynamic linking
+categories:
+  - [Computer Science, Dynamic Linking]
 ---
 
 # 导读

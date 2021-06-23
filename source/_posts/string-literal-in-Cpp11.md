@@ -1,8 +1,8 @@
 ---
 title: string literal in Cpp11
 date: 2020-02-16 22:38:00
-tags:
-  - c++11
+categories:
+  - [Computer Science, Programming Language, C++]
 ---
 <!--more-->
 

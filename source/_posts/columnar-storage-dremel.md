@@ -2,8 +2,8 @@
 layout: post
 title: "Columnar Storage: Dremel"
 date: 2021-03-29 16:31:00
-tags:
-  - columnar storage
+categories:
+  - [Computer Science, Big Data, Columnar Storage]
 ---
 
 # Repetition and Definition Levels

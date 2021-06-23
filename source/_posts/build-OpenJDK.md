@@ -1,8 +1,8 @@
 ---
 title: Build OpenJDK
 date: 2020-10-24 19:06:45
-tags:
-  - OpenJDK
+categories:
+  - [Computer Science, Programming Language, OpenJDK]
 ---
 
 # 背景

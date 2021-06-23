@@ -2,8 +2,8 @@
 layout: post
 title: "Dynamic Linking: Search Symbols In One Binary"
 date: 2020-11-20 01:28:45
-tags:
-  - dynamic linking
+categories:
+  - [Computer Science, Dynamic Linking]
 ---
 
 # 导读

@@ -1,8 +1,8 @@
 ---
 title: Mmap Analyser V1
 date: 2020-04-24 01:00:00
-tags:
-  - memory analyse
+categories:
+  - [Computer Science, Memory Analysis]
 ---
 <!--more-->
 

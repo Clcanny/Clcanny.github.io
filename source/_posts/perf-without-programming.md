@@ -1,8 +1,8 @@
 ---
 title: perf without programming
 date: 2020-06-19 23:29:20
-tags:
-  - perf
+categories:
+  - [Computer Science, Performance Analysis]
 ---
 
 # 无编程 perf
@@ -243,16 +243,16 @@ p:kprobes/mmap_region mmap_region file=%di:u64 addr=%si:u64 len=%dx:u64 flags=%c
 # sudo chmod 777 perf.data
 # perf script
 mmapButNotWritt  3781 [000] 967984.290594: kprobes:mmap_region: (ffffffffb5622850) file=0 addr=140139885461504 len=8192 flags=112 vm_flags=34213839224 pgoff=18446662055947353720
-	ffffffffb5622851 [unknown] ([kernel.kallsyms])
-	ffffffffb55feeac [unknown] ([kernel.kallsyms])
-	ffffffffb56209fa [unknown] ([kernel.kallsyms])
-	ffffffffb5433f6b [unknown] ([kernel.kallsyms])
-	ffffffffb5403bb3 [unknown] ([kernel.kallsyms])
-	ffffffffb5e00081 [unknown] ([kernel.kallsyms])
-	    7f74db8f4a13 mmap64 (inlined)
-	    5593b07117df main (/home/demons/mmapButNotWritten)
-	    7f74db7fab96 __libc_start_main (/lib/x86_64-linux-gnu/libc-2.27.so)
-	    5593b0711859 _start (/home/demons/mmapButNotWritten)
+    ffffffffb5622851 [unknown] ([kernel.kallsyms])
+    ffffffffb55feeac [unknown] ([kernel.kallsyms])
+    ffffffffb56209fa [unknown] ([kernel.kallsyms])
+    ffffffffb5433f6b [unknown] ([kernel.kallsyms])
+    ffffffffb5403bb3 [unknown] ([kernel.kallsyms])
+    ffffffffb5e00081 [unknown] ([kernel.kallsyms])
+        7f74db8f4a13 mmap64 (inlined)
+        5593b07117df main (/home/demons/mmapButNotWritten)
+        7f74db7fab96 __libc_start_main (/lib/x86_64-linux-gnu/libc-2.27.so)
+        5593b0711859 _start (/home/demons/mmapButNotWritten)
 ```
 
 删除 kprobe ：
@@ -292,13 +292,13 @@ provider math {
 ```bash
 # readelf -n libmath.so
 Displaying notes found in: .note.gnu.build-id
-  Owner                 Data size	Description
-  GNU                  0x00000014	NT_GNU_BUILD_ID (unique build ID bitstring)
+  Owner                 Data size   Description
+  GNU                  0x00000014   NT_GNU_BUILD_ID (unique build ID bitstring)
     Build ID: e40dccf6baa20b96206670d5a52b770f5df98608
 
 Displaying notes found in: .note.stapsdt
-  Owner                 Data size	Description
-  stapsdt              0x00000037	NT_STAPSDT (SystemTap probe descriptors)
+  Owner                 Data size   Description
+  stapsdt              0x00000037   NT_STAPSDT (SystemTap probe descriptors)
     Provider: math
     Name: funcInLib
     Location: 0x0000000000000580, Base: 0x0000000000000591, Semaphore: 0x0000000000000000

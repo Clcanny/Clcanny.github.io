@@ -2,8 +2,8 @@
 layout: post
 title: "Dynamic Linking: About Global Strings"
 date: 2021-03-12 17:16:31
-tags:
-  - dynamic linking
+categories:
+  - [Computer Science, Dynamic Linking]
 ---
 
 # 环境

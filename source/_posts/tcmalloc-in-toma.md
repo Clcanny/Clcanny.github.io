@@ -1,8 +1,8 @@
 ---
 title: TCMalloc In TOMA
 date: 2020-02-17 16:05:00
-tags:
-  - memory analyse
+categories:
+  - [Computer Science, Memory Analysis]
 ---
 
 # 背景

@@ -2,8 +2,8 @@
 layout: post
 title: "Dynamic Linking: Symbol Search Order"
 date: 2020-11-18 13:50:23
-tags:
-  - dynamic linking
+categories:
+  - [Computer Science, Dynamic Linking]
 ---
 
 # 导读
