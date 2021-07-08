@@ -208,6 +208,32 @@ Failed to find the path for kernel: Invalid ELF file
 
 由于找不到 debug 信息，无法确认 addr 参数在函数调用中的位置（貌似？），直接指定 addr 参数报错。
 
+根据[知乎用户：基本无害](https://www.zhihu.com/people/radioactivezx)的评论：
+
+> 这一段 perf 找不到 kprobe 函数名外的参数、返回值信息是因为缺少 vmlinux ，可以使用命令 `--vmlinux=<vmlinux_path>` 指定 vmlinux 。发行版一般也会提供官方 kernel 对应的文件，比如 Debian/Ubuntu 下 linux-image-5.8.0-3-amd 包会有一个对应的 linux-image-5.8.0-3-amd-dbg 包，安装之后 perf probe 可以自动找到。安装后 `perf probe -V printk` 能列出参数。
+
+依据 [Stack Exchange: Where is vmlinux on my Ubuntu installation?](https://superuser.com/questions/62575/where-is-vmlinux-on-my-ubuntu-installation) 的指导安装 vmlinux ：
+
+```bash
+# sudo apt-get install linux-image-amd64-dbg
+# sudo perf probe -V mmap_region --vmlinux /usr/lib/debug/boot/vmlinux-4.9.0-16-amd64
+Available variables at mmap_region
+        @<mmap_region+0>
+                char*   __func__
+                long unsigned int       addr
+                long unsigned int       len
+                long unsigned int       pgoff
+                struct file*    file
+                vm_flags_t      vm_flags
+# sudo perf probe --add 'mmap_region addr' --vmlinux /usr/lib/debug/boot/vmlinux-4.9.0-16-amd64
+Failed to find the path for kernel: Mismatching build id
+  Error: Failed to add events.
+# uname -r
+4.9.0-9-amd64
+```
+
+由于版本不对，命令会报错：`Mismatching build id` ，但找到对应版本的 vmlinux 不是件容易的事。
+
 我们可以根据 [X86 calling conventions](https://en.wikipedia.org/wiki/X86_calling_conventions) 手动指定参数：
 
 | Architecture |        Name        |             Operation system, compiler              |         Parameters (Registers)         | Parameters (Stack order) |
