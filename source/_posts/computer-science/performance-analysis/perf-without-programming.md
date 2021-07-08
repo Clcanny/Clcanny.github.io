@@ -208,6 +208,8 @@ Failed to find the path for kernel: Invalid ELF file
 
 由于找不到 debug 信息，无法确认 addr 参数在函数调用中的位置（貌似？），直接指定 addr 参数报错。
 
+#### 指定参数名
+
 根据[知乎用户：基本无害](https://www.zhihu.com/people/radioactivezx)的评论：
 
 > 这一段 perf 找不到 kprobe 函数名外的参数、返回值信息是因为缺少 vmlinux ，可以使用命令 `--vmlinux=<vmlinux_path>` 指定 vmlinux 。发行版一般也会提供官方 kernel 对应的文件，比如 Debian/Ubuntu 下 linux-image-5.8.0-3-amd 包会有一个对应的 linux-image-5.8.0-3-amd-dbg 包，安装之后 perf probe 可以自动找到。安装后 `perf probe -V printk` 能列出参数。
@@ -215,8 +217,15 @@ Failed to find the path for kernel: Invalid ELF file
 依据 [Stack Exchange: Where is vmlinux on my Ubuntu installation?](https://superuser.com/questions/62575/where-is-vmlinux-on-my-ubuntu-installation) 的指导安装 vmlinux ：
 
 ```bash
-# sudo apt-get install linux-image-amd64-dbg
-# sudo perf probe -V mmap_region --vmlinux /usr/lib/debug/boot/vmlinux-4.9.0-16-amd64
+# sudo apt-get install linux-image-4.19-amd64 linux-image-4.19-amd64-dbg
+# uname -r
+4.19.0-0.bpo.17-amd64
+# ls /usr/lib/debug/boot/vmlinux-4.19.0-0.bpo.17-amd64
+/usr/lib/debug/boot/vmlinux-4.19.0-0.bpo.17-amd64
+```
+
+```bash
+# sudo perf probe -V mmap_region
 Available variables at mmap_region
         @<mmap_region+0>
                 char*   __func__
@@ -225,14 +234,43 @@ Available variables at mmap_region
                 long unsigned int       pgoff
                 struct file*    file
                 vm_flags_t      vm_flags
-# sudo perf probe --add 'mmap_region addr' --vmlinux /usr/lib/debug/boot/vmlinux-4.9.0-16-amd64
-Failed to find the path for kernel: Mismatching build id
-  Error: Failed to add events.
-# uname -r
-4.9.0-9-amd64
+# sudo perf probe --add 'mmap_region addr'
+Added new event:
+  probe:mmap_region    (on mmap_region with addr)
+You can now use it in all perf tools, such as:
+	perf record -e probe:mmap_region -aR sleep 1
+# sudo perf record --call-graph dwarf -e probe:mmap_region ./mmapButNotWritten
+0x7f8eb7a04000
+[ perf record: Woken up 1 times to write data ]
+[ perf record: Captured and wrote 0.217 MB perf.data (25 samples) ]
 ```
 
-由于版本不对，命令会报错：`Mismatching build id` ，但找到对应版本的 vmlinux 不是件容易的事。
+```bash
+# sudo chmod 777 perf.data
+# perf script
+mmapButNotWritt  4032 [000]  2222.246366: probe:mmap_region: (ffffffffa5211e40) addr=0x555c53d86000
+        ffffffffa5211e41 mmap_region+0x1
+        ffffffffa52128bd do_mmap+0x46d
+        ffffffffa51ef312 vm_mmap_pgoff+0xd2
+        ffffffffa52cf1d8 elf_map+0x98
+        ffffffffa52d1121 load_elf_binary+0x661
+        ffffffffa5270f56 search_binary_handler+0xa6
+        ffffffffa5272a38 __do_execve_file.isra.34+0x578
+        ffffffffa5272e64 __x64_sys_execve+0x34
+        ffffffffa5004105 do_syscall_64+0x55
+        ffffffffa5800088 entry_SYSCALL_64_after_hwframe+0x44
+```
+
+4.9.0 版本的内核使用 kprobes 时会报错 `mmap_region is out of .text, skip it.` ，不建议使用。
+
+删除 kprobe ：
+
+```bash
+# sudo perf probe --del mmap_region
+Removed event: probe:mmap_region
+```
+
+#### 指定寄存器
 
 我们可以根据 [X86 calling conventions](https://en.wikipedia.org/wiki/X86_calling_conventions) 手动指定参数：
 
@@ -505,3 +543,7 @@ perf_event_attr:
 [X86 Architecture](https://en.wikibooks.org/wiki/X86_Assembly/X86_Architecture)
 
 [Calling Conventions](https://www.agner.org/optimize/calling_conventions.pdf)
+
+[知乎用户：基本无害](https://www.zhihu.com/people/radioactivezx)的评论
+
+[Stack Exchange: Where is vmlinux on my Ubuntu installation?](https://superuser.com/questions/62575/where-is-vmlinux-on-my-ubuntu-installation)
