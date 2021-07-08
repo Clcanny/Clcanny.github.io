@@ -224,6 +224,8 @@ Failed to find the path for kernel: Invalid ELF file
 /usr/lib/debug/boot/vmlinux-4.19.0-0.bpo.17-amd64
 ```
 
+4.9.0 版本的内核使用 kprobes 时会报错 `mmap_region is out of .text, skip it.` ，不建议使用。
+
 ```bash
 # sudo perf probe -V mmap_region
 Available variables at mmap_region
@@ -238,7 +240,7 @@ Available variables at mmap_region
 Added new event:
   probe:mmap_region    (on mmap_region with addr)
 You can now use it in all perf tools, such as:
-	perf record -e probe:mmap_region -aR sleep 1
+       perf record -e probe:mmap_region -aR sleep 1
 # sudo perf record --call-graph dwarf -e probe:mmap_region ./mmapButNotWritten
 0x7f8eb7a04000
 [ perf record: Woken up 1 times to write data ]
@@ -260,8 +262,6 @@ mmapButNotWritt  4032 [000]  2222.246366: probe:mmap_region: (ffffffffa5211e40) 
         ffffffffa5004105 do_syscall_64+0x55
         ffffffffa5800088 entry_SYSCALL_64_after_hwframe+0x44
 ```
-
-4.9.0 版本的内核使用 kprobes 时会报错 `mmap_region is out of .text, skip it.` ，不建议使用。
 
 删除 kprobe ：
 
