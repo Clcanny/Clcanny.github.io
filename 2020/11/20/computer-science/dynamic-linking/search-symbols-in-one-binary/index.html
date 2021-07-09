@@ -1,0 +1,603 @@
+<!DOCTYPE html>
+<html lang="zh-Hans">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 5.4.0">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+<link rel="stylesheet" href="//fonts.googleapis.com/css?family=Lato:300,300italic,400,400italic,700,700italic&display=swap&subset=latin,latin-ext">
+<link rel="stylesheet" href="/lib/font-awesome/css/all.min.css">
+
+<script id="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"clcanny.github.io","root":"/","scheme":"Muse","version":"7.8.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":true,"show_result":true,"style":null},"back2top":{"enable":true,"sidebar":false,"scrollpercent":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":false,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}}};
+  </script>
+
+  <meta name="description" content="导读 Dynamic Linking: Symbol Search Order 介绍了在多个文件间查找符号的顺序，本篇文章会聚焦于 do_lookup_x 函数，探讨在单文件内查找符号的步骤：  布隆过滤器和哈希表是两个重要的数据结构； 它们是由编译器而不是运行时链接器准备的。  Hash sections 有两种格式，GNU hash section 和 SYSV hash section ：">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Search Symbols In One Binary">
+<meta property="og:url" content="https://clcanny.github.io/2020/11/20/computer-science/dynamic-linking/search-symbols-in-one-binary/index.html">
+<meta property="og:site_name" content="On The Road">
+<meta property="og:description" content="导读 Dynamic Linking: Symbol Search Order 介绍了在多个文件间查找符号的顺序，本篇文章会聚焦于 do_lookup_x 函数，探讨在单文件内查找符号的步骤：  布隆过滤器和哈希表是两个重要的数据结构； 它们是由编译器而不是运行时链接器准备的。  Hash sections 有两种格式，GNU hash section 和 SYSV hash section ：">
+<meta property="og:locale">
+<meta property="og:image" content="http://junbin-hexo-img.oss-cn-beijing.aliyuncs.com/dynamic-linking-search-symbols-in-one-binary/one-dimensional-hash-table.png">
+<meta property="og:image" content="http://junbin-hexo-img.oss-cn-beijing.aliyuncs.com/dynamic-linking-search-symbols-in-one-binary/two-dimensional-hash-table.png">
+<meta property="article:published_time" content="2020-11-19T17:28:45.000Z">
+<meta property="article:modified_time" content="2021-06-25T05:05:02.358Z">
+<meta property="article:author" content="JunBin">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="http://junbin-hexo-img.oss-cn-beijing.aliyuncs.com/dynamic-linking-search-symbols-in-one-binary/one-dimensional-hash-table.png">
+
+<link rel="canonical" href="https://clcanny.github.io/2020/11/20/computer-science/dynamic-linking/search-symbols-in-one-binary/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'zh-Hans'
+  };
+</script>
+
+  <title>Search Symbols In One Binary | On The Road</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="Toggle navigation bar">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <span class="logo-line-before"><i></i></span>
+      <h1 class="site-title">On The Road</h1>
+      <span class="logo-line-after"><i></i></span>
+    </a>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+    </div>
+  </div>
+</div>
+
+
+
+
+<nav class="site-nav">
+  <ul id="menu" class="main-menu menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-home fa-fw"></i>Home</a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>Archives</a>
+
+  </li>
+        <li class="menu-item menu-item-categories">
+
+    <a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>Categories</a>
+
+  </li>
+  </ul>
+</nav>
+
+
+
+
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content post posts-expand">
+            
+
+    
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-Hans">
+    <link itemprop="mainEntityOfPage" href="https://clcanny.github.io/2020/11/20/computer-science/dynamic-linking/search-symbols-in-one-binary/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="JunBin">
+      <meta itemprop="description" content="a programmer's blog">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="On The Road">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          Search Symbols In One Binary
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">Posted on</span>
+
+              <time title="Created: 2020-11-20 01:28:45" itemprop="dateCreated datePublished" datetime="2020-11-20T01:28:45+08:00">2020-11-20</time>
+            </span>
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="far fa-calendar-check"></i>
+                </span>
+                <span class="post-meta-item-text">Edited on</span>
+                <time title="Modified: 2021-06-25 13:05:02" itemprop="dateModified" datetime="2021-06-25T13:05:02+08:00">2021-06-25</time>
+              </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">In</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/Computer-Science/" itemprop="url" rel="index"><span itemprop="name">Computer Science</span></a>
+                </span>
+                  , 
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/Computer-Science/Dynamic-Linking/" itemprop="url" rel="index"><span itemprop="name">Dynamic Linking</span></a>
+                </span>
+            </span>
+
+          <br>
+            <span class="post-meta-item" title="Symbols count in article">
+              <span class="post-meta-item-icon">
+                <i class="far fa-file-word"></i>
+              </span>
+                <span class="post-meta-item-text">Symbols count in article: </span>
+              <span>2.5k</span>
+            </span>
+            <span class="post-meta-item" title="Reading time">
+              <span class="post-meta-item-icon">
+                <i class="far fa-clock"></i>
+              </span>
+                <span class="post-meta-item-text">Reading time &asymp;</span>
+              <span>4 mins.</span>
+            </span>
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <h1 id="导读">导读</h1>
+<p><a href="https://clcanny.github.io/2020/11/18/dynamic-linking-symbol-search-order/">Dynamic Linking: Symbol Search Order</a> 介绍了在多个文件间查找符号的顺序，本篇文章会聚焦于 <code>do_lookup_x</code> 函数，探讨在单文件内查找符号的步骤：</p>
+<ol>
+<li>布隆过滤器和哈希表是两个重要的数据结构；</li>
+<li>它们是由编译器而不是运行时链接器准备的。</li>
+</ol>
+<p>Hash sections 有两种格式，GNU hash section 和 SYSV hash section ：</p>
+<ol>
+<li>GNU hash section 比 SYSV hash section 具备更好的性能；</li>
+<li>通过 <code>-Wl,--hash-style=sysv</code> 选项指定编译 SYSV hash section ；</li>
+<li>通过 <code>-Wl,--hash-style=gnu</code> 选项指定编译 GNU hash section 。</li>
+</ol>
+<p>本文讨论 GNU hash section 。</p>
+<h1 id="Code">Code</h1>
+<h2 id="加载-gnu-hash-section">加载 .gnu.hash section</h2>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">link_map</span> &#123;</span></span><br><span class="line">  <span class="comment">// ...</span></span><br><span class="line">  <span class="comment">// Symbol hash table.</span></span><br><span class="line">  <span class="comment">// The number of hash buckets.</span></span><br><span class="line">  Elf_Symndx l_nbuckets;</span><br><span class="line">  <span class="comment">// bitmask_words is the number of __ELF_NATIVE_CLASS sized words</span></span><br><span class="line">  <span class="comment">// in the Bloom filter portion of the hash table section. This value</span></span><br><span class="line">  <span class="comment">// must be non-zero, and must be a power of 2.</span></span><br><span class="line">  <span class="comment">// l_gnu_bitmask_idxbits = bitmask_nwords - 1</span></span><br><span class="line">  Elf32_Word l_gnu_bitmask_idxbits;</span><br><span class="line">  <span class="comment">// A shift count used by the Bloom filter.</span></span><br><span class="line">  <span class="comment">// HashValue_2 = HashValue_1 &gt;&gt; l_gnu_shift.</span></span><br><span class="line">  Elf32_Word l_gnu_shift;</span><br><span class="line">  <span class="function"><span class="keyword">const</span> <span class="title">ElfW</span><span class="params">(Addr)</span> * l_gnu_bitmask</span>;</span><br><span class="line">  <span class="class"><span class="keyword">union</span> &#123;</span></span><br><span class="line">    <span class="keyword">const</span> Elf32_Word* l_gnu_buckets;</span><br><span class="line">    <span class="keyword">const</span> Elf_Symndx* l_chain;</span><br><span class="line">  &#125;;</span><br><span class="line">  <span class="class"><span class="keyword">union</span> &#123;</span></span><br><span class="line">    <span class="keyword">const</span> Elf32_Word* l_gnu_chain_zero;</span><br><span class="line">    <span class="keyword">const</span> Elf_Symndx* l_buckets;</span><br><span class="line">  &#125;;</span><br><span class="line">  <span class="comment">// ...</span></span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">void</span> _dl_setup_hash(struct link_map* <span class="built_in">map</span>) &#123;</span><br><span class="line">  <span class="keyword">if</span> (__glibc_likely(<span class="built_in">map</span>-&gt;l_info[ADDRIDX(DT_GNU_HASH)] != <span class="literal">NULL</span>)) &#123;</span><br><span class="line">    Elf32_Word* hash32 = (<span class="keyword">void</span>*)D_PTR(<span class="built_in">map</span>, l_info[ADDRIDX(DT_GNU_HASH)]);</span><br><span class="line">    <span class="built_in">map</span>-&gt;l_nbuckets = *hash32++;</span><br><span class="line">    Elf32_Word symbias = *hash32++;</span><br><span class="line">    Elf32_Word bitmask_nwords = *hash32++;</span><br><span class="line">    <span class="comment">// Must be a power of two.</span></span><br><span class="line">    assert((bitmask_nwords &amp; (bitmask_nwords - <span class="number">1</span>)) == <span class="number">0</span>);</span><br><span class="line">    <span class="built_in">map</span>-&gt;l_gnu_bitmask_idxbits = bitmask_nwords - <span class="number">1</span>;</span><br><span class="line">    <span class="built_in">map</span>-&gt;l_gnu_shift = *hash32++;</span><br><span class="line"></span><br><span class="line">    <span class="built_in">map</span>-&gt;l_gnu_bitmask = (ElfW(Addr)*)hash32;</span><br><span class="line">    hash32 += __ELF_NATIVE_CLASS / <span class="number">32</span> * bitmask_nwords;</span><br><span class="line"></span><br><span class="line">    <span class="built_in">map</span>-&gt;l_gnu_buckets = hash32;</span><br><span class="line">    hash32 += <span class="built_in">map</span>-&gt;l_nbuckets;</span><br><span class="line">    <span class="built_in">map</span>-&gt;l_gnu_chain_zero = hash32 - symbias;</span><br><span class="line">    <span class="keyword">return</span>;</span><br><span class="line">  &#125;</span><br><span class="line">  <span class="comment">// ...</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>从 <a target="_blank" rel="noopener" href="https://blogs.oracle.com/solaris/gnu-hash-elf-sections-v2">GNU Hash ELF Sections</a> 摘抄了一段关于 .gnu.hash section 的描述：</p>
+<blockquote>
+<ul>
+<li>
+<p><strong>l_nbuckets</strong><br>
+The number of hash buckets</p>
+</li>
+<li>
+<p><strong>symbias</strong><br>
+The dynamic symbol table has <em>dynsymcount</em> symbols. <em>symndx</em> is the index of the first symbol in the dynamic symbol table that is to be accessible via the hash table. This implies that there are (<em>dynsymcount</em> - <em>symndx</em>) symbols accessible via the hash table.</p>
+</li>
+<li>
+<p><strong>bitmask_nwords</strong></p>
+<p>The number of __ELF_NATIVE_CLASS sized words in the Bloom filter portion of the hash table section. This value must be non-zero, and must be a power of 2 as explained below.</p>
+<p>Note that a value of 0 could be interpreted to mean that no Bloom filter is present in the hash section. However, the GNU linkers do not do this — the GNU hash section always includes at least 1 mask word.</p>
+</li>
+<li>
+<p><strong>l_gnu_shift</strong><br>
+A shift count used by the Bloom filter. HashValue_2 = HashValue_1 &gt;&gt; l_gnu_shift.</p>
+</li>
+</ul>
+</blockquote>
+<h2 id="哈希算法">哈希算法</h2>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">static</span> <span class="keyword">uint_fast32_t</span></span></span><br><span class="line"><span class="function"><span class="title">dl_new_hash</span> <span class="params">(<span class="keyword">const</span> <span class="keyword">char</span> *s)</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">  <span class="keyword">uint_fast32_t</span> h = <span class="number">5381</span>;</span><br><span class="line">  <span class="keyword">for</span> (<span class="keyword">unsigned</span> <span class="keyword">char</span> c = *s; c != <span class="string">&#x27;\0&#x27;</span>; c = *++s)</span><br><span class="line">    h = h * <span class="number">33</span> + c;</span><br><span class="line">  <span class="keyword">return</span> h &amp; <span class="number">0xffffffff</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<h2 id="查找符号">查找符号</h2>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// elf/dl-lookup.c</span></span><br><span class="line"><span class="comment">// do_lookup_x</span></span><br><span class="line"><span class="comment">// const uint_fast32_t new_hash = dl_new_hash (undef_name);</span></span><br><span class="line"><span class="keyword">const</span> <span class="class"><span class="keyword">struct</span> <span class="title">link_map</span> *<span class="title">map</span> =</span> list[i]-&gt;l_real;</span><br><span class="line"><span class="function"><span class="keyword">const</span> <span class="title">ElfW</span><span class="params">(Addr)</span> *bitmask </span>= map-&gt;l_gnu_bitmask;</span><br><span class="line"><span class="keyword">if</span> (__glibc_likely (bitmask != <span class="literal">NULL</span>))</span><br><span class="line">&#123;</span><br><span class="line">  <span class="built_in">ElfW</span>(Addr) bitmask_word</span><br><span class="line">    = bitmask[(new_hash / __ELF_NATIVE_CLASS)&amp; map-&gt;l_gnu_bitmask_idxbits];</span><br><span class="line">  <span class="keyword">unsigned</span> <span class="keyword">int</span> hashbit1 = new_hash &amp; (__ELF_NATIVE_CLASS - <span class="number">1</span>);</span><br><span class="line">  <span class="keyword">unsigned</span> <span class="keyword">int</span> hashbit2 = ((new_hash &gt;&gt; map-&gt;l_gnu_shift)</span><br><span class="line">                           &amp; (__ELF_NATIVE_CLASS - <span class="number">1</span>));</span><br><span class="line">  <span class="keyword">if</span> (__glibc_unlikely ((bitmask_word &gt;&gt; hashbit1)</span><br><span class="line">                        &amp; (bitmask_word &gt;&gt; hashbit2) &amp; <span class="number">1</span>))</span><br><span class="line">  &#123;</span><br><span class="line">    Elf32_Word bucket = map-&gt;l_gnu_buckets[new_hash</span><br><span class="line">                                           % map-&gt;l_nbuckets];</span><br><span class="line">    <span class="keyword">if</span> (bucket != <span class="number">0</span>)</span><br><span class="line">    &#123;</span><br><span class="line">      <span class="keyword">const</span> Elf32_Word *hasharr = &amp;map-&gt;l_gnu_chain_zero[bucket];</span><br><span class="line">      <span class="function"><span class="keyword">do</span></span></span><br><span class="line"><span class="function">        <span class="title">if</span> <span class="params">(((*hasharr ^ new_hash) &gt;&gt; <span class="number">1</span>) == <span class="number">0</span>)</span></span></span><br><span class="line"><span class="function">        </span>&#123;</span><br><span class="line">          symidx = hasharr - map-&gt;l_gnu_chain_zero;</span><br><span class="line">          sym = <span class="built_in">check_match</span> (undef_name, ref, version, flags,</span><br><span class="line">                             type_class, &amp;symtab[symidx], symidx,</span><br><span class="line">                             strtab, map, &amp;versioned_sym,</span><br><span class="line">                             &amp;num_versions);</span><br><span class="line">          <span class="keyword">if</span> (sym != <span class="literal">NULL</span>)</span><br><span class="line">            <span class="keyword">goto</span> found_it;</span><br><span class="line">        &#125;</span><br><span class="line">      <span class="keyword">while</span> ((*hasharr++ &amp; <span class="number">1u</span>) == <span class="number">0</span>);</span><br><span class="line">    &#125;</span><br><span class="line">  &#125;</span><br><span class="line">  <span class="keyword">else</span></span><br><span class="line">  &#123;</span><br><span class="line">    <span class="comment">/* Use the old SysV-style hash table.  Search the appropriate</span></span><br><span class="line"><span class="comment">       hash bucket in this object&#x27;s symbol table for a definition</span></span><br><span class="line"><span class="comment">       for the same symbol name.  */</span></span><br><span class="line">    <span class="comment">// ...</span></span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<h1 id="详解">详解</h1>
+<p>.gnu.hash 需要有多个导出符号才能较方便地分析，因此我们将使用 test_gnu_hash.cpp 作为待分析的文件：</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// test_gnu_hash.cpp</span></span><br><span class="line"><span class="comment">// g++ -std=c++11 -shared -fPIC test_gnu_hash.cpp -o libtest_gnu_hash.so</span></span><br><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">foo</span><span class="params">()</span> </span>&#123;&#125;</span><br><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">bar</span><span class="params">()</span> </span>&#123;&#125;</span><br><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">test</span><span class="params">()</span> </span>&#123;&#125;</span><br><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">haha</span><span class="params">()</span> </span>&#123;&#125;</span><br><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">more</span><span class="params">()</span> </span>&#123;&#125;</span><br></pre></td></tr></table></figure>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># readelf --dynamic libtest_gnu_hash.so | grep -E &quot;Tag|GNU_HASH&quot;</span></span><br><span class="line">  Tag        Type                         Name/Value</span><br><span class="line"> 0x000000006ffffef5 (GNU_HASH)           0x260</span><br></pre></td></tr></table></figure>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># readelf --section-headers libtest_gnu_hash.so | grep -E &quot;Nr|260&quot; -A1 | grep -v &quot;\-\-&quot;</span></span><br><span class="line">  [Nr] Name              Type             Address           Offset</span><br><span class="line">       Size              EntSize          Flags  Link  Info  Align</span><br><span class="line">  [ 2] .gnu.hash         GNU_HASH         0000000000000260  00000260</span><br><span class="line">       0000000000000038  0000000000000000   A       3     0     8</span><br></pre></td></tr></table></figure>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># export gnu_hash_start_addr=0x260</span></span><br><span class="line"><span class="comment"># export gnu_hash_size=0x38</span></span><br><span class="line"><span class="comment"># od --skip-bytes=$gnu_hash_start_addr --read-bytes=$gnu_hash_size --format=xI libtest_gnu_hash.so</span></span><br><span class="line">0001140 00000003 00000005 00000001 00000006</span><br><span class="line">0001160 04200400 18012908 00000005 00000008</span><br><span class="line">0001200 00000000 b8f7d29a b95a257a b9d35b69</span><br><span class="line">0001220 6a5ebc3c 6a6128eb</span><br></pre></td></tr></table></figure>
+<table>
+<thead>
+<tr>
+<th style="text-align:center"></th>
+<th style="text-align:center">l_nbuckets</th>
+<th style="text-align:center">symbias</th>
+<th style="text-align:center">bitmask_nwords</th>
+<th style="text-align:center">l_gnu_bitmask_idxbits</th>
+<th style="text-align:center">l_gnu_shift</th>
+<th style="text-align:center">l_gnu_bitmask</th>
+<th style="text-align:center">l_gnu_buckets</th>
+<th style="text-align:center">l_gnu_chain_zero + symbias</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align:center">value</td>
+<td style="text-align:center">0x3</td>
+<td style="text-align:center">0x5</td>
+<td style="text-align:center">0x1</td>
+<td style="text-align:center">0x0</td>
+<td style="text-align:center">0x6</td>
+<td style="text-align:center">0x1801290804200400</td>
+<td style="text-align:center">[0x5, 0x8, 0x0]</td>
+<td style="text-align:center">[0xb8f7d29a, 0xb95a257a, 0xb9d35b69, 0x6a5ebc3c, 0x6a6128eb]</td>
+</tr>
+</tbody>
+</table>
+<h2 id="哈希表">哈希表</h2>
+<p>编译器实现哈希表时用了几个技巧：</p>
+<ol>
+<li>用一维数组 <code>l_gnu_chain_zero + symbias</code> 实现二维哈希表：
+<ol>
+<li>将在同一个哈希桶内的元素放在数组的连续区域；</li>
+<li>用另一个一维数组 <code>l_gnu_buckets</code> 记录哈希桶的起始位置；</li>
+<li>约定哈希桶的最后一个元素的最后一个比特是 1 ，其余元素的最后一个比特是 0 ；</li>
+</ol>
+</li>
+<li>为节省哈希表空间：
+<ol>
+<li>哈希表只记录哈希值，不记录符号在 .dynsym 表中的下标；</li>
+<li>哈希表只记录可导出符号（比如 <code>_Z3foov</code> ）的哈希值，不记录不可导出符号（比如 <code>__cxa_finalize@GLIBC_2.2.5</code> ）的哈希值；</li>
+<li>为同时达到以上两个目标，编译器在 .dynsym 表中将不可导出符号（比如 <code>__cxa_finalize@GLIBC_2.2.5</code> ）排在可导出符号（比如 <code>_Z3foov</code> ）的前面，将第一个可导出符号在 .dynsym 表中的下标记为 <code>symbias</code> ，计算 <code>l_gnu_chain_zero</code> 的公式是 <code>map-&gt;l_gnu_chain_zero = map-&gt;l_gnu_buckets + map-&gt;l_nbuckets - symbias</code> 。</li>
+</ol>
+</li>
+</ol>
+<p>因此，链接器查找哈希表的步骤是：</p>
+<ol>
+<li>根据 <code>l_gnu_buckets</code> 找到哈希桶的第一个元素；</li>
+<li>顺序搜索哈希桶内的元素，直到找到相应的哈希值或者到达结尾。</li>
+</ol>
+<p><img src="http://junbin-hexo-img.oss-cn-beijing.aliyuncs.com/dynamic-linking-search-symbols-in-one-binary/one-dimensional-hash-table.png" alt=""></p>
+<p><img src="http://junbin-hexo-img.oss-cn-beijing.aliyuncs.com/dynamic-linking-search-symbols-in-one-binary/two-dimensional-hash-table.png" alt=""></p>
+<table>
+<thead>
+<tr>
+<th style="text-align:center">id</th>
+<th style="text-align:center">name</th>
+<th style="text-align:center">new_hash</th>
+<th style="text-align:center">处理最后一个比特后</th>
+<th style="text-align:center">bucket</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align:center">5</td>
+<td style="text-align:center">_Z4hahav</td>
+<td style="text-align:center">0xb8f7d29a</td>
+<td style="text-align:center">0xb8f7d29a</td>
+<td style="text-align:center">0</td>
+</tr>
+<tr>
+<td style="text-align:center">6</td>
+<td style="text-align:center">_Z4morev</td>
+<td style="text-align:center">0xb95a257b</td>
+<td style="text-align:center">0xb95a257a</td>
+<td style="text-align:center">0</td>
+</tr>
+<tr>
+<td style="text-align:center">7</td>
+<td style="text-align:center">_Z4testv</td>
+<td style="text-align:center">0xb9d35b68</td>
+<td style="text-align:center"><strong>0xb9d35b69</strong></td>
+<td style="text-align:center">0</td>
+</tr>
+<tr>
+<td style="text-align:center">8</td>
+<td style="text-align:center">_Z3barv</td>
+<td style="text-align:center">0x6a5ebc3c</td>
+<td style="text-align:center">0x6a5ebc3c</td>
+<td style="text-align:center">1</td>
+</tr>
+<tr>
+<td style="text-align:center">9</td>
+<td style="text-align:center">_Z3foov</td>
+<td style="text-align:center">0x6a6128eb</td>
+<td style="text-align:center"><strong>0x6a6128eb</strong></td>
+<td style="text-align:center">1</td>
+</tr>
+</tbody>
+</table>
+<p>加粗部分是每个哈希桶的最后一个元素，最后一个比特需要置成 1 。</p>
+<ol>
+<li>根据 <code>l_gnu_buckets</code> 找到哈希桶的第一个元素；</li>
+<li>顺序搜索哈希桶内的元素，直到找到相应的哈希值或者到达结尾。</li>
+</ol>
+<h3 id="symbias">symbias</h3>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># readelf --dyn-syms libtest_gnu_hash.so</span></span><br><span class="line">Symbol table <span class="string">&#x27;.dynsym&#x27;</span> contains 10 entries:</span><br><span class="line">   Num:    Value          Size Type    Bind   Vis      Ndx Name</span><br><span class="line">     0: 0000000000000000     0 NOTYPE  LOCAL  DEFAULT  UND</span><br><span class="line">     1: 0000000000000000     0 FUNC    WEAK   DEFAULT  UND __cxa_finalize@GLIBC_2.2.5 (2)</span><br><span class="line">     2: 0000000000000000     0 NOTYPE  WEAK   DEFAULT  UND _ITM_deregisterTMCloneTab</span><br><span class="line">     3: 0000000000000000     0 NOTYPE  WEAK   DEFAULT  UND __gmon_start__</span><br><span class="line">     4: 0000000000000000     0 NOTYPE  WEAK   DEFAULT  UND _ITM_registerTMCloneTable</span><br><span class="line">     5: 000000000000110a     7 FUNC    GLOBAL DEFAULT   11 _Z4hahav</span><br><span class="line">     6: 0000000000001111     7 FUNC    GLOBAL DEFAULT   11 _Z4morev</span><br><span class="line">     7: 0000000000001103     7 FUNC    GLOBAL DEFAULT   11 _Z4testv</span><br><span class="line">     8: 00000000000010fc     7 FUNC    GLOBAL DEFAULT   11 _Z3barv</span><br><span class="line">     9: 00000000000010f5     7 FUNC    GLOBAL DEFAULT   11 _Z3foov</span><br></pre></td></tr></table></figure>
+<p><code>symbias</code> 表明第一个可以通过 .gnu.hash section 访问的符号（即可以提供给其它库访问的符号），在 <code>libtest_gnu_hash.so</code> 中这个符号是 <code>_Z4hahav</code> 。</p>
+<h2 id="布隆过滤器">布隆过滤器</h2>
+<p>布隆过滤器的原理可以参考文章<a target="_blank" rel="noopener" href="https://zhuanlan.zhihu.com/p/43263751">详解布隆过滤器的原理，使用场景和注意事项</a>，简而言之，将数据使用多个不同的哈希函数生成多个哈希值，并将对应比特位置为 1 ，就能判断某个数据肯定不存在。</p>
+<p>参考 <a target="_blank" rel="noopener" href="https://blogs.oracle.com/solaris/gnu-hash-elf-sections-v2">GNU Hash ELF Sections</a> ，构建布隆过滤器的伪代码如下：</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">const</span> <span class="keyword">uint_fast32_t</span> new_hash = <span class="built_in">dl_new_hash</span>(undef_name);</span><br><span class="line"><span class="keyword">uint32_t</span> H1 = new_hash;</span><br><span class="line"><span class="keyword">uint32_t</span> H2 = new_hash &gt;&gt; map-&gt;l_gnu_shift;</span><br><span class="line"><span class="keyword">uint32_t</span> N = (H1 / __ELF_NATIVE_CLASS) &amp; map-&gt;l_gnu_bitmask_idxbits;</span><br><span class="line"><span class="keyword">unsigned</span> <span class="keyword">int</span> hashbit1 = H1 % __ELF_NATIVE_CLASS;</span><br><span class="line"><span class="keyword">unsigned</span> <span class="keyword">int</span> hashbit2 = H2 % __ELF_NATIVE_CLASS;</span><br><span class="line">bloom[N] |= (<span class="number">1</span> &lt;&lt; hashbit1);</span><br><span class="line">bloom[N] |= (<span class="number">1</span> &lt;&lt; hashbit2);</span><br></pre></td></tr></table></figure>
+<p>构建布隆过滤器的 C++ 代码如下：</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// bloom.cpp</span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">include</span> <span class="meta-string">&lt;ios&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">include</span> <span class="meta-string">&lt;iostream&gt;</span></span></span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">uint32_t</span> <span class="title">dl_new_hash</span><span class="params">(<span class="keyword">const</span> <span class="keyword">char</span> *s)</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">  <span class="keyword">uint32_t</span> h = <span class="number">5381</span>;</span><br><span class="line">  <span class="keyword">for</span> (<span class="keyword">unsigned</span> <span class="keyword">char</span> c = *s; c != <span class="string">&#x27;\0&#x27;</span>; c = *++s)</span><br><span class="line">    h = h * <span class="number">33</span> + c;</span><br><span class="line">  <span class="keyword">return</span> h &amp; <span class="number">0xffffffff</span>;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="keyword">const</span> <span class="keyword">int</span> __ELF_NATIVE_CLASS = <span class="number">64</span>;</span><br><span class="line"><span class="keyword">const</span> <span class="keyword">int</span> l_gnu_shift = <span class="number">6</span>;</span><br><span class="line"><span class="keyword">const</span> <span class="keyword">int</span> bitmask_nwords = <span class="number">1</span>;</span><br><span class="line"><span class="keyword">const</span> <span class="keyword">int</span> l_gnu_bitmask_idxbits = bitmask_nwords - <span class="number">1</span>;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">new_bitmask</span><span class="params">(<span class="keyword">const</span> <span class="keyword">char</span>* s, <span class="keyword">uint64_t</span>* bitmask_arr)</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">  <span class="keyword">uint32_t</span> hash_value1 = <span class="built_in">dl_new_hash</span>(s);</span><br><span class="line">  <span class="keyword">uint32_t</span> hash_value2 = hash_value1 &gt;&gt; l_gnu_shift;</span><br><span class="line">  <span class="keyword">int</span> n = (hash_value1 / __ELF_NATIVE_CLASS) &amp; l_gnu_bitmask_idxbits;</span><br><span class="line">  <span class="keyword">unsigned</span> <span class="keyword">int</span> hashbit1 = hash_value1 % __ELF_NATIVE_CLASS;</span><br><span class="line">  <span class="keyword">unsigned</span> <span class="keyword">int</span> hashbit2 = hash_value2 % __ELF_NATIVE_CLASS;</span><br><span class="line">  <span class="comment">// Please use 1L (64 bits) instead of 1 (32 bits).</span></span><br><span class="line">  bitmask_arr[n] |= (<span class="number">1L</span> &lt;&lt; hashbit1);</span><br><span class="line">  bitmask_arr[n] |= (<span class="number">1L</span> &lt;&lt; hashbit2);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">int</span> <span class="title">main</span><span class="params">()</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">  <span class="keyword">uint64_t</span> bitmask_arr[bitmask_nwords] = &#123;<span class="number">0</span>&#125;;</span><br><span class="line">  <span class="built_in">new_bitmask</span>(<span class="string">&quot;_Z4hahav&quot;</span>, bitmask_arr);</span><br><span class="line">  <span class="built_in">new_bitmask</span>(<span class="string">&quot;_Z4morev&quot;</span>, bitmask_arr);</span><br><span class="line">  <span class="built_in">new_bitmask</span>(<span class="string">&quot;_Z4testv&quot;</span>, bitmask_arr);</span><br><span class="line">  <span class="built_in">new_bitmask</span>(<span class="string">&quot;_Z3barv&quot;</span>, bitmask_arr);</span><br><span class="line">  <span class="built_in">new_bitmask</span>(<span class="string">&quot;_Z3foov&quot;</span>, bitmask_arr);</span><br><span class="line">  std::cout &lt;&lt; std::hex &lt;&lt; <span class="string">&quot;0x&quot;</span> &lt;&lt; bitmask_arr[<span class="number">0</span>] &lt;&lt; std::endl;</span><br><span class="line">  <span class="comment">// 0x1801290804200400</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<h1 id="More">More</h1>
+<p>编译器如何处理哈希冲突？</p>
+<h1 id="参考资料">参考资料</h1>
+<ul>
+<li><a target="_blank" rel="noopener" href="https://blogs.oracle.com/solaris/gnu-hash-elf-sections-v2">GNU Hash ELF Sections</a></li>
+<li><a target="_blank" rel="noopener" href="https://zhuanlan.zhihu.com/p/43263751">知乎：详解布隆过滤器的原理，使用场景和注意事项</a></li>
+<li><a target="_blank" rel="noopener" href="https://answerywj.com/2020/05/14/ld-hash-style/">AnSwEr’s Blog ：--hash-style 兼容性问题</a></li>
+</ul>
+
+    </div>
+
+    
+    
+    
+
+      <footer class="post-footer">
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2020/11/18/computer-science/dynamic-linking/symbol-search-order/" rel="prev" title="Symbol Search Order">
+      <i class="fa fa-chevron-left"></i> Symbol Search Order
+    </a></div>
+      <div class="post-nav-item">
+    <a href="/2020/11/21/computer-science/dynamic-linking/relocation-across-files/" rel="next" title="Relocation Across Files">
+      Relocation Across Files <i class="fa fa-chevron-right"></i>
+    </a></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+
+
+          </div>
+          
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          Table of Contents
+        </li>
+        <li class="sidebar-nav-overview">
+          Overview
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#%E5%AF%BC%E8%AF%BB"><span class="nav-number">1.</span> <span class="nav-text">导读</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#Code"><span class="nav-number">2.</span> <span class="nav-text">Code</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%8A%A0%E8%BD%BD-gnu-hash-section"><span class="nav-number">2.1.</span> <span class="nav-text">加载 .gnu.hash section</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%93%88%E5%B8%8C%E7%AE%97%E6%B3%95"><span class="nav-number">2.2.</span> <span class="nav-text">哈希算法</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%9F%A5%E6%89%BE%E7%AC%A6%E5%8F%B7"><span class="nav-number">2.3.</span> <span class="nav-text">查找符号</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#%E8%AF%A6%E8%A7%A3"><span class="nav-number">3.</span> <span class="nav-text">详解</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%93%88%E5%B8%8C%E8%A1%A8"><span class="nav-number">3.1.</span> <span class="nav-text">哈希表</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#symbias"><span class="nav-number">3.1.1.</span> <span class="nav-text">symbias</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%B8%83%E9%9A%86%E8%BF%87%E6%BB%A4%E5%99%A8"><span class="nav-number">3.2.</span> <span class="nav-text">布隆过滤器</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#More"><span class="nav-number">4.</span> <span class="nav-text">More</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#%E5%8F%82%E8%80%83%E8%B5%84%E6%96%99"><span class="nav-number">5.</span> <span class="nav-text">参考资料</span></a></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+  <p class="site-author-name" itemprop="name">JunBin</p>
+  <div class="site-description" itemprop="description">a programmer's blog</div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">22</span>
+          <span class="site-state-item-name">posts</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+          
+        <span class="site-state-item-count">14</span>
+        <span class="site-state-item-name">categories</span></a>
+      </div>
+  </nav>
+</div>
+
+
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+        
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2021</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">JunBin</span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item-icon">
+      <i class="fa fa-chart-area"></i>
+    </span>
+    <span title="Symbols count total">44k</span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item-icon">
+      <i class="fa fa-coffee"></i>
+    </span>
+    <span title="Reading time total">1:13</span>
+</div>
+  <div class="powered-by">Powered by <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> & <a href="https://muse.theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Muse</a>
+  </div>
+
+        
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/muse.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+</body>
+</html>

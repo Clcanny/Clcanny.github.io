@@ -120,9 +120,9 @@
     <a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>Archives</a>
 
   </li>
-        <li class="menu-item menu-item-tags">
+        <li class="menu-item menu-item-categories">
 
-    <a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>Tags</a>
+    <a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>Categories</a>
 
   </li>
   </ul>
@@ -152,7 +152,7 @@
   
   
   <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-Hans">
-    <link itemprop="mainEntityOfPage" href="https://clcanny.github.io/2021/05/23/big-data-delta-lake/">
+    <link itemprop="mainEntityOfPage" href="https://clcanny.github.io/2021/07/04/computer-science/tools/iptables-and-k8s/">
 
     <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
       <meta itemprop="image" content="/images/avatar.gif">
@@ -166,7 +166,148 @@
       <header class="post-header">
         <h2 class="post-title" itemprop="name headline">
           
-            <a href="/2021/05/23/big-data-delta-lake/" class="post-title-link" itemprop="url">Delta Lake</a>
+            <a href="/2021/07/04/computer-science/tools/iptables-and-k8s/" class="post-title-link" itemprop="url">Iptables And K8S</a>
+        </h2>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">Posted on</span>
+
+              <time title="Created: 2021-07-04 18:27:04" itemprop="dateCreated datePublished" datetime="2021-07-04T18:27:04+08:00">2021-07-04</time>
+            </span>
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="far fa-calendar-check"></i>
+                </span>
+                <span class="post-meta-item-text">Edited on</span>
+                <time title="Modified: 2021-07-09 13:41:57" itemprop="dateModified" datetime="2021-07-09T13:41:57+08:00">2021-07-09</time>
+              </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">In</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/Computer-Science/" itemprop="url" rel="index"><span itemprop="name">Computer Science</span></a>
+                </span>
+                  , 
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/Computer-Science/Tools/" itemprop="url" rel="index"><span itemprop="name">Tools</span></a>
+                </span>
+                  , 
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/Computer-Science/Tools/Network/" itemprop="url" rel="index"><span itemprop="name">Network</span></a>
+                </span>
+            </span>
+
+          <br>
+            <span class="post-meta-item" title="Symbols count in article">
+              <span class="post-meta-item-icon">
+                <i class="far fa-file-word"></i>
+              </span>
+                <span class="post-meta-item-text">Symbols count in article: </span>
+              <span>1.7k</span>
+            </span>
+            <span class="post-meta-item" title="Reading time">
+              <span class="post-meta-item-icon">
+                <i class="far fa-clock"></i>
+              </span>
+                <span class="post-meta-item-text">Reading time &asymp;</span>
+              <span>3 mins.</span>
+            </span>
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+          <h1 id="Iptables">Iptables</h1>
+<p><a target="_blank" rel="noopener" href="https://wiki.centos.org/HowTos/Network/IPTables">CentOS: Iptables</a> 说 Netfilter 是工作在内核的模块，Iptables 是工作在用户空间、负责定义规则的命令行工具：</p>
+<blockquote>
+<p>Iptables is the userspace module, the bit that you, the user, interact with at the command line to enter firewall rules into predefined tables. Netfilter is a kernel module, built into the kernel, that actually does the filtering.</p>
+</blockquote>
+<h2 id="基本概念">基本概念</h2>
+<h3 id="Tables"><a target="_blank" rel="noopener" href="https://ipset.netfilter.org/iptables.man.html">Tables</a></h3>
+<blockquote>
+<p>There are currently five independent tables (which tables are present at any time depends on the kernel configuration options and which modules are present).</p>
+<ul>
+<li>filter</li>
+<li>nat: This table is consulted when a packet that creates a new connection is encountered.</li>
+<li>mangle: This table is used for specialized packet alteration. Until kernel 2.4.17 it had two built-in chains: <strong>PREROUTING</strong> (for altering incoming packets before routing) and <strong>OUTPUT</strong> (for altering locally-generated packets before routing). Since kernel <strong>2.4.18</strong>, three other built-in chains are also supported: <strong>INPUT</strong> (for packets coming into the box itself), <strong>FORWARD</strong> (for altering packets being routed through the box), and <strong>POSTROUTING</strong> (for altering packets as they are about to go out).</li>
+<li>raw: This table is used mainly for configuring exemptions from connection tracking in combination with the NOTRACK target.</li>
+<li>security</li>
+</ul>
+</blockquote>
+<h3 id="Chains"><a target="_blank" rel="noopener" href="https://wiki.archlinux.org/title/Iptables#Chains">Chains</a></h3>
+<blockquote>
+<p>Tables consist of chains, which are lists of rules which are followed in order.</p>
+</blockquote>
+<p><img src="http://junbin-hexo-img.oss-cn-beijing.aliyuncs.com/iptables-and-k8s/tables_traverse.jpg" alt=""></p>
+<h3 id="Traversing-Chains"><a target="_blank" rel="noopener" href="https://wiki.archlinux.org/title/Iptables#Traversing_Chains">Traversing Chains</a></h3>
+<blockquote>
+<p>A network packet received on any interface traverses the traffic control chains of tables in the order shown in the flow chart. The 3 most commonly used targets are ACCEPT, DROP, and jump to a user-defined chain.</p>
+</blockquote>
+<h2 id="安装">安装</h2>
+<p>安装 iptables ：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># apt-get install iptables</span></span><br><span class="line"><span class="comment"># iptables --version</span></span><br><span class="line">iptables v1.6.0</span><br></pre></td></tr></table></figure>
+<p>打开 iptable_nat 内核模块：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># lsmod | grep iptable</span></span><br><span class="line">iptable_filter         16384  0</span><br><span class="line">ip_tables              24576  1 iptable_filter</span><br><span class="line">x_tables               36864  2 ip_tables,iptable_filter</span><br><span class="line"><span class="comment"># modprobe iptable_nat</span></span><br><span class="line"><span class="comment"># lsmod | grep iptable</span></span><br><span class="line">iptable_nat            16384  0</span><br><span class="line">nf_nat_ipv4            16384  1 iptable_nat</span><br><span class="line">iptable_filter         16384  0</span><br><span class="line">ip_tables              24576  2 iptable_filter,iptable_nat</span><br><span class="line">x_tables               36864  2 ip_tables,iptable_filter</span><br></pre></td></tr></table></figure>
+<h2 id="使用">使用</h2>
+<h1 id="K8S">K8S</h1>
+<p><a target="_blank" rel="noopener" href="https://kubernetes.io/docs/concepts/services-networking/service/#proxy-mode-iptables">Kubernetes: iptables proxy mode</a> 提到 kube-proxy 在 iptables proxy 模式下会利用 iptable 工作：</p>
+<blockquote>
+<p>For each Service, it installs iptables rules, which capture traffic to the Service’s clusterIP and port, and redirect that traffic to one of the Service’s backend sets. For each Endpoint object, it installs iptables rules which select a backend Pod.</p>
+</blockquote>
+<p>本文会探索 Kubernetes 如何利用 iptables 以达到路由流量的目的。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># iptables -L</span></span><br><span class="line">Chain INPUT (policy ACCEPT)</span><br><span class="line">target     prot opt <span class="built_in">source</span>               destination</span><br><span class="line"></span><br><span class="line">Chain FORWARD (policy ACCEPT)</span><br><span class="line">target     prot opt <span class="built_in">source</span>               destination</span><br><span class="line"></span><br><span class="line">Chain OUTPUT (policy ACCEPT)</span><br><span class="line">target     prot opt <span class="built_in">source</span>               destination</span><br></pre></td></tr></table></figure>
+<h1 id="参考资料">参考资料</h1>
+<ul>
+<li><a target="_blank" rel="noopener" href="https://wiki.centos.org/HowTos/Network/IPTables">CentOS: Iptables</a></li>
+<li><a target="_blank" rel="noopener" href="https://ipset.netfilter.org/iptables.man.html"></a></li>
+<li><a target="_blank" rel="noopener" href="https://wiki.archlinux.org/title/Iptables">Arch Linux Wiki: iptables</a></li>
+<li><a target="_blank" rel="noopener" href="https://kubernetes.io/docs/concepts/services-networking/service/#proxy-mode-iptables">Kubernetes: iptables proxy mode</a></li>
+</ul>
+
+      
+    </div>
+
+    
+    
+    
+      <footer class="post-footer">
+        <div class="post-eof"></div>
+      </footer>
+  </article>
+  
+  
+  
+
+      
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-Hans">
+    <link itemprop="mainEntityOfPage" href="https://clcanny.github.io/2021/05/23/computer-science/big-data/data-lake/delta-lake/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="JunBin">
+      <meta itemprop="description" content="a programmer's blog">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="On The Road">
+    </span>
+      <header class="post-header">
+        <h2 class="post-title" itemprop="name headline">
+          
+            <a href="/2021/05/23/computer-science/big-data/data-lake/delta-lake/" class="post-title-link" itemprop="url">Delta Lake</a>
         </h2>
 
         <div class="post-meta">
@@ -183,8 +324,25 @@
                   <i class="far fa-calendar-check"></i>
                 </span>
                 <span class="post-meta-item-text">Edited on</span>
-                <time title="Modified: 2021-06-15 00:39:28" itemprop="dateModified" datetime="2021-06-15T00:39:28+08:00">2021-06-15</time>
+                <time title="Modified: 2021-06-25 13:05:02" itemprop="dateModified" datetime="2021-06-25T13:05:02+08:00">2021-06-25</time>
               </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">In</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/Computer-Science/" itemprop="url" rel="index"><span itemprop="name">Computer Science</span></a>
+                </span>
+                  , 
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/Computer-Science/Big-Data/" itemprop="url" rel="index"><span itemprop="name">Big Data</span></a>
+                </span>
+                  , 
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/Computer-Science/Big-Data/Data-Lake/" itemprop="url" rel="index"><span itemprop="name">Data Lake</span></a>
+                </span>
+            </span>
 
           <br>
             <span class="post-meta-item" title="Symbols count in article">
@@ -287,7 +445,7 @@
   
   
   <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-Hans">
-    <link itemprop="mainEntityOfPage" href="https://clcanny.github.io/2021/03/31/columnar-storage-get-started-with-parquet/">
+    <link itemprop="mainEntityOfPage" href="https://clcanny.github.io/2021/03/31/computer-science/columnar-storage/get-started-with-parquet/">
 
     <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
       <meta itemprop="image" content="/images/avatar.gif">
@@ -301,7 +459,7 @@
       <header class="post-header">
         <h2 class="post-title" itemprop="name headline">
           
-            <a href="/2021/03/31/columnar-storage-get-started-with-parquet/" class="post-title-link" itemprop="url">Columnar Storage: Get Started With Parquet</a>
+            <a href="/2021/03/31/computer-science/columnar-storage/get-started-with-parquet/" class="post-title-link" itemprop="url">Get Started With Parquet</a>
         </h2>
 
         <div class="post-meta">
@@ -318,8 +476,25 @@
                   <i class="far fa-calendar-check"></i>
                 </span>
                 <span class="post-meta-item-text">Edited on</span>
-                <time title="Modified: 2021-05-26 13:47:06" itemprop="dateModified" datetime="2021-05-26T13:47:06+08:00">2021-05-26</time>
+                <time title="Modified: 2021-06-25 13:05:02" itemprop="dateModified" datetime="2021-06-25T13:05:02+08:00">2021-06-25</time>
               </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">In</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/Computer-Science/" itemprop="url" rel="index"><span itemprop="name">Computer Science</span></a>
+                </span>
+                  , 
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/Computer-Science/Big-Data/" itemprop="url" rel="index"><span itemprop="name">Big Data</span></a>
+                </span>
+                  , 
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/Computer-Science/Big-Data/Columnar-Storage/" itemprop="url" rel="index"><span itemprop="name">Columnar Storage</span></a>
+                </span>
+            </span>
 
           <br>
             <span class="post-meta-item" title="Symbols count in article">
@@ -388,7 +563,7 @@
   
   
   <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-Hans">
-    <link itemprop="mainEntityOfPage" href="https://clcanny.github.io/2021/03/29/columnar-storage-dremel/">
+    <link itemprop="mainEntityOfPage" href="https://clcanny.github.io/2021/03/29/computer-science/columnar-storage/dremel/">
 
     <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
       <meta itemprop="image" content="/images/avatar.gif">
@@ -402,7 +577,7 @@
       <header class="post-header">
         <h2 class="post-title" itemprop="name headline">
           
-            <a href="/2021/03/29/columnar-storage-dremel/" class="post-title-link" itemprop="url">Columnar Storage: Dremel</a>
+            <a href="/2021/03/29/computer-science/columnar-storage/dremel/" class="post-title-link" itemprop="url">Dremel</a>
         </h2>
 
         <div class="post-meta">
@@ -419,8 +594,25 @@
                   <i class="far fa-calendar-check"></i>
                 </span>
                 <span class="post-meta-item-text">Edited on</span>
-                <time title="Modified: 2021-05-26 13:47:06" itemprop="dateModified" datetime="2021-05-26T13:47:06+08:00">2021-05-26</time>
+                <time title="Modified: 2021-06-25 13:05:02" itemprop="dateModified" datetime="2021-06-25T13:05:02+08:00">2021-06-25</time>
               </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">In</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/Computer-Science/" itemprop="url" rel="index"><span itemprop="name">Computer Science</span></a>
+                </span>
+                  , 
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/Computer-Science/Big-Data/" itemprop="url" rel="index"><span itemprop="name">Big Data</span></a>
+                </span>
+                  , 
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/Computer-Science/Big-Data/Columnar-Storage/" itemprop="url" rel="index"><span itemprop="name">Columnar Storage</span></a>
+                </span>
+            </span>
 
           <br>
             <span class="post-meta-item" title="Symbols count in article">
@@ -754,7 +946,7 @@
   
   
   <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-Hans">
-    <link itemprop="mainEntityOfPage" href="https://clcanny.github.io/2021/03/12/dynamic-linking-about-global-strings/">
+    <link itemprop="mainEntityOfPage" href="https://clcanny.github.io/2021/03/12/computer-science/dynamic-linking/about-global-strings/">
 
     <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
       <meta itemprop="image" content="/images/avatar.gif">
@@ -768,7 +960,7 @@
       <header class="post-header">
         <h2 class="post-title" itemprop="name headline">
           
-            <a href="/2021/03/12/dynamic-linking-about-global-strings/" class="post-title-link" itemprop="url">Dynamic Linking: About Global Strings</a>
+            <a href="/2021/03/12/computer-science/dynamic-linking/about-global-strings/" class="post-title-link" itemprop="url">About Global Strings</a>
         </h2>
 
         <div class="post-meta">
@@ -785,8 +977,21 @@
                   <i class="far fa-calendar-check"></i>
                 </span>
                 <span class="post-meta-item-text">Edited on</span>
-                <time title="Modified: 2021-05-26 13:47:06" itemprop="dateModified" datetime="2021-05-26T13:47:06+08:00">2021-05-26</time>
+                <time title="Modified: 2021-06-25 13:05:02" itemprop="dateModified" datetime="2021-06-25T13:05:02+08:00">2021-06-25</time>
               </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">In</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/Computer-Science/" itemprop="url" rel="index"><span itemprop="name">Computer Science</span></a>
+                </span>
+                  , 
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/Computer-Science/Dynamic-Linking/" itemprop="url" rel="index"><span itemprop="name">Dynamic Linking</span></a>
+                </span>
+            </span>
 
           <br>
             <span class="post-meta-item" title="Symbols count in article">
@@ -871,7 +1076,7 @@
   
   
   <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-Hans">
-    <link itemprop="mainEntityOfPage" href="https://clcanny.github.io/2021/01/30/dynamic-linking-the-first-three-items-of-got/">
+    <link itemprop="mainEntityOfPage" href="https://clcanny.github.io/2021/01/30/computer-science/dynamic-linking/the-first-three-items-of-got/">
 
     <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
       <meta itemprop="image" content="/images/avatar.gif">
@@ -885,7 +1090,7 @@
       <header class="post-header">
         <h2 class="post-title" itemprop="name headline">
           
-            <a href="/2021/01/30/dynamic-linking-the-first-three-items-of-got/" class="post-title-link" itemprop="url">Dynamic Linking: The First Three Items Of GOT</a>
+            <a href="/2021/01/30/computer-science/dynamic-linking/the-first-three-items-of-got/" class="post-title-link" itemprop="url">The First Three Items Of GOT</a>
         </h2>
 
         <div class="post-meta">
@@ -902,8 +1107,21 @@
                   <i class="far fa-calendar-check"></i>
                 </span>
                 <span class="post-meta-item-text">Edited on</span>
-                <time title="Modified: 2021-05-26 13:47:06" itemprop="dateModified" datetime="2021-05-26T13:47:06+08:00">2021-05-26</time>
+                <time title="Modified: 2021-06-25 13:05:02" itemprop="dateModified" datetime="2021-06-25T13:05:02+08:00">2021-06-25</time>
               </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">In</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/Computer-Science/" itemprop="url" rel="index"><span itemprop="name">Computer Science</span></a>
+                </span>
+                  , 
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/Computer-Science/Dynamic-Linking/" itemprop="url" rel="index"><span itemprop="name">Dynamic Linking</span></a>
+                </span>
+            </span>
 
           <br>
             <span class="post-meta-item" title="Symbols count in article">
@@ -993,7 +1211,7 @@
   
   
   <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-Hans">
-    <link itemprop="mainEntityOfPage" href="https://clcanny.github.io/2020/12/22/dynamic-linking-compatibility-of-hash-tables/">
+    <link itemprop="mainEntityOfPage" href="https://clcanny.github.io/2020/12/22/computer-science/dynamic-linking/compatibility-of-hash-tables/">
 
     <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
       <meta itemprop="image" content="/images/avatar.gif">
@@ -1007,7 +1225,7 @@
       <header class="post-header">
         <h2 class="post-title" itemprop="name headline">
           
-            <a href="/2020/12/22/dynamic-linking-compatibility-of-hash-tables/" class="post-title-link" itemprop="url">Dynamic Linking: Compatibility Of Hash Tables</a>
+            <a href="/2020/12/22/computer-science/dynamic-linking/compatibility-of-hash-tables/" class="post-title-link" itemprop="url">Compatibility Of Hash Tables</a>
         </h2>
 
         <div class="post-meta">
@@ -1024,8 +1242,21 @@
                   <i class="far fa-calendar-check"></i>
                 </span>
                 <span class="post-meta-item-text">Edited on</span>
-                <time title="Modified: 2021-05-26 13:47:06" itemprop="dateModified" datetime="2021-05-26T13:47:06+08:00">2021-05-26</time>
+                <time title="Modified: 2021-06-25 13:05:02" itemprop="dateModified" datetime="2021-06-25T13:05:02+08:00">2021-06-25</time>
               </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">In</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/Computer-Science/" itemprop="url" rel="index"><span itemprop="name">Computer Science</span></a>
+                </span>
+                  , 
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/Computer-Science/Dynamic-Linking/" itemprop="url" rel="index"><span itemprop="name">Dynamic Linking</span></a>
+                </span>
+            </span>
 
           <br>
             <span class="post-meta-item" title="Symbols count in article">
@@ -1198,7 +1429,7 @@
   
   
   <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-Hans">
-    <link itemprop="mainEntityOfPage" href="https://clcanny.github.io/2020/12/03/dynamic-linking-relocation-types/">
+    <link itemprop="mainEntityOfPage" href="https://clcanny.github.io/2020/12/03/computer-science/dynamic-linking/relocation-types/">
 
     <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
       <meta itemprop="image" content="/images/avatar.gif">
@@ -1212,7 +1443,7 @@
       <header class="post-header">
         <h2 class="post-title" itemprop="name headline">
           
-            <a href="/2020/12/03/dynamic-linking-relocation-types/" class="post-title-link" itemprop="url">Dynamic Linking: Relocation Types</a>
+            <a href="/2020/12/03/computer-science/dynamic-linking/relocation-types/" class="post-title-link" itemprop="url">Relocation Types</a>
         </h2>
 
         <div class="post-meta">
@@ -1229,8 +1460,21 @@
                   <i class="far fa-calendar-check"></i>
                 </span>
                 <span class="post-meta-item-text">Edited on</span>
-                <time title="Modified: 2021-05-26 13:47:06" itemprop="dateModified" datetime="2021-05-26T13:47:06+08:00">2021-05-26</time>
+                <time title="Modified: 2021-06-25 13:05:02" itemprop="dateModified" datetime="2021-06-25T13:05:02+08:00">2021-06-25</time>
               </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">In</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/Computer-Science/" itemprop="url" rel="index"><span itemprop="name">Computer Science</span></a>
+                </span>
+                  , 
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/Computer-Science/Dynamic-Linking/" itemprop="url" rel="index"><span itemprop="name">Dynamic Linking</span></a>
+                </span>
+            </span>
 
           <br>
             <span class="post-meta-item" title="Symbols count in article">
@@ -1381,7 +1625,7 @@ A represents the addend used to compute the value of the relocatable field.</p>
   
   
   <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-Hans">
-    <link itemprop="mainEntityOfPage" href="https://clcanny.github.io/2020/11/24/dynamic-linking-introduction-to-elf-file/">
+    <link itemprop="mainEntityOfPage" href="https://clcanny.github.io/2020/11/24/computer-science/dynamic-linking/introduction-to-elf-file/">
 
     <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
       <meta itemprop="image" content="/images/avatar.gif">
@@ -1395,7 +1639,7 @@ A represents the addend used to compute the value of the relocatable field.</p>
       <header class="post-header">
         <h2 class="post-title" itemprop="name headline">
           
-            <a href="/2020/11/24/dynamic-linking-introduction-to-elf-file/" class="post-title-link" itemprop="url">Dynamic Linking: Introduction To Elf File</a>
+            <a href="/2020/11/24/computer-science/dynamic-linking/introduction-to-elf-file/" class="post-title-link" itemprop="url">Introduction To Elf File</a>
         </h2>
 
         <div class="post-meta">
@@ -1412,8 +1656,21 @@ A represents the addend used to compute the value of the relocatable field.</p>
                   <i class="far fa-calendar-check"></i>
                 </span>
                 <span class="post-meta-item-text">Edited on</span>
-                <time title="Modified: 2021-05-26 13:47:06" itemprop="dateModified" datetime="2021-05-26T13:47:06+08:00">2021-05-26</time>
+                <time title="Modified: 2021-06-25 13:05:02" itemprop="dateModified" datetime="2021-06-25T13:05:02+08:00">2021-06-25</time>
               </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">In</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/Computer-Science/" itemprop="url" rel="index"><span itemprop="name">Computer Science</span></a>
+                </span>
+                  , 
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/Computer-Science/Dynamic-Linking/" itemprop="url" rel="index"><span itemprop="name">Dynamic Linking</span></a>
+                </span>
+            </span>
 
           <br>
             <span class="post-meta-item" title="Symbols count in article">
@@ -1825,7 +2082,7 @@ A represents the addend used to compute the value of the relocatable field.</p>
   
   
   <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-Hans">
-    <link itemprop="mainEntityOfPage" href="https://clcanny.github.io/2020/11/21/dynamic-linking-relocation-across-files/">
+    <link itemprop="mainEntityOfPage" href="https://clcanny.github.io/2020/11/21/computer-science/dynamic-linking/relocation-across-files/">
 
     <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
       <meta itemprop="image" content="/images/avatar.gif">
@@ -1839,7 +2096,7 @@ A represents the addend used to compute the value of the relocatable field.</p>
       <header class="post-header">
         <h2 class="post-title" itemprop="name headline">
           
-            <a href="/2020/11/21/dynamic-linking-relocation-across-files/" class="post-title-link" itemprop="url">Dynamic Linking: Relocation Across Files</a>
+            <a href="/2020/11/21/computer-science/dynamic-linking/relocation-across-files/" class="post-title-link" itemprop="url">Relocation Across Files</a>
         </h2>
 
         <div class="post-meta">
@@ -1856,8 +2113,21 @@ A represents the addend used to compute the value of the relocatable field.</p>
                   <i class="far fa-calendar-check"></i>
                 </span>
                 <span class="post-meta-item-text">Edited on</span>
-                <time title="Modified: 2021-05-26 13:47:06" itemprop="dateModified" datetime="2021-05-26T13:47:06+08:00">2021-05-26</time>
+                <time title="Modified: 2021-06-25 13:05:02" itemprop="dateModified" datetime="2021-06-25T13:05:02+08:00">2021-06-25</time>
               </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">In</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/Computer-Science/" itemprop="url" rel="index"><span itemprop="name">Computer Science</span></a>
+                </span>
+                  , 
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/Computer-Science/Dynamic-Linking/" itemprop="url" rel="index"><span itemprop="name">Dynamic Linking</span></a>
+                </span>
+            </span>
 
           <br>
             <span class="post-meta-item" title="Symbols count in article">
@@ -2001,256 +2271,6 @@ A represents the addend used to compute the value of the relocatable field.</p>
   
   
 
-      
-  
-  
-  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-Hans">
-    <link itemprop="mainEntityOfPage" href="https://clcanny.github.io/2020/11/20/dynamic-linking-search-symbols-in-one-binary/">
-
-    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
-      <meta itemprop="image" content="/images/avatar.gif">
-      <meta itemprop="name" content="JunBin">
-      <meta itemprop="description" content="a programmer's blog">
-    </span>
-
-    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
-      <meta itemprop="name" content="On The Road">
-    </span>
-      <header class="post-header">
-        <h2 class="post-title" itemprop="name headline">
-          
-            <a href="/2020/11/20/dynamic-linking-search-symbols-in-one-binary/" class="post-title-link" itemprop="url">Dynamic Linking: Search Symbols In One Binary</a>
-        </h2>
-
-        <div class="post-meta">
-            <span class="post-meta-item">
-              <span class="post-meta-item-icon">
-                <i class="far fa-calendar"></i>
-              </span>
-              <span class="post-meta-item-text">Posted on</span>
-
-              <time title="Created: 2020-11-20 01:28:45" itemprop="dateCreated datePublished" datetime="2020-11-20T01:28:45+08:00">2020-11-20</time>
-            </span>
-              <span class="post-meta-item">
-                <span class="post-meta-item-icon">
-                  <i class="far fa-calendar-check"></i>
-                </span>
-                <span class="post-meta-item-text">Edited on</span>
-                <time title="Modified: 2021-05-26 13:47:06" itemprop="dateModified" datetime="2021-05-26T13:47:06+08:00">2021-05-26</time>
-              </span>
-
-          <br>
-            <span class="post-meta-item" title="Symbols count in article">
-              <span class="post-meta-item-icon">
-                <i class="far fa-file-word"></i>
-              </span>
-                <span class="post-meta-item-text">Symbols count in article: </span>
-              <span>2.5k</span>
-            </span>
-            <span class="post-meta-item" title="Reading time">
-              <span class="post-meta-item-icon">
-                <i class="far fa-clock"></i>
-              </span>
-                <span class="post-meta-item-text">Reading time &asymp;</span>
-              <span>4 mins.</span>
-            </span>
-
-        </div>
-      </header>
-
-    
-    
-    
-    <div class="post-body" itemprop="articleBody">
-
-      
-          <h1 id="导读">导读</h1>
-<p><a href="https://clcanny.github.io/2020/11/18/dynamic-linking-symbol-search-order/">Dynamic Linking: Symbol Search Order</a> 介绍了在多个文件间查找符号的顺序，本篇文章会聚焦于 <code>do_lookup_x</code> 函数，探讨在单文件内查找符号的步骤：</p>
-<ol>
-<li>布隆过滤器和哈希表是两个重要的数据结构；</li>
-<li>它们是由编译器而不是运行时链接器准备的。</li>
-</ol>
-<p>Hash sections 有两种格式，GNU hash section 和 SYSV hash section ：</p>
-<ol>
-<li>GNU hash section 比 SYSV hash section 具备更好的性能；</li>
-<li>通过 <code>-Wl,--hash-style=sysv</code> 选项指定编译 SYSV hash section ；</li>
-<li>通过 <code>-Wl,--hash-style=gnu</code> 选项指定编译 GNU hash section 。</li>
-</ol>
-<p>本文讨论 GNU hash section 。</p>
-<h1 id="Code">Code</h1>
-<h2 id="加载-gnu-hash-section">加载 .gnu.hash section</h2>
-<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">link_map</span> &#123;</span></span><br><span class="line">  <span class="comment">// ...</span></span><br><span class="line">  <span class="comment">// Symbol hash table.</span></span><br><span class="line">  <span class="comment">// The number of hash buckets.</span></span><br><span class="line">  Elf_Symndx l_nbuckets;</span><br><span class="line">  <span class="comment">// bitmask_words is the number of __ELF_NATIVE_CLASS sized words</span></span><br><span class="line">  <span class="comment">// in the Bloom filter portion of the hash table section. This value</span></span><br><span class="line">  <span class="comment">// must be non-zero, and must be a power of 2.</span></span><br><span class="line">  <span class="comment">// l_gnu_bitmask_idxbits = bitmask_nwords - 1</span></span><br><span class="line">  Elf32_Word l_gnu_bitmask_idxbits;</span><br><span class="line">  <span class="comment">// A shift count used by the Bloom filter.</span></span><br><span class="line">  <span class="comment">// HashValue_2 = HashValue_1 &gt;&gt; l_gnu_shift.</span></span><br><span class="line">  Elf32_Word l_gnu_shift;</span><br><span class="line">  <span class="function"><span class="keyword">const</span> <span class="title">ElfW</span><span class="params">(Addr)</span> * l_gnu_bitmask</span>;</span><br><span class="line">  <span class="class"><span class="keyword">union</span> &#123;</span></span><br><span class="line">    <span class="keyword">const</span> Elf32_Word* l_gnu_buckets;</span><br><span class="line">    <span class="keyword">const</span> Elf_Symndx* l_chain;</span><br><span class="line">  &#125;;</span><br><span class="line">  <span class="class"><span class="keyword">union</span> &#123;</span></span><br><span class="line">    <span class="keyword">const</span> Elf32_Word* l_gnu_chain_zero;</span><br><span class="line">    <span class="keyword">const</span> Elf_Symndx* l_buckets;</span><br><span class="line">  &#125;;</span><br><span class="line">  <span class="comment">// ...</span></span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
-<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">void</span> _dl_setup_hash(struct link_map* <span class="built_in">map</span>) &#123;</span><br><span class="line">  <span class="keyword">if</span> (__glibc_likely(<span class="built_in">map</span>-&gt;l_info[ADDRIDX(DT_GNU_HASH)] != <span class="literal">NULL</span>)) &#123;</span><br><span class="line">    Elf32_Word* hash32 = (<span class="keyword">void</span>*)D_PTR(<span class="built_in">map</span>, l_info[ADDRIDX(DT_GNU_HASH)]);</span><br><span class="line">    <span class="built_in">map</span>-&gt;l_nbuckets = *hash32++;</span><br><span class="line">    Elf32_Word symbias = *hash32++;</span><br><span class="line">    Elf32_Word bitmask_nwords = *hash32++;</span><br><span class="line">    <span class="comment">// Must be a power of two.</span></span><br><span class="line">    assert((bitmask_nwords &amp; (bitmask_nwords - <span class="number">1</span>)) == <span class="number">0</span>);</span><br><span class="line">    <span class="built_in">map</span>-&gt;l_gnu_bitmask_idxbits = bitmask_nwords - <span class="number">1</span>;</span><br><span class="line">    <span class="built_in">map</span>-&gt;l_gnu_shift = *hash32++;</span><br><span class="line"></span><br><span class="line">    <span class="built_in">map</span>-&gt;l_gnu_bitmask = (ElfW(Addr)*)hash32;</span><br><span class="line">    hash32 += __ELF_NATIVE_CLASS / <span class="number">32</span> * bitmask_nwords;</span><br><span class="line"></span><br><span class="line">    <span class="built_in">map</span>-&gt;l_gnu_buckets = hash32;</span><br><span class="line">    hash32 += <span class="built_in">map</span>-&gt;l_nbuckets;</span><br><span class="line">    <span class="built_in">map</span>-&gt;l_gnu_chain_zero = hash32 - symbias;</span><br><span class="line">    <span class="keyword">return</span>;</span><br><span class="line">  &#125;</span><br><span class="line">  <span class="comment">// ...</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-<p>从 <a target="_blank" rel="noopener" href="https://blogs.oracle.com/solaris/gnu-hash-elf-sections-v2">GNU Hash ELF Sections</a> 摘抄了一段关于 .gnu.hash section 的描述：</p>
-<blockquote>
-<ul>
-<li>
-<p><strong>l_nbuckets</strong><br>
-The number of hash buckets</p>
-</li>
-<li>
-<p><strong>symbias</strong><br>
-The dynamic symbol table has <em>dynsymcount</em> symbols. <em>symndx</em> is the index of the first symbol in the dynamic symbol table that is to be accessible via the hash table. This implies that there are (<em>dynsymcount</em> - <em>symndx</em>) symbols accessible via the hash table.</p>
-</li>
-<li>
-<p><strong>bitmask_nwords</strong></p>
-<p>The number of __ELF_NATIVE_CLASS sized words in the Bloom filter portion of the hash table section. This value must be non-zero, and must be a power of 2 as explained below.</p>
-<p>Note that a value of 0 could be interpreted to mean that no Bloom filter is present in the hash section. However, the GNU linkers do not do this — the GNU hash section always includes at least 1 mask word.</p>
-</li>
-<li>
-<p><strong>l_gnu_shift</strong><br>
-A shift count used by the Bloom filter. HashValue_2 = HashValue_1 &gt;&gt; l_gnu_shift.</p>
-</li>
-</ul>
-</blockquote>
-<h2 id="哈希算法">哈希算法</h2>
-<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">static</span> <span class="keyword">uint_fast32_t</span></span></span><br><span class="line"><span class="function"><span class="title">dl_new_hash</span> <span class="params">(<span class="keyword">const</span> <span class="keyword">char</span> *s)</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">  <span class="keyword">uint_fast32_t</span> h = <span class="number">5381</span>;</span><br><span class="line">  <span class="keyword">for</span> (<span class="keyword">unsigned</span> <span class="keyword">char</span> c = *s; c != <span class="string">&#x27;\0&#x27;</span>; c = *++s)</span><br><span class="line">    h = h * <span class="number">33</span> + c;</span><br><span class="line">  <span class="keyword">return</span> h &amp; <span class="number">0xffffffff</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-<h2 id="查找符号">查找符号</h2>
-<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// elf/dl-lookup.c</span></span><br><span class="line"><span class="comment">// do_lookup_x</span></span><br><span class="line"><span class="comment">// const uint_fast32_t new_hash = dl_new_hash (undef_name);</span></span><br><span class="line"><span class="keyword">const</span> <span class="class"><span class="keyword">struct</span> <span class="title">link_map</span> *<span class="title">map</span> =</span> list[i]-&gt;l_real;</span><br><span class="line"><span class="function"><span class="keyword">const</span> <span class="title">ElfW</span><span class="params">(Addr)</span> *bitmask </span>= map-&gt;l_gnu_bitmask;</span><br><span class="line"><span class="keyword">if</span> (__glibc_likely (bitmask != <span class="literal">NULL</span>))</span><br><span class="line">&#123;</span><br><span class="line">  <span class="built_in">ElfW</span>(Addr) bitmask_word</span><br><span class="line">    = bitmask[(new_hash / __ELF_NATIVE_CLASS)&amp; map-&gt;l_gnu_bitmask_idxbits];</span><br><span class="line">  <span class="keyword">unsigned</span> <span class="keyword">int</span> hashbit1 = new_hash &amp; (__ELF_NATIVE_CLASS - <span class="number">1</span>);</span><br><span class="line">  <span class="keyword">unsigned</span> <span class="keyword">int</span> hashbit2 = ((new_hash &gt;&gt; map-&gt;l_gnu_shift)</span><br><span class="line">                           &amp; (__ELF_NATIVE_CLASS - <span class="number">1</span>));</span><br><span class="line">  <span class="keyword">if</span> (__glibc_unlikely ((bitmask_word &gt;&gt; hashbit1)</span><br><span class="line">                        &amp; (bitmask_word &gt;&gt; hashbit2) &amp; <span class="number">1</span>))</span><br><span class="line">  &#123;</span><br><span class="line">    Elf32_Word bucket = map-&gt;l_gnu_buckets[new_hash</span><br><span class="line">                                           % map-&gt;l_nbuckets];</span><br><span class="line">    <span class="keyword">if</span> (bucket != <span class="number">0</span>)</span><br><span class="line">    &#123;</span><br><span class="line">      <span class="keyword">const</span> Elf32_Word *hasharr = &amp;map-&gt;l_gnu_chain_zero[bucket];</span><br><span class="line">      <span class="function"><span class="keyword">do</span></span></span><br><span class="line"><span class="function">        <span class="title">if</span> <span class="params">(((*hasharr ^ new_hash) &gt;&gt; <span class="number">1</span>) == <span class="number">0</span>)</span></span></span><br><span class="line"><span class="function">        </span>&#123;</span><br><span class="line">          symidx = hasharr - map-&gt;l_gnu_chain_zero;</span><br><span class="line">          sym = <span class="built_in">check_match</span> (undef_name, ref, version, flags,</span><br><span class="line">                             type_class, &amp;symtab[symidx], symidx,</span><br><span class="line">                             strtab, map, &amp;versioned_sym,</span><br><span class="line">                             &amp;num_versions);</span><br><span class="line">          <span class="keyword">if</span> (sym != <span class="literal">NULL</span>)</span><br><span class="line">            <span class="keyword">goto</span> found_it;</span><br><span class="line">        &#125;</span><br><span class="line">      <span class="keyword">while</span> ((*hasharr++ &amp; <span class="number">1u</span>) == <span class="number">0</span>);</span><br><span class="line">    &#125;</span><br><span class="line">  &#125;</span><br><span class="line">  <span class="keyword">else</span></span><br><span class="line">  &#123;</span><br><span class="line">    <span class="comment">/* Use the old SysV-style hash table.  Search the appropriate</span></span><br><span class="line"><span class="comment">       hash bucket in this object&#x27;s symbol table for a definition</span></span><br><span class="line"><span class="comment">       for the same symbol name.  */</span></span><br><span class="line">    <span class="comment">// ...</span></span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-<h1 id="详解">详解</h1>
-<p>.gnu.hash 需要有多个导出符号才能较方便地分析，因此我们将使用 test_gnu_hash.cpp 作为待分析的文件：</p>
-<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// test_gnu_hash.cpp</span></span><br><span class="line"><span class="comment">// g++ -std=c++11 -shared -fPIC test_gnu_hash.cpp -o libtest_gnu_hash.so</span></span><br><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">foo</span><span class="params">()</span> </span>&#123;&#125;</span><br><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">bar</span><span class="params">()</span> </span>&#123;&#125;</span><br><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">test</span><span class="params">()</span> </span>&#123;&#125;</span><br><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">haha</span><span class="params">()</span> </span>&#123;&#125;</span><br><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">more</span><span class="params">()</span> </span>&#123;&#125;</span><br></pre></td></tr></table></figure>
-<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># readelf --dynamic libtest_gnu_hash.so | grep -E &quot;Tag|GNU_HASH&quot;</span></span><br><span class="line">  Tag        Type                         Name/Value</span><br><span class="line"> 0x000000006ffffef5 (GNU_HASH)           0x260</span><br></pre></td></tr></table></figure>
-<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># readelf --section-headers libtest_gnu_hash.so | grep -E &quot;Nr|260&quot; -A1 | grep -v &quot;\-\-&quot;</span></span><br><span class="line">  [Nr] Name              Type             Address           Offset</span><br><span class="line">       Size              EntSize          Flags  Link  Info  Align</span><br><span class="line">  [ 2] .gnu.hash         GNU_HASH         0000000000000260  00000260</span><br><span class="line">       0000000000000038  0000000000000000   A       3     0     8</span><br></pre></td></tr></table></figure>
-<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># export gnu_hash_start_addr=0x260</span></span><br><span class="line"><span class="comment"># export gnu_hash_size=0x38</span></span><br><span class="line"><span class="comment"># od --skip-bytes=$gnu_hash_start_addr --read-bytes=$gnu_hash_size --format=xI libtest_gnu_hash.so</span></span><br><span class="line">0001140 00000003 00000005 00000001 00000006</span><br><span class="line">0001160 04200400 18012908 00000005 00000008</span><br><span class="line">0001200 00000000 b8f7d29a b95a257a b9d35b69</span><br><span class="line">0001220 6a5ebc3c 6a6128eb</span><br></pre></td></tr></table></figure>
-<table>
-<thead>
-<tr>
-<th style="text-align:center"></th>
-<th style="text-align:center">l_nbuckets</th>
-<th style="text-align:center">symbias</th>
-<th style="text-align:center">bitmask_nwords</th>
-<th style="text-align:center">l_gnu_bitmask_idxbits</th>
-<th style="text-align:center">l_gnu_shift</th>
-<th style="text-align:center">l_gnu_bitmask</th>
-<th style="text-align:center">l_gnu_buckets</th>
-<th style="text-align:center">l_gnu_chain_zero + symbias</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td style="text-align:center">value</td>
-<td style="text-align:center">0x3</td>
-<td style="text-align:center">0x5</td>
-<td style="text-align:center">0x1</td>
-<td style="text-align:center">0x0</td>
-<td style="text-align:center">0x6</td>
-<td style="text-align:center">0x1801290804200400</td>
-<td style="text-align:center">[0x5, 0x8, 0x0]</td>
-<td style="text-align:center">[0xb8f7d29a, 0xb95a257a, 0xb9d35b69, 0x6a5ebc3c, 0x6a6128eb]</td>
-</tr>
-</tbody>
-</table>
-<h2 id="哈希表">哈希表</h2>
-<p>编译器实现哈希表时用了几个技巧：</p>
-<ol>
-<li>用一维数组 <code>l_gnu_chain_zero + symbias</code> 实现二维哈希表：
-<ol>
-<li>将在同一个哈希桶内的元素放在数组的连续区域；</li>
-<li>用另一个一维数组 <code>l_gnu_buckets</code> 记录哈希桶的起始位置；</li>
-<li>约定哈希桶的最后一个元素的最后一个比特是 1 ，其余元素的最后一个比特是 0 ；</li>
-</ol>
-</li>
-<li>为节省哈希表空间：
-<ol>
-<li>哈希表只记录哈希值，不记录符号在 .dynsym 表中的下标；</li>
-<li>哈希表只记录可导出符号（比如 <code>_Z3foov</code> ）的哈希值，不记录不可导出符号（比如 <code>__cxa_finalize@GLIBC_2.2.5</code> ）的哈希值；</li>
-<li>为同时达到以上两个目标，编译器在 .dynsym 表中将不可导出符号（比如 <code>__cxa_finalize@GLIBC_2.2.5</code> ）排在可导出符号（比如 <code>_Z3foov</code> ）的前面，将第一个可导出符号在 .dynsym 表中的下标记为 <code>symbias</code> ，计算 <code>l_gnu_chain_zero</code> 的公式是 <code>map-&gt;l_gnu_chain_zero = map-&gt;l_gnu_buckets + map-&gt;l_nbuckets - symbias</code> 。</li>
-</ol>
-</li>
-</ol>
-<p>因此，链接器查找哈希表的步骤是：</p>
-<ol>
-<li>根据 <code>l_gnu_buckets</code> 找到哈希桶的第一个元素；</li>
-<li>顺序搜索哈希桶内的元素，直到找到相应的哈希值或者到达结尾。</li>
-</ol>
-<p><img src="http://junbin-hexo-img.oss-cn-beijing.aliyuncs.com/dynamic-linking-search-symbols-in-one-binary/one-dimensional-hash-table.png" alt=""></p>
-<p><img src="http://junbin-hexo-img.oss-cn-beijing.aliyuncs.com/dynamic-linking-search-symbols-in-one-binary/two-dimensional-hash-table.png" alt=""></p>
-<table>
-<thead>
-<tr>
-<th style="text-align:center">id</th>
-<th style="text-align:center">name</th>
-<th style="text-align:center">new_hash</th>
-<th style="text-align:center">处理最后一个比特后</th>
-<th style="text-align:center">bucket</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td style="text-align:center">5</td>
-<td style="text-align:center">_Z4hahav</td>
-<td style="text-align:center">0xb8f7d29a</td>
-<td style="text-align:center">0xb8f7d29a</td>
-<td style="text-align:center">0</td>
-</tr>
-<tr>
-<td style="text-align:center">6</td>
-<td style="text-align:center">_Z4morev</td>
-<td style="text-align:center">0xb95a257b</td>
-<td style="text-align:center">0xb95a257a</td>
-<td style="text-align:center">0</td>
-</tr>
-<tr>
-<td style="text-align:center">7</td>
-<td style="text-align:center">_Z4testv</td>
-<td style="text-align:center">0xb9d35b68</td>
-<td style="text-align:center"><strong>0xb9d35b69</strong></td>
-<td style="text-align:center">0</td>
-</tr>
-<tr>
-<td style="text-align:center">8</td>
-<td style="text-align:center">_Z3barv</td>
-<td style="text-align:center">0x6a5ebc3c</td>
-<td style="text-align:center">0x6a5ebc3c</td>
-<td style="text-align:center">1</td>
-</tr>
-<tr>
-<td style="text-align:center">9</td>
-<td style="text-align:center">_Z3foov</td>
-<td style="text-align:center">0x6a6128eb</td>
-<td style="text-align:center"><strong>0x6a6128eb</strong></td>
-<td style="text-align:center">1</td>
-</tr>
-</tbody>
-</table>
-<p>加粗部分是每个哈希桶的最后一个元素，最后一个比特需要置成 1 。</p>
-<ol>
-<li>根据 <code>l_gnu_buckets</code> 找到哈希桶的第一个元素；</li>
-<li>顺序搜索哈希桶内的元素，直到找到相应的哈希值或者到达结尾。</li>
-</ol>
-<h3 id="symbias">symbias</h3>
-<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># readelf --dyn-syms libtest_gnu_hash.so</span></span><br><span class="line">Symbol table <span class="string">&#x27;.dynsym&#x27;</span> contains 10 entries:</span><br><span class="line">   Num:    Value          Size Type    Bind   Vis      Ndx Name</span><br><span class="line">     0: 0000000000000000     0 NOTYPE  LOCAL  DEFAULT  UND</span><br><span class="line">     1: 0000000000000000     0 FUNC    WEAK   DEFAULT  UND __cxa_finalize@GLIBC_2.2.5 (2)</span><br><span class="line">     2: 0000000000000000     0 NOTYPE  WEAK   DEFAULT  UND _ITM_deregisterTMCloneTab</span><br><span class="line">     3: 0000000000000000     0 NOTYPE  WEAK   DEFAULT  UND __gmon_start__</span><br><span class="line">     4: 0000000000000000     0 NOTYPE  WEAK   DEFAULT  UND _ITM_registerTMCloneTable</span><br><span class="line">     5: 000000000000110a     7 FUNC    GLOBAL DEFAULT   11 _Z4hahav</span><br><span class="line">     6: 0000000000001111     7 FUNC    GLOBAL DEFAULT   11 _Z4morev</span><br><span class="line">     7: 0000000000001103     7 FUNC    GLOBAL DEFAULT   11 _Z4testv</span><br><span class="line">     8: 00000000000010fc     7 FUNC    GLOBAL DEFAULT   11 _Z3barv</span><br><span class="line">     9: 00000000000010f5     7 FUNC    GLOBAL DEFAULT   11 _Z3foov</span><br></pre></td></tr></table></figure>
-<p><code>symbias</code> 表明第一个可以通过 .gnu.hash section 访问的符号（即可以提供给其它库访问的符号），在 <code>libtest_gnu_hash.so</code> 中这个符号是 <code>_Z4hahav</code> 。</p>
-<h2 id="布隆过滤器">布隆过滤器</h2>
-<p>布隆过滤器的原理可以参考文章<a target="_blank" rel="noopener" href="https://zhuanlan.zhihu.com/p/43263751">详解布隆过滤器的原理，使用场景和注意事项</a>，简而言之，将数据使用多个不同的哈希函数生成多个哈希值，并将对应比特位置为 1 ，就能判断某个数据肯定不存在。</p>
-<p>参考 <a target="_blank" rel="noopener" href="https://blogs.oracle.com/solaris/gnu-hash-elf-sections-v2">GNU Hash ELF Sections</a> ，构建布隆过滤器的伪代码如下：</p>
-<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">const</span> <span class="keyword">uint_fast32_t</span> new_hash = <span class="built_in">dl_new_hash</span>(undef_name);</span><br><span class="line"><span class="keyword">uint32_t</span> H1 = new_hash;</span><br><span class="line"><span class="keyword">uint32_t</span> H2 = new_hash &gt;&gt; map-&gt;l_gnu_shift;</span><br><span class="line"><span class="keyword">uint32_t</span> N = (H1 / __ELF_NATIVE_CLASS) &amp; map-&gt;l_gnu_bitmask_idxbits;</span><br><span class="line"><span class="keyword">unsigned</span> <span class="keyword">int</span> hashbit1 = H1 % __ELF_NATIVE_CLASS;</span><br><span class="line"><span class="keyword">unsigned</span> <span class="keyword">int</span> hashbit2 = H2 % __ELF_NATIVE_CLASS;</span><br><span class="line">bloom[N] |= (<span class="number">1</span> &lt;&lt; hashbit1);</span><br><span class="line">bloom[N] |= (<span class="number">1</span> &lt;&lt; hashbit2);</span><br></pre></td></tr></table></figure>
-<p>构建布隆过滤器的 C++ 代码如下：</p>
-<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// bloom.cpp</span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">include</span> <span class="meta-string">&lt;ios&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">include</span> <span class="meta-string">&lt;iostream&gt;</span></span></span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">uint32_t</span> <span class="title">dl_new_hash</span><span class="params">(<span class="keyword">const</span> <span class="keyword">char</span> *s)</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">  <span class="keyword">uint32_t</span> h = <span class="number">5381</span>;</span><br><span class="line">  <span class="keyword">for</span> (<span class="keyword">unsigned</span> <span class="keyword">char</span> c = *s; c != <span class="string">&#x27;\0&#x27;</span>; c = *++s)</span><br><span class="line">    h = h * <span class="number">33</span> + c;</span><br><span class="line">  <span class="keyword">return</span> h &amp; <span class="number">0xffffffff</span>;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="keyword">const</span> <span class="keyword">int</span> __ELF_NATIVE_CLASS = <span class="number">64</span>;</span><br><span class="line"><span class="keyword">const</span> <span class="keyword">int</span> l_gnu_shift = <span class="number">6</span>;</span><br><span class="line"><span class="keyword">const</span> <span class="keyword">int</span> bitmask_nwords = <span class="number">1</span>;</span><br><span class="line"><span class="keyword">const</span> <span class="keyword">int</span> l_gnu_bitmask_idxbits = bitmask_nwords - <span class="number">1</span>;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">new_bitmask</span><span class="params">(<span class="keyword">const</span> <span class="keyword">char</span>* s, <span class="keyword">uint64_t</span>* bitmask_arr)</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">  <span class="keyword">uint32_t</span> hash_value1 = <span class="built_in">dl_new_hash</span>(s);</span><br><span class="line">  <span class="keyword">uint32_t</span> hash_value2 = hash_value1 &gt;&gt; l_gnu_shift;</span><br><span class="line">  <span class="keyword">int</span> n = (hash_value1 / __ELF_NATIVE_CLASS) &amp; l_gnu_bitmask_idxbits;</span><br><span class="line">  <span class="keyword">unsigned</span> <span class="keyword">int</span> hashbit1 = hash_value1 % __ELF_NATIVE_CLASS;</span><br><span class="line">  <span class="keyword">unsigned</span> <span class="keyword">int</span> hashbit2 = hash_value2 % __ELF_NATIVE_CLASS;</span><br><span class="line">  <span class="comment">// Please use 1L (64 bits) instead of 1 (32 bits).</span></span><br><span class="line">  bitmask_arr[n] |= (<span class="number">1L</span> &lt;&lt; hashbit1);</span><br><span class="line">  bitmask_arr[n] |= (<span class="number">1L</span> &lt;&lt; hashbit2);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">int</span> <span class="title">main</span><span class="params">()</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">  <span class="keyword">uint64_t</span> bitmask_arr[bitmask_nwords] = &#123;<span class="number">0</span>&#125;;</span><br><span class="line">  <span class="built_in">new_bitmask</span>(<span class="string">&quot;_Z4hahav&quot;</span>, bitmask_arr);</span><br><span class="line">  <span class="built_in">new_bitmask</span>(<span class="string">&quot;_Z4morev&quot;</span>, bitmask_arr);</span><br><span class="line">  <span class="built_in">new_bitmask</span>(<span class="string">&quot;_Z4testv&quot;</span>, bitmask_arr);</span><br><span class="line">  <span class="built_in">new_bitmask</span>(<span class="string">&quot;_Z3barv&quot;</span>, bitmask_arr);</span><br><span class="line">  <span class="built_in">new_bitmask</span>(<span class="string">&quot;_Z3foov&quot;</span>, bitmask_arr);</span><br><span class="line">  std::cout &lt;&lt; std::hex &lt;&lt; <span class="string">&quot;0x&quot;</span> &lt;&lt; bitmask_arr[<span class="number">0</span>] &lt;&lt; std::endl;</span><br><span class="line">  <span class="comment">// 0x1801290804200400</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-<h1 id="More">More</h1>
-<p>编译器如何处理哈希冲突？</p>
-<h1 id="参考资料">参考资料</h1>
-<ul>
-<li><a target="_blank" rel="noopener" href="https://blogs.oracle.com/solaris/gnu-hash-elf-sections-v2">GNU Hash ELF Sections</a></li>
-<li><a target="_blank" rel="noopener" href="https://zhuanlan.zhihu.com/p/43263751">知乎：详解布隆过滤器的原理，使用场景和注意事项</a></li>
-<li><a target="_blank" rel="noopener" href="https://answerywj.com/2020/05/14/ld-hash-style/">AnSwEr’s Blog ：--hash-style 兼容性问题</a></li>
-</ul>
-
-      
-    </div>
-
-    
-    
-    
-      <footer class="post-footer">
-        <div class="post-eof"></div>
-      </footer>
-  </article>
-  
-  
-  
-
 
   
   <nav class="pagination">
@@ -2320,15 +2340,15 @@ A shift count used by the Bloom filter. HashValue_2 = HashValue_1 &gt;&gt; l_gnu
       <div class="site-state-item site-state-posts">
           <a href="/archives/">
         
-          <span class="site-state-item-count">21</span>
+          <span class="site-state-item-count">22</span>
           <span class="site-state-item-name">posts</span>
         </a>
       </div>
-      <div class="site-state-item site-state-tags">
-            <a href="/tags/">
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
           
-        <span class="site-state-item-count">11</span>
-        <span class="site-state-item-name">tags</span></a>
+        <span class="site-state-item-count">14</span>
+        <span class="site-state-item-name">categories</span></a>
       </div>
   </nav>
 </div>
@@ -2363,12 +2383,12 @@ A shift count used by the Bloom filter. HashValue_2 = HashValue_1 &gt;&gt; l_gnu
     <span class="post-meta-item-icon">
       <i class="fa fa-chart-area"></i>
     </span>
-    <span title="Symbols count total">42k</span>
+    <span title="Symbols count total">44k</span>
     <span class="post-meta-divider">|</span>
     <span class="post-meta-item-icon">
       <i class="fa fa-coffee"></i>
     </span>
-    <span title="Reading time total">1:09</span>
+    <span title="Reading time total">1:13</span>
 </div>
   <div class="powered-by">Powered by <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> & <a href="https://muse.theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Muse</a>
   </div>

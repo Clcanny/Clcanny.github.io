@@ -1,0 +1,455 @@
+<!DOCTYPE html>
+<html lang="zh-Hans">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 5.4.0">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+<link rel="stylesheet" href="//fonts.googleapis.com/css?family=Lato:300,300italic,400,400italic,700,700italic&display=swap&subset=latin,latin-ext">
+<link rel="stylesheet" href="/lib/font-awesome/css/all.min.css">
+
+<script id="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"clcanny.github.io","root":"/","scheme":"Muse","version":"7.8.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":true,"show_result":true,"style":null},"back2top":{"enable":true,"sidebar":false,"scrollpercent":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":false,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}}};
+  </script>
+
+  <meta name="description" content="环境 12345678910111213141516171819202122232425262728293031FROM ubuntu:groovyWORKDIR &#x2F;rootRUN apt-get updateRUN apt-get install -y curl wget gitRUN apt-get install -y openjdk-15-jdkENV JAVA_HOME&#x3D;&#x2F;usr&#x2F;lib">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Get Started With Parquet">
+<meta property="og:url" content="https://clcanny.github.io/2021/03/31/computer-science/columnar-storage/get-started-with-parquet/index.html">
+<meta property="og:site_name" content="On The Road">
+<meta property="og:description" content="环境 12345678910111213141516171819202122232425262728293031FROM ubuntu:groovyWORKDIR &#x2F;rootRUN apt-get updateRUN apt-get install -y curl wget gitRUN apt-get install -y openjdk-15-jdkENV JAVA_HOME&#x3D;&#x2F;usr&#x2F;lib">
+<meta property="og:locale">
+<meta property="article:published_time" content="2021-03-31T10:44:24.000Z">
+<meta property="article:modified_time" content="2021-06-25T05:05:02.355Z">
+<meta property="article:author" content="JunBin">
+<meta name="twitter:card" content="summary">
+
+<link rel="canonical" href="https://clcanny.github.io/2021/03/31/computer-science/columnar-storage/get-started-with-parquet/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'zh-Hans'
+  };
+</script>
+
+  <title>Get Started With Parquet | On The Road</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="Toggle navigation bar">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <span class="logo-line-before"><i></i></span>
+      <h1 class="site-title">On The Road</h1>
+      <span class="logo-line-after"><i></i></span>
+    </a>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+    </div>
+  </div>
+</div>
+
+
+
+
+<nav class="site-nav">
+  <ul id="menu" class="main-menu menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-home fa-fw"></i>Home</a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>Archives</a>
+
+  </li>
+        <li class="menu-item menu-item-categories">
+
+    <a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>Categories</a>
+
+  </li>
+  </ul>
+</nav>
+
+
+
+
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content post posts-expand">
+            
+
+    
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-Hans">
+    <link itemprop="mainEntityOfPage" href="https://clcanny.github.io/2021/03/31/computer-science/columnar-storage/get-started-with-parquet/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="JunBin">
+      <meta itemprop="description" content="a programmer's blog">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="On The Road">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          Get Started With Parquet
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">Posted on</span>
+
+              <time title="Created: 2021-03-31 18:44:24" itemprop="dateCreated datePublished" datetime="2021-03-31T18:44:24+08:00">2021-03-31</time>
+            </span>
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="far fa-calendar-check"></i>
+                </span>
+                <span class="post-meta-item-text">Edited on</span>
+                <time title="Modified: 2021-06-25 13:05:02" itemprop="dateModified" datetime="2021-06-25T13:05:02+08:00">2021-06-25</time>
+              </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">In</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/Computer-Science/" itemprop="url" rel="index"><span itemprop="name">Computer Science</span></a>
+                </span>
+                  , 
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/Computer-Science/Big-Data/" itemprop="url" rel="index"><span itemprop="name">Big Data</span></a>
+                </span>
+                  , 
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/Computer-Science/Big-Data/Columnar-Storage/" itemprop="url" rel="index"><span itemprop="name">Columnar Storage</span></a>
+                </span>
+            </span>
+
+          <br>
+            <span class="post-meta-item" title="Symbols count in article">
+              <span class="post-meta-item-icon">
+                <i class="far fa-file-word"></i>
+              </span>
+                <span class="post-meta-item-text">Symbols count in article: </span>
+              <span>438</span>
+            </span>
+            <span class="post-meta-item" title="Reading time">
+              <span class="post-meta-item-icon">
+                <i class="far fa-clock"></i>
+              </span>
+                <span class="post-meta-item-text">Reading time &asymp;</span>
+              <span>1 mins.</span>
+            </span>
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <h1 id="环境">环境</h1>
+<figure class="highlight dockerfile"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">FROM</span> ubuntu:groovy</span><br><span class="line"><span class="keyword">WORKDIR</span><span class="bash"> /root</span></span><br><span class="line"><span class="keyword">RUN</span><span class="bash"> apt-get update</span></span><br><span class="line"><span class="keyword">RUN</span><span class="bash"> apt-get install -y curl wget git</span></span><br><span class="line"></span><br><span class="line"><span class="keyword">RUN</span><span class="bash"> apt-get install -y openjdk-15-jdk</span></span><br><span class="line"><span class="keyword">ENV</span> JAVA_HOME=/usr/lib/jvm/java-<span class="number">1.15</span>.<span class="number">0</span>-openjdk-amd64</span><br><span class="line"><span class="keyword">ENV</span> PATH=<span class="string">&quot;$PATH:$JAVA_HOME/bin&quot;</span></span><br><span class="line"><span class="keyword">RUN</span><span class="bash"> java --version</span></span><br><span class="line"></span><br><span class="line"><span class="keyword">RUN</span><span class="bash"> apt-get install -y python3 python3-distutils python3-apt</span></span><br><span class="line"><span class="keyword">RUN</span><span class="bash"> curl https://bootstrap.pypa.io/get-pip.py -o get-pip.py</span></span><br><span class="line"><span class="keyword">RUN</span><span class="bash"> python3 get-pip.py</span></span><br><span class="line"></span><br><span class="line"><span class="keyword">RUN</span><span class="bash"> wget https://mirror-hk.koddos.net/apache/spark/spark-3.1.1/spark-3.1.1-bin-hadoop2.7.tgz</span></span><br><span class="line"><span class="keyword">RUN</span><span class="bash"> tar -xzvf spark-3.1.1-bin-hadoop2.7.tgz</span></span><br><span class="line"></span><br><span class="line"><span class="keyword">RUN</span><span class="bash"> pip3 install parquet-cli</span></span><br><span class="line"></span><br><span class="line"><span class="keyword">RUN</span><span class="bash"> apt-get install -y build-essential cmake make gcc g++</span></span><br><span class="line"><span class="keyword">RUN</span><span class="bash"> git <span class="built_in">clone</span> https://github.com/apache/arrow.git</span></span><br><span class="line"><span class="keyword">WORKDIR</span><span class="bash"> /root/arrow</span></span><br><span class="line"><span class="keyword">RUN</span><span class="bash"> git checkout 76d3c36006162766ec598442a0c0d2192f5e0d0b</span></span><br><span class="line"><span class="keyword">RUN</span><span class="bash"> <span class="built_in">cd</span> cpp &amp;&amp; mkdir -p debug &amp;&amp; <span class="built_in">cd</span> debug</span></span><br><span class="line"><span class="keyword">WORKDIR</span><span class="bash"> /root/arrow/cpp/debug</span></span><br><span class="line"><span class="keyword">RUN</span><span class="bash"> cmake -DCMAKE_BUILD_TYPE=Debug -DARROW_PARQUET=ON -DARROW_WITH_SNAPPY=ON ..</span></span><br><span class="line"><span class="keyword">RUN</span><span class="bash"> make -j8</span></span><br><span class="line"><span class="keyword">RUN</span><span class="bash"> make install</span></span><br><span class="line"><span class="keyword">ENV</span> LD_LIBRARY_PATH=<span class="string">&quot;$LD_LIBRARY_PATH:/usr/local/lib&quot;</span></span><br><span class="line"></span><br><span class="line"><span class="keyword">WORKDIR</span><span class="bash"> /root</span></span><br></pre></td></tr></table></figure>
+<h1 id="文件格式">文件格式</h1>
+<h1 id="读写-Parquet-文件">读写 Parquet 文件</h1>
+<h2 id="使用-PySpark-读写-Parquet-文件">使用 PySpark 读写 Parquet 文件</h2>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># ./spark-3.1.1-bin-hadoop2.7/bin/pyspark --master local[4]</span></span><br><span class="line">Spark context available as <span class="string">&#x27;sc&#x27;</span> (master = <span class="built_in">local</span>[4], app id = local-1617201523606).</span><br><span class="line">SparkSession available as <span class="string">&#x27;spark&#x27;</span>.</span><br></pre></td></tr></table></figure>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br></pre></td><td class="code"><pre><span class="line">from pyspark.sql.types import *</span><br><span class="line">schema = StructType([</span><br><span class="line">    StructField(&quot;DocId&quot;, LongType(), nullable=False),</span><br><span class="line">    StructField(&quot;Links&quot;, StructType([</span><br><span class="line">        StructField(&quot;Backward&quot;, ArrayType(LongType()), nullable=True),</span><br><span class="line">        StructField(&quot;Forward&quot;, ArrayType(LongType()), nullable=True)</span><br><span class="line">    ]), nullable=True),</span><br><span class="line">    StructField(&quot;Name&quot;, ArrayType(StructType([</span><br><span class="line">        StructField(&quot;Language&quot;, ArrayType(StructType([</span><br><span class="line">            StructField(&quot;Code&quot;, StringType(), nullable=False),</span><br><span class="line">            StructField(&quot;Country&quot;, StringType(), nullable=True)</span><br><span class="line">        ])), nullable=True),</span><br><span class="line">        StructField(&quot;Url&quot;, StringType(), nullable=True)</span><br><span class="line">    ])), nullable=True)</span><br><span class="line">])</span><br><span class="line">r1 = &#123;</span><br><span class="line">    &quot;DocId&quot;: 10,</span><br><span class="line">    &quot;Links&quot;: &#123;&quot;Forward&quot;: [20, 40, 60]&#125;,</span><br><span class="line">    &quot;Name&quot;: [</span><br><span class="line">        &#123;</span><br><span class="line">            &quot;Language&quot;: [&#123;&quot;Code&quot;: &quot;en-us&quot;, &quot;Country&quot;: &quot;us&quot;&#125;, &#123;&quot;Code&quot;: &quot;en&quot;&#125;],</span><br><span class="line">            &quot;Url&quot;: &quot;http://A&quot;</span><br><span class="line">        &#125;,</span><br><span class="line">        &#123;&quot;Url&quot;: &quot;http://B&quot;&#125;,</span><br><span class="line">        &#123;&quot;Language&quot;: [&#123;&quot;Code&quot;: &quot;en-gb&quot;, &quot;Country&quot;: &quot;gb&quot;&#125;]&#125;</span><br><span class="line">    ]</span><br><span class="line">&#125;</span><br><span class="line">r2 = &#123;</span><br><span class="line">    &quot;DocId&quot;: 20,</span><br><span class="line">    &quot;Links&quot;: &#123;&quot;Backward&quot;: [10, 30, 80]&#125;,</span><br><span class="line">    &quot;Name&quot;: [&#123;&quot;Url&quot;: &quot;http://C&quot;&#125;]</span><br><span class="line">&#125;</span><br><span class="line">df = spark.createDataFrame([r1, r2], schema)</span><br><span class="line">df.repartition(1).write.mode(&#x27;overwrite&#x27;).parquet(&quot;/root/dremel-records-pyspark.parquet&quot;)</span><br></pre></td></tr></table></figure>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">df = spark.read.parquet(&quot;/root/dremel-records-pyspark.parquet&quot;)</span><br><span class="line">df.createOrReplaceTempView(&quot;DremelRecords&quot;)</span><br><span class="line">spark.sql(&quot;SELECT * FROM DremelRecords&quot;).show(truncate=False)</span><br></pre></td></tr></table></figure>
+<h2 id="使用-C-读写-Parquet-文件">使用 C++ 读写 Parquet 文件</h2>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br><span class="line">86</span><br><span class="line">87</span><br><span class="line">88</span><br><span class="line">89</span><br><span class="line">90</span><br><span class="line">91</span><br><span class="line">92</span><br><span class="line">93</span><br><span class="line">94</span><br><span class="line">95</span><br><span class="line">96</span><br><span class="line">97</span><br><span class="line">98</span><br><span class="line">99</span><br><span class="line">100</span><br><span class="line">101</span><br><span class="line">102</span><br><span class="line">103</span><br><span class="line">104</span><br><span class="line">105</span><br><span class="line">106</span><br><span class="line">107</span><br><span class="line">108</span><br><span class="line">109</span><br><span class="line">110</span><br><span class="line">111</span><br><span class="line">112</span><br><span class="line">113</span><br><span class="line">114</span><br><span class="line">115</span><br><span class="line">116</span><br><span class="line">117</span><br><span class="line">118</span><br><span class="line">119</span><br><span class="line">120</span><br><span class="line">121</span><br><span class="line">122</span><br><span class="line">123</span><br><span class="line">124</span><br><span class="line">125</span><br><span class="line">126</span><br><span class="line">127</span><br><span class="line">128</span><br><span class="line">129</span><br><span class="line">130</span><br><span class="line">131</span><br><span class="line">132</span><br><span class="line">133</span><br><span class="line">134</span><br><span class="line">135</span><br><span class="line">136</span><br><span class="line">137</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// Refer arrow/cpp/examples/parquet/low-level-api/reader-writer.cc</span></span><br><span class="line"><span class="comment">// g++ -std=c++11 write_dremel_records.cpp -lparquet -larrow -o write_dremel_records.out</span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">include</span> <span class="meta-string">&lt;arrow/io/file.h&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">include</span> <span class="meta-string">&lt;parquet/api/writer.h&gt;</span></span></span><br><span class="line"></span><br><span class="line"><span class="meta">#<span class="meta-keyword">include</span> <span class="meta-string">&lt;array&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">include</span> <span class="meta-string">&lt;cassert&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">include</span> <span class="meta-string">&lt;cstdint&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">include</span> <span class="meta-string">&lt;exception&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">include</span> <span class="meta-string">&lt;iostream&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">include</span> <span class="meta-string">&lt;memory&gt;</span></span></span><br><span class="line"></span><br><span class="line"><span class="keyword">using</span> parquet::schema::GroupNode;</span><br><span class="line"><span class="keyword">using</span> parquet::schema::NodeVector;</span><br><span class="line"><span class="keyword">using</span> parquet::schema::PrimitiveNode;</span><br><span class="line"></span><br><span class="line"><span class="keyword">auto</span> NONE = parquet::ConvertedType::NONE;</span><br><span class="line"><span class="keyword">auto</span> OPTIONAL = parquet::Repetition::OPTIONAL;</span><br><span class="line"><span class="keyword">auto</span> REPEATED = parquet::Repetition::REPEATED;</span><br><span class="line"><span class="keyword">auto</span> REQUIRED = parquet::Repetition::REQUIRED;</span><br><span class="line"><span class="keyword">auto</span> INT64 = parquet::Type::INT64;</span><br><span class="line"><span class="keyword">auto</span> BYTE_ARRAY = parquet::Type::BYTE_ARRAY;</span><br><span class="line"><span class="keyword">auto</span> UTF8 = parquet::ConvertedType::UTF8;</span><br><span class="line"></span><br><span class="line"><span class="function">std::shared_ptr&lt;GroupNode&gt; <span class="title">SetUpSchema</span><span class="params">()</span> </span>&#123;</span><br><span class="line">    <span class="keyword">auto</span> doc_id = PrimitiveNode::<span class="built_in">Make</span>(<span class="string">&quot;DocId&quot;</span>, REQUIRED, INT64, NONE);</span><br><span class="line"></span><br><span class="line">    <span class="keyword">auto</span> links = GroupNode::<span class="built_in">Make</span>(</span><br><span class="line">        <span class="string">&quot;Links&quot;</span>,</span><br><span class="line">        OPTIONAL,</span><br><span class="line">        NodeVector&#123;PrimitiveNode::<span class="built_in">Make</span>(<span class="string">&quot;Backward&quot;</span>, REPEATED, INT64, NONE),</span><br><span class="line">                   PrimitiveNode::<span class="built_in">Make</span>(<span class="string">&quot;Forward&quot;</span>, REPEATED, INT64, NONE)&#125;);</span><br><span class="line"></span><br><span class="line">    <span class="keyword">auto</span> code = PrimitiveNode::<span class="built_in">Make</span>(<span class="string">&quot;Code&quot;</span>, REQUIRED, BYTE_ARRAY, UTF8);</span><br><span class="line">    <span class="keyword">auto</span> country = PrimitiveNode::<span class="built_in">Make</span>(<span class="string">&quot;Country&quot;</span>, OPTIONAL, BYTE_ARRAY, UTF8);</span><br><span class="line">    <span class="keyword">auto</span> name = GroupNode::<span class="built_in">Make</span>(</span><br><span class="line">        <span class="string">&quot;Name&quot;</span>,</span><br><span class="line">        REPEATED,</span><br><span class="line">        NodeVector&#123;</span><br><span class="line">            GroupNode::<span class="built_in">Make</span>(<span class="string">&quot;Language&quot;</span>, REPEATED, NodeVector&#123;code, country&#125;),</span><br><span class="line">            PrimitiveNode::<span class="built_in">Make</span>(<span class="string">&quot;Url&quot;</span>, OPTIONAL, BYTE_ARRAY, UTF8)&#125;);</span><br><span class="line"></span><br><span class="line">    <span class="keyword">return</span> std::static_pointer_cast&lt;GroupNode&gt;(</span><br><span class="line">        GroupNode::<span class="built_in">Make</span>(<span class="string">&quot;schema&quot;</span>, REQUIRED, NodeVector&#123;doc_id, links, name&#125;));</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">WriteRecords</span><span class="params">(parquet::RowGroupWriter* rg_writer)</span> </span>&#123;</span><br><span class="line">    parquet::Int64Writer* doc_id_writer =</span><br><span class="line">        <span class="keyword">static_cast</span>&lt;parquet::Int64Writer*&gt;(rg_writer-&gt;<span class="built_in">NextColumn</span>());</span><br><span class="line">    doc_id_writer-&gt;<span class="built_in">WriteBatch</span>(<span class="number">2</span>,</span><br><span class="line">                              std::array&lt;<span class="keyword">int16_t</span>, <span class="number">2</span>&gt;&#123;<span class="number">0</span>, <span class="number">0</span>&#125;.<span class="built_in">data</span>(),</span><br><span class="line">                              std::array&lt;<span class="keyword">int16_t</span>, <span class="number">2</span>&gt;&#123;<span class="number">0</span>, <span class="number">0</span>&#125;.<span class="built_in">data</span>(),</span><br><span class="line">                              std::array&lt;<span class="keyword">int64_t</span>, <span class="number">2</span>&gt;&#123;<span class="number">10</span>, <span class="number">20</span>&#125;.<span class="built_in">data</span>());</span><br><span class="line"></span><br><span class="line">    parquet::Int64Writer* backward_writer =</span><br><span class="line">        <span class="keyword">static_cast</span>&lt;parquet::Int64Writer*&gt;(rg_writer-&gt;<span class="built_in">NextColumn</span>());</span><br><span class="line">    backward_writer-&gt;<span class="built_in">WriteBatch</span>(<span class="number">3</span>,</span><br><span class="line">                                std::array&lt;<span class="keyword">int16_t</span>, <span class="number">3</span>&gt;&#123;<span class="number">1</span>, <span class="number">2</span>, <span class="number">2</span>&#125;.<span class="built_in">data</span>(),</span><br><span class="line">                                std::array&lt;<span class="keyword">int16_t</span>, <span class="number">3</span>&gt;&#123;<span class="number">0</span>, <span class="number">0</span>, <span class="number">1</span>&#125;.<span class="built_in">data</span>(),</span><br><span class="line">                                std::array&lt;<span class="keyword">int64_t</span>, <span class="number">2</span>&gt;&#123;<span class="number">10</span>, <span class="number">30</span>&#125;.<span class="built_in">data</span>());</span><br><span class="line"></span><br><span class="line">    parquet::Int64Writer* forward_writer =</span><br><span class="line">        <span class="keyword">static_cast</span>&lt;parquet::Int64Writer*&gt;(rg_writer-&gt;<span class="built_in">NextColumn</span>());</span><br><span class="line">    forward_writer-&gt;<span class="built_in">WriteBatch</span>(<span class="number">4</span>,</span><br><span class="line">                               std::array&lt;<span class="keyword">int16_t</span>, <span class="number">4</span>&gt;&#123;<span class="number">2</span>, <span class="number">2</span>, <span class="number">2</span>, <span class="number">2</span>&#125;.<span class="built_in">data</span>(),</span><br><span class="line">                               std::array&lt;<span class="keyword">int16_t</span>, <span class="number">4</span>&gt;&#123;<span class="number">0</span>, <span class="number">1</span>, <span class="number">1</span>, <span class="number">0</span>&#125;.<span class="built_in">data</span>(),</span><br><span class="line">                               std::array&lt;<span class="keyword">int64_t</span>, <span class="number">4</span>&gt;&#123;<span class="number">20</span>, <span class="number">40</span>, <span class="number">60</span>, <span class="number">80</span>&#125;.<span class="built_in">data</span>());</span><br><span class="line"></span><br><span class="line">    parquet::ByteArrayWriter* code_writer =</span><br><span class="line">        <span class="keyword">static_cast</span>&lt;parquet::ByteArrayWriter*&gt;(rg_writer-&gt;<span class="built_in">NextColumn</span>());</span><br><span class="line">    code_writer-&gt;<span class="built_in">WriteBatch</span>(</span><br><span class="line">        <span class="number">5</span>,</span><br><span class="line">        std::array&lt;<span class="keyword">int16_t</span>, <span class="number">5</span>&gt;&#123;<span class="number">2</span>, <span class="number">2</span>, <span class="number">1</span>, <span class="number">2</span>, <span class="number">1</span>&#125;.<span class="built_in">data</span>(),</span><br><span class="line">        std::array&lt;<span class="keyword">int16_t</span>, <span class="number">5</span>&gt;&#123;<span class="number">0</span>, <span class="number">2</span>, <span class="number">1</span>, <span class="number">1</span>, <span class="number">0</span>&#125;.<span class="built_in">data</span>(),</span><br><span class="line">        std::array&lt;parquet::ByteArray, <span class="number">3</span>&gt;&#123;parquet::<span class="built_in">ByteArray</span>(<span class="string">&quot;en-us&quot;</span>),</span><br><span class="line">                                          parquet::<span class="built_in">ByteArray</span>(<span class="string">&quot;en&quot;</span>),</span><br><span class="line">                                          parquet::<span class="built_in">ByteArray</span>(<span class="string">&quot;en-gb&quot;</span>)&#125;</span><br><span class="line">            .<span class="built_in">data</span>());</span><br><span class="line"></span><br><span class="line">    parquet::ByteArrayWriter* country_writer =</span><br><span class="line">        <span class="keyword">static_cast</span>&lt;parquet::ByteArrayWriter*&gt;(rg_writer-&gt;<span class="built_in">NextColumn</span>());</span><br><span class="line">    country_writer-&gt;<span class="built_in">WriteBatch</span>(<span class="number">0</span>, <span class="literal">nullptr</span>, <span class="literal">nullptr</span>, <span class="literal">nullptr</span>);</span><br><span class="line">    country_writer-&gt;<span class="built_in">WriteBatch</span>(</span><br><span class="line">        <span class="number">5</span>,</span><br><span class="line">        std::array&lt;<span class="keyword">int16_t</span>, <span class="number">5</span>&gt;&#123;<span class="number">3</span>, <span class="number">2</span>, <span class="number">1</span>, <span class="number">3</span>, <span class="number">1</span>&#125;.<span class="built_in">data</span>(),</span><br><span class="line">        std::array&lt;<span class="keyword">int16_t</span>, <span class="number">5</span>&gt;&#123;<span class="number">0</span>, <span class="number">2</span>, <span class="number">1</span>, <span class="number">1</span>, <span class="number">0</span>&#125;.<span class="built_in">data</span>(),</span><br><span class="line">        std::array&lt;parquet::ByteArray, <span class="number">2</span>&gt;&#123;parquet::<span class="built_in">ByteArray</span>(<span class="string">&quot;us&quot;</span>),</span><br><span class="line">                                          parquet::<span class="built_in">ByteArray</span>(<span class="string">&quot;gb&quot;</span>)&#125;</span><br><span class="line">            .<span class="built_in">data</span>());</span><br><span class="line"></span><br><span class="line">    parquet::ByteArrayWriter* url_writer =</span><br><span class="line">        <span class="keyword">static_cast</span>&lt;parquet::ByteArrayWriter*&gt;(rg_writer-&gt;<span class="built_in">NextColumn</span>());</span><br><span class="line">    url_writer-&gt;<span class="built_in">WriteBatch</span>(</span><br><span class="line">        <span class="number">4</span>,</span><br><span class="line">        std::array&lt;<span class="keyword">int16_t</span>, <span class="number">4</span>&gt;&#123;<span class="number">2</span>, <span class="number">2</span>, <span class="number">1</span>, <span class="number">2</span>&#125;.<span class="built_in">data</span>(),</span><br><span class="line">        std::array&lt;<span class="keyword">int16_t</span>, <span class="number">4</span>&gt;&#123;<span class="number">0</span>, <span class="number">1</span>, <span class="number">1</span>, <span class="number">0</span>&#125;.<span class="built_in">data</span>(),</span><br><span class="line">        std::array&lt;parquet::ByteArray, <span class="number">3</span>&gt;&#123;parquet::<span class="built_in">ByteArray</span>(<span class="string">&quot;http://A&quot;</span>),</span><br><span class="line">                                          parquet::<span class="built_in">ByteArray</span>(<span class="string">&quot;http://B&quot;</span>),</span><br><span class="line">                                          parquet::<span class="built_in">ByteArray</span>(<span class="string">&quot;http://C&quot;</span>)&#125;</span><br><span class="line">            .<span class="built_in">data</span>());</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">int</span> <span class="title">main</span><span class="params">()</span> </span>&#123;</span><br><span class="line">    <span class="keyword">try</span> &#123;</span><br><span class="line">        <span class="comment">// Create a local file output stream instance.</span></span><br><span class="line">        <span class="keyword">using</span> FileClass = ::arrow::io::FileOutputStream;</span><br><span class="line">        std::shared_ptr&lt;FileClass&gt; out_file;</span><br><span class="line">        <span class="built_in">PARQUET_ASSIGN_OR_THROW</span>(</span><br><span class="line">            out_file, FileClass::<span class="built_in">Open</span>(<span class="string">&quot;/root/dremel-records-cpp.parquet&quot;</span>));</span><br><span class="line"></span><br><span class="line">        <span class="comment">// Setup the parquet schema.</span></span><br><span class="line">        <span class="keyword">auto</span> schema = <span class="built_in">SetUpSchema</span>();</span><br><span class="line"></span><br><span class="line">        <span class="comment">// Add writer properties.</span></span><br><span class="line">        parquet::WriterProperties::Builder builder;</span><br><span class="line">        builder.<span class="built_in">compression</span>(parquet::Compression::SNAPPY);</span><br><span class="line">        std::shared_ptr&lt;parquet::WriterProperties&gt; props = builder.<span class="built_in">build</span>();</span><br><span class="line"></span><br><span class="line">        <span class="comment">// Create a ParquetFileWriter instance.</span></span><br><span class="line">        std::shared_ptr&lt;parquet::ParquetFileWriter&gt; file_writer =</span><br><span class="line">            parquet::ParquetFileWriter::<span class="built_in">Open</span>(out_file, schema, props);</span><br><span class="line"></span><br><span class="line">        <span class="comment">// Append a RowGroup with a specific number of rows.</span></span><br><span class="line">        parquet::RowGroupWriter* rg_writer = file_writer-&gt;<span class="built_in">AppendRowGroup</span>();</span><br><span class="line">        <span class="built_in">WriteRecords</span>(rg_writer);</span><br><span class="line"></span><br><span class="line">        <span class="comment">// Close the ParquetFileWriter.</span></span><br><span class="line">        file_writer-&gt;<span class="built_in">Close</span>();</span><br><span class="line"></span><br><span class="line">        <span class="comment">// Write the bytes to file.</span></span><br><span class="line">        <span class="built_in">assert</span>(out_file-&gt;<span class="built_in">Close</span>().<span class="built_in">ok</span>());</span><br><span class="line">        <span class="keyword">return</span> <span class="number">0</span>;</span><br><span class="line">    &#125; <span class="built_in"><span class="keyword">catch</span></span> (<span class="keyword">const</span> std::exception&amp; e) &#123;</span><br><span class="line">        std::cerr &lt;&lt; <span class="string">&quot;Parquet write error: &quot;</span> &lt;&lt; e.<span class="built_in">what</span>() &lt;&lt; std::endl;</span><br><span class="line">        <span class="keyword">return</span> <span class="number">-1</span>;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<h2 id="使用-chhantyal-parquet-cli-读-Parquet-文件">使用 <a target="_blank" rel="noopener" href="https://github.com/chhantyal/parquet-cli">chhantyal/parquet-cli</a> 读 Parquet 文件</h2>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># parq /root/dremel-records.parquet/part-00000-14a09068-9f6d-4515-a176-dccf6836ee11-c000.snappy.parquet</span></span><br><span class="line"><span class="comment"># parq /root/dremel-records.parquet/part-00000-14a09068-9f6d-4515-a176-dccf6836ee11-c000.snappy.parquet --schema</span></span><br></pre></td></tr></table></figure>
+<h1 id="参考资料">参考资料</h1>
+<ul>
+<li><a target="_blank" rel="noopener" href="https://spark.apache.org/docs/2.1.1/programming-guide.html#using-the-shell">Spark Programming Guide</a></li>
+<li><a target="_blank" rel="noopener" href="https://sparkbyexamples.com/pyspark/pyspark-read-and-write-parquet-file/">Spark By Examples: PySpark Read and Write Parquet File</a></li>
+<li><a target="_blank" rel="noopener" href="https://sparkbyexamples.com/pyspark/pyspark-structtype-and-structfield/">Spark By Examples: PySpark StructType &amp; StructField Explained with Examples</a></li>
+<li><a target="_blank" rel="noopener" href="http://apache-spark-user-list.1001560.n3.nabble.com/dremel-paper-example-schema-td33817.html">Apache Spark User List: dremel paper example schema</a></li>
+<li><a target="_blank" rel="noopener" href="https://medium.com/@sivachaitanya/install-apache-spark-pyspark-standalone-mode-70d3c2dd8924">Medium: Install Apache Spark (pyspark) — Standalone mode</a></li>
+<li><a target="_blank" rel="noopener" href="https://techoral.com/blog/java/install-openjdk-15-ubuntu.html">Techoral: OpenJDK 15 Download and Installation on Ubuntu</a></li>
+<li><a target="_blank" rel="noopener" href="https://arrow.apache.org/docs/developers/cpp/building.html">Apache Arrow: Building Arrow C++</a></li>
+<li><a target="_blank" rel="noopener" href="https://arrow.apache.org/docs/cpp/parquet.html">Apache Arrow: Reading and writing Parquet files</a></li>
+</ul>
+
+    </div>
+
+    
+    
+    
+
+      <footer class="post-footer">
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2021/03/29/computer-science/columnar-storage/dremel/" rel="prev" title="Dremel">
+      <i class="fa fa-chevron-left"></i> Dremel
+    </a></div>
+      <div class="post-nav-item">
+    <a href="/2021/05/23/computer-science/big-data/data-lake/delta-lake/" rel="next" title="Delta Lake">
+      Delta Lake <i class="fa fa-chevron-right"></i>
+    </a></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+
+
+          </div>
+          
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          Table of Contents
+        </li>
+        <li class="sidebar-nav-overview">
+          Overview
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#%E7%8E%AF%E5%A2%83"><span class="nav-number">1.</span> <span class="nav-text">环境</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#%E6%96%87%E4%BB%B6%E6%A0%BC%E5%BC%8F"><span class="nav-number">2.</span> <span class="nav-text">文件格式</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#%E8%AF%BB%E5%86%99-Parquet-%E6%96%87%E4%BB%B6"><span class="nav-number">3.</span> <span class="nav-text">读写 Parquet 文件</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%BD%BF%E7%94%A8-PySpark-%E8%AF%BB%E5%86%99-Parquet-%E6%96%87%E4%BB%B6"><span class="nav-number">3.1.</span> <span class="nav-text">使用 PySpark 读写 Parquet 文件</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%BD%BF%E7%94%A8-C-%E8%AF%BB%E5%86%99-Parquet-%E6%96%87%E4%BB%B6"><span class="nav-number">3.2.</span> <span class="nav-text">使用 C++ 读写 Parquet 文件</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%BD%BF%E7%94%A8-chhantyal-parquet-cli-%E8%AF%BB-Parquet-%E6%96%87%E4%BB%B6"><span class="nav-number">3.3.</span> <span class="nav-text">使用 chhantyal&#x2F;parquet-cli 读 Parquet 文件</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#%E5%8F%82%E8%80%83%E8%B5%84%E6%96%99"><span class="nav-number">4.</span> <span class="nav-text">参考资料</span></a></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+  <p class="site-author-name" itemprop="name">JunBin</p>
+  <div class="site-description" itemprop="description">a programmer's blog</div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">22</span>
+          <span class="site-state-item-name">posts</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+          
+        <span class="site-state-item-count">14</span>
+        <span class="site-state-item-name">categories</span></a>
+      </div>
+  </nav>
+</div>
+
+
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+        
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2021</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">JunBin</span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item-icon">
+      <i class="fa fa-chart-area"></i>
+    </span>
+    <span title="Symbols count total">44k</span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item-icon">
+      <i class="fa fa-coffee"></i>
+    </span>
+    <span title="Reading time total">1:13</span>
+</div>
+  <div class="powered-by">Powered by <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> & <a href="https://muse.theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Muse</a>
+  </div>
+
+        
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/muse.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+</body>
+</html>

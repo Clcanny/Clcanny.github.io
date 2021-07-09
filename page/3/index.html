@@ -120,9 +120,9 @@
     <a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>Archives</a>
 
   </li>
-        <li class="menu-item menu-item-tags">
+        <li class="menu-item menu-item-categories">
 
-    <a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>Tags</a>
+    <a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>Categories</a>
 
   </li>
   </ul>
@@ -152,7 +152,7 @@
   
   
   <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-Hans">
-    <link itemprop="mainEntityOfPage" href="https://clcanny.github.io/2019/07/16/useful-and-easy-new-features-of-Cpp11/">
+    <link itemprop="mainEntityOfPage" href="https://clcanny.github.io/2020/02/16/computer-science/programming-language/c++/string-literal-in-cpp11/">
 
     <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
       <meta itemprop="image" content="/images/avatar.gif">
@@ -166,7 +166,140 @@
       <header class="post-header">
         <h2 class="post-title" itemprop="name headline">
           
-            <a href="/2019/07/16/useful-and-easy-new-features-of-Cpp11/" class="post-title-link" itemprop="url">Useful And Easy New Features Of Cpp11</a>
+            <a href="/2020/02/16/computer-science/programming-language/c++/string-literal-in-cpp11/" class="post-title-link" itemprop="url">String Literal In Cpp11</a>
+        </h2>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">Posted on</span>
+
+              <time title="Created: 2020-02-16 22:38:00" itemprop="dateCreated datePublished" datetime="2020-02-16T22:38:00+08:00">2020-02-16</time>
+            </span>
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="far fa-calendar-check"></i>
+                </span>
+                <span class="post-meta-item-text">Edited on</span>
+                <time title="Modified: 2021-06-25 13:05:02" itemprop="dateModified" datetime="2021-06-25T13:05:02+08:00">2021-06-25</time>
+              </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">In</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/Computer-Science/" itemprop="url" rel="index"><span itemprop="name">Computer Science</span></a>
+                </span>
+                  , 
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/Computer-Science/Programming-Language/" itemprop="url" rel="index"><span itemprop="name">Programming Language</span></a>
+                </span>
+                  , 
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/Computer-Science/Programming-Language/C/" itemprop="url" rel="index"><span itemprop="name">C++</span></a>
+                </span>
+            </span>
+
+          <br>
+            <span class="post-meta-item" title="Symbols count in article">
+              <span class="post-meta-item-icon">
+                <i class="far fa-file-word"></i>
+              </span>
+                <span class="post-meta-item-text">Symbols count in article: </span>
+              <span>528</span>
+            </span>
+            <span class="post-meta-item" title="Reading time">
+              <span class="post-meta-item-icon">
+                <i class="far fa-clock"></i>
+              </span>
+                <span class="post-meta-item-text">Reading time &asymp;</span>
+              <span>1 mins.</span>
+            </span>
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+          <span id="more"></span>
+<h1 id="在-C-中优雅地写多行字符串">在 C++ 中优雅地写多行字符串</h1>
+<h2 id="背景">背景</h2>
+<p>在 UT 中常常碰到以下需求：</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="built_in">TEST_F</span>(TestSuite, deserialize) &#123;</span><br><span class="line">  <span class="keyword">auto</span> jsonStr = <span class="string">&quot;&#123;\&quot;name\&quot;:\&quot;James\&quot;,\&quot;nickname\&quot;:\&quot;goodboy\&quot;&#125;&quot;</span>;</span><br><span class="line">  <span class="keyword">auto</span> object = <span class="built_in">deserialze</span>(jsonStr);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p><code>jsonStr</code> 不直观，我们想要 json 原本的样子</p>
+<h2 id="String-Literal">String Literal</h2>
+<p>C++11 提供了 <code>R&quot;delimiter(raw string)delimiter&quot;</code> 的语法，其中 <code>delimiter</code> 可以自行定义</p>
+<p>有了 String Literal ，以上代码可以写成：</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="string">R&quot;delimiter(</span></span><br><span class="line"><span class="string">&#123;</span></span><br><span class="line"><span class="string">  &quot;name&quot;: &quot;James&quot;,</span></span><br><span class="line"><span class="string">  &quot;nickname&quot;: &quot;good boy&quot;</span></span><br><span class="line"><span class="string">&#125;</span></span><br><span class="line"><span class="string">)delimiter&quot;</span></span><br></pre></td></tr></table></figure>
+<p>但我们往往需要同时兼顾代码的对齐以及字符串的格式（比如将字符串打印出来），比如：</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#<span class="meta-keyword">include</span> <span class="meta-string">&lt;iostream&gt;</span></span></span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">int</span> <span class="title">main</span><span class="params">()</span> </span>&#123;</span><br><span class="line">    <span class="keyword">auto</span> s = <span class="string">R&quot;delimiter(</span></span><br><span class="line"><span class="string">        &#123;</span></span><br><span class="line"><span class="string">          &quot;name&quot;: &quot;James&quot;,</span></span><br><span class="line"><span class="string">          &quot;nickname&quot;: &quot;good boy&quot;</span></span><br><span class="line"><span class="string">        &#125;</span></span><br><span class="line"><span class="string">        )delimiter&quot;</span>;</span><br><span class="line">    std::cout &lt;&lt; s &lt;&lt; std::endl;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"></span><br><span class="line">&#123;</span><br><span class="line">  <span class="string">&quot;name&quot;</span>: <span class="string">&quot;James&quot;</span>,</span><br><span class="line">  <span class="string">&quot;nickname&quot;</span>: <span class="string">&quot;good boy&quot;</span></span><br><span class="line">&#125;</span><br><span class="line"></span><br></pre></td></tr></table></figure>
+<p>空行和行首的空格是为了对齐代码而引入的，我们并不希望它们也打印出来，符合期望的输出是：</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">&#123;</span><br><span class="line">  <span class="string">&quot;name&quot;</span>: <span class="string">&quot;James&quot;</span>,</span><br><span class="line">  <span class="string">&quot;nickname&quot;</span>: <span class="string">&quot;good boy&quot;</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<h2 id="Trim">Trim</h2>
+<p>为减少性能消耗，Trim 需要在编译期完成</p>
+<p>有两种方法做到这一点：</p>
+<ol>
+<li>模板：将字符串作为模板参数传入</li>
+<li>constexpr</li>
+</ol>
+<p>模板被证明是行不通的，将在函数内声明的字符串字面量作为模板参数传给模板类会报错：<code>non-type template argument refers to object that does not have linkage</code></p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">template</span> &lt;<span class="keyword">int</span> N&gt;</span><br><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">StringLiteral</span> &#123;</span></span><br><span class="line"> <span class="keyword">private</span>:</span><br><span class="line">    <span class="keyword">char</span> mArray[N];</span><br><span class="line"></span><br><span class="line"> <span class="keyword">public</span>:</span><br><span class="line">    <span class="keyword">template</span> &lt;<span class="keyword">int</span> S&gt;</span><br><span class="line">    <span class="function"><span class="keyword">constexpr</span> <span class="title">StringLiteral</span><span class="params">(<span class="keyword">const</span> <span class="keyword">char</span> (&amp;s)[S],</span></span></span><br><span class="line"><span class="params"><span class="function">                            <span class="keyword">bool</span> omitFirstEmptyLine,</span></span></span><br><span class="line"><span class="params"><span class="function">                            <span class="keyword">bool</span> omitLastEmptyLine)</span> </span>&#123;</span><br><span class="line">        <span class="built_in"><span class="keyword">static_assert</span></span>(S &gt;= <span class="number">1</span>, <span class="string">&quot;&quot;</span>);</span><br><span class="line"></span><br><span class="line">        <span class="keyword">int</span> begin = <span class="number">0</span>;</span><br><span class="line">        <span class="comment">// Omit the first empty line.</span></span><br><span class="line">        <span class="keyword">if</span> (omitFirstEmptyLine &amp;&amp; s[<span class="number">0</span>] == <span class="string">&#x27;\n&#x27;</span>) &#123;</span><br><span class="line">            begin = <span class="number">1</span>;</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="comment">// Omit the last empty line.</span></span><br><span class="line">        <span class="comment">// N-2 N-1 N</span></span><br><span class="line">        <span class="comment">// \n  \0</span></span><br><span class="line">        <span class="keyword">int</span> end = N;</span><br><span class="line">        <span class="keyword">if</span> (omitLastEmptyLine &amp;&amp; s[N - <span class="number">2</span>] == <span class="string">&#x27;\n&#x27;</span>) &#123;</span><br><span class="line">            end = N - <span class="number">1</span>;</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        <span class="keyword">int</span> minSpaceNum = N;</span><br><span class="line">        <span class="keyword">bool</span> newLine = <span class="literal">true</span>;</span><br><span class="line">        <span class="keyword">int</span> spaceNum = <span class="number">0</span>;</span><br><span class="line">        <span class="keyword">for</span> (<span class="keyword">int</span> i = begin; i &lt; end; i++) &#123;</span><br><span class="line">            <span class="keyword">if</span> (s[i] == <span class="string">&#x27;\n&#x27;</span> || i == end - <span class="number">1</span>) &#123;</span><br><span class="line">                <span class="keyword">if</span> (minSpaceNum &gt; spaceNum) &#123;</span><br><span class="line">                    minSpaceNum = spaceNum;</span><br><span class="line">                &#125;</span><br><span class="line">                newLine = <span class="literal">true</span>;</span><br><span class="line">                spaceNum = <span class="number">0</span>;</span><br><span class="line">                <span class="keyword">continue</span>;</span><br><span class="line">            &#125;</span><br><span class="line">            <span class="keyword">if</span> (s[i] == <span class="string">&#x27; &#x27;</span> &amp;&amp; newLine) &#123;</span><br><span class="line">                spaceNum++;</span><br><span class="line">                <span class="keyword">continue</span>;</span><br><span class="line">            &#125;</span><br><span class="line">            newLine = <span class="literal">false</span>;</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        <span class="keyword">int</span> k = <span class="number">0</span>;</span><br><span class="line">        spaceNum = <span class="number">0</span>;</span><br><span class="line">        <span class="keyword">for</span> (<span class="keyword">int</span> i = begin; i &lt; end - <span class="number">1</span>; i++) &#123;</span><br><span class="line">            <span class="keyword">if</span> (s[i] == <span class="string">&#x27;\n&#x27;</span>) &#123;</span><br><span class="line">                spaceNum = <span class="number">0</span>;</span><br><span class="line">                mArray[k] = s[i];</span><br><span class="line">                k++;</span><br><span class="line">                <span class="keyword">continue</span>;</span><br><span class="line">            &#125;</span><br><span class="line">            <span class="keyword">if</span> (spaceNum &lt; minSpaceNum) &#123;</span><br><span class="line">                spaceNum++;</span><br><span class="line">                <span class="keyword">continue</span>;</span><br><span class="line">            &#125;</span><br><span class="line">            mArray[k] = s[i];</span><br><span class="line">            k++;</span><br><span class="line">        &#125;</span><br><span class="line">        mArray[k] = <span class="string">&#x27;\0&#x27;</span>;</span><br><span class="line"></span><br><span class="line">        <span class="comment">// Omit the last empty line.</span></span><br><span class="line">        <span class="keyword">if</span> (omitLastEmptyLine &amp;&amp; mArray[k - <span class="number">1</span>] == <span class="string">&#x27;\n&#x27;</span>) &#123;</span><br><span class="line">            mArray[k - <span class="number">1</span>] = <span class="string">&#x27;\0&#x27;</span>;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">constexpr</span> <span class="keyword">const</span> <span class="keyword">char</span>* <span class="title">c_str</span><span class="params">()</span> <span class="keyword">const</span> </span>&#123;</span><br><span class="line">        <span class="keyword">return</span> mArray;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;;</span><br><span class="line"></span><br><span class="line"><span class="keyword">template</span> &lt;<span class="keyword">int</span> N&gt;</span><br><span class="line"><span class="function"><span class="keyword">constexpr</span> <span class="keyword">auto</span> <span class="title">literal</span><span class="params">(<span class="keyword">const</span> <span class="keyword">char</span> (&amp;lit)[N])</span> -&gt; StringLiteral&lt;N&gt; </span>&#123;</span><br><span class="line">    <span class="keyword">return</span> StringLiteral&lt;N&gt;(lit, <span class="literal">true</span>, <span class="literal">true</span>);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<h2 id="编译">编译</h2>
+<p>由于使用了 constexpr 特性，需要在 c++14 标准下编译</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">clang++ -std=c++14 -O0 -ggdb test.cpp -o <span class="built_in">test</span></span><br></pre></td></tr></table></figure>
+<h2 id="测试">测试</h2>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">int</span> <span class="title">main</span><span class="params">()</span> </span>&#123;</span><br><span class="line">    <span class="keyword">static</span> <span class="keyword">constexpr</span> <span class="keyword">auto</span> a = <span class="built_in">literal</span>(<span class="string">R&quot;delimiter(</span></span><br><span class="line"><span class="string">        test</span></span><br><span class="line"><span class="string">        test</span></span><br><span class="line"><span class="string">        )delimiter&quot;</span>);</span><br><span class="line">    <span class="keyword">static</span> <span class="keyword">constexpr</span> <span class="keyword">auto</span> b = <span class="built_in">literal</span>(<span class="string">R&quot;delimiter(</span></span><br><span class="line"><span class="string">test</span></span><br><span class="line"><span class="string">test</span></span><br><span class="line"><span class="string">)delimiter&quot;</span>);</span><br><span class="line">    <span class="keyword">static</span> <span class="keyword">constexpr</span> <span class="keyword">auto</span> c = <span class="built_in">literal</span>(<span class="string">R&quot;delimiter(</span></span><br><span class="line"><span class="string">        test</span></span><br><span class="line"><span class="string">test</span></span><br><span class="line"><span class="string">)delimiter&quot;</span>);</span><br><span class="line">    <span class="keyword">static</span> <span class="keyword">constexpr</span> <span class="keyword">auto</span> d = <span class="built_in">literal</span>(<span class="string">R&quot;delimiter(</span></span><br><span class="line"><span class="string">                test</span></span><br><span class="line"><span class="string">        test</span></span><br><span class="line"><span class="string">        )delimiter&quot;</span>);</span><br><span class="line">    <span class="keyword">static</span> <span class="keyword">constexpr</span> <span class="keyword">auto</span> s = d.<span class="built_in">c_str</span>();</span><br><span class="line">    std::cout &lt;&lt; a.<span class="built_in">c_str</span>() &lt;&lt; std::endl;</span><br><span class="line">    std::cout &lt;&lt; b.<span class="built_in">c_str</span>() &lt;&lt; std::endl;</span><br><span class="line">    std::cout &lt;&lt; c.<span class="built_in">c_str</span>() &lt;&lt; std::endl;</span><br><span class="line">    std::cout &lt;&lt; s &lt;&lt; std::endl;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">int</span> <span class="title">main</span><span class="params">()</span> </span>&#123;</span><br><span class="line">    <span class="keyword">static</span> <span class="keyword">constexpr</span> <span class="keyword">auto</span> s = <span class="built_in">literal</span>(<span class="string">R&quot;delimiter(</span></span><br><span class="line"><span class="string">        &#123;</span></span><br><span class="line"><span class="string">          &quot;name&quot;: &quot;James&quot;,</span></span><br><span class="line"><span class="string">          &quot;nickname&quot;: &quot;good boy&quot;</span></span><br><span class="line"><span class="string">        &#125;</span></span><br><span class="line"><span class="string">        )delimiter&quot;</span>);</span><br><span class="line">    std::cout &lt;&lt; s.<span class="built_in">c_str</span>() &lt;&lt; std::endl;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>输出：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">&#123;</span><br><span class="line">  <span class="string">&quot;name&quot;</span>: <span class="string">&quot;James&quot;</span>,</span><br><span class="line">  <span class="string">&quot;nickname&quot;</span>: <span class="string">&quot;good boy&quot;</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<h1 id="Reference">Reference</h1>
+<ol>
+<li><a target="_blank" rel="noopener" href="https://en.cppreference.com/w/cpp/language/string_literal">string literal</a></li>
+<li><a target="_blank" rel="noopener" href="https://akrzemi1.wordpress.com/2017/06/28/compile-time-string-concatenation/">Compile-time string concatenation</a></li>
+<li><a target="_blank" rel="noopener" href="https://stackoverflow.com/questions/1826464/c-style-strings-as-template-arguments">C-Style Strings as template arguments?</a></li>
+</ol>
+
+      
+    </div>
+
+    
+    
+    
+      <footer class="post-footer">
+        <div class="post-eof"></div>
+      </footer>
+  </article>
+  
+  
+  
+
+      
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-Hans">
+    <link itemprop="mainEntityOfPage" href="https://clcanny.github.io/2019/07/16/computer-science/programming-language/c++/useful-and-easy-new-features-of-cpp11/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="JunBin">
+      <meta itemprop="description" content="a programmer's blog">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="On The Road">
+    </span>
+      <header class="post-header">
+        <h2 class="post-title" itemprop="name headline">
+          
+            <a href="/2019/07/16/computer-science/programming-language/c++/useful-and-easy-new-features-of-cpp11/" class="post-title-link" itemprop="url">Useful And Easy New Features Of Cpp11</a>
         </h2>
 
         <div class="post-meta">
@@ -183,8 +316,25 @@
                   <i class="far fa-calendar-check"></i>
                 </span>
                 <span class="post-meta-item-text">Edited on</span>
-                <time title="Modified: 2021-05-26 13:47:06" itemprop="dateModified" datetime="2021-05-26T13:47:06+08:00">2021-05-26</time>
+                <time title="Modified: 2021-07-09 13:41:53" itemprop="dateModified" datetime="2021-07-09T13:41:53+08:00">2021-07-09</time>
               </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">In</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/Computer-Science/" itemprop="url" rel="index"><span itemprop="name">Computer Science</span></a>
+                </span>
+                  , 
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/Computer-Science/Programming-Language/" itemprop="url" rel="index"><span itemprop="name">Programming Language</span></a>
+                </span>
+                  , 
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/Computer-Science/Programming-Language/C/" itemprop="url" rel="index"><span itemprop="name">C++</span></a>
+                </span>
+            </span>
 
           <br>
             <span class="post-meta-item" title="Symbols count in article">
@@ -760,15 +910,15 @@
       <div class="site-state-item site-state-posts">
           <a href="/archives/">
         
-          <span class="site-state-item-count">21</span>
+          <span class="site-state-item-count">22</span>
           <span class="site-state-item-name">posts</span>
         </a>
       </div>
-      <div class="site-state-item site-state-tags">
-            <a href="/tags/">
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
           
-        <span class="site-state-item-count">11</span>
-        <span class="site-state-item-name">tags</span></a>
+        <span class="site-state-item-count">14</span>
+        <span class="site-state-item-name">categories</span></a>
       </div>
   </nav>
 </div>
@@ -803,12 +953,12 @@
     <span class="post-meta-item-icon">
       <i class="fa fa-chart-area"></i>
     </span>
-    <span title="Symbols count total">42k</span>
+    <span title="Symbols count total">44k</span>
     <span class="post-meta-divider">|</span>
     <span class="post-meta-item-icon">
       <i class="fa fa-coffee"></i>
     </span>
-    <span title="Reading time total">1:09</span>
+    <span title="Reading time total">1:13</span>
 </div>
   <div class="powered-by">Powered by <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> & <a href="https://muse.theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Muse</a>
   </div>

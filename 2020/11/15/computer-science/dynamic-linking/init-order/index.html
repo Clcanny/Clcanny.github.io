@@ -1,0 +1,455 @@
+<!DOCTYPE html>
+<html lang="zh-Hans">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 5.4.0">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+<link rel="stylesheet" href="//fonts.googleapis.com/css?family=Lato:300,300italic,400,400italic,700,700italic&display=swap&subset=latin,latin-ext">
+<link rel="stylesheet" href="/lib/font-awesome/css/all.min.css">
+
+<script id="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"clcanny.github.io","root":"/","scheme":"Muse","version":"7.8.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":true,"show_result":true,"style":null},"back2top":{"enable":true,"sidebar":false,"scrollpercent":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":false,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}}};
+  </script>
+
+  <meta name="description" content="导读 这篇文章探讨了目前动态链接库的初始化顺序：  精华在 Code 一节，笔者简化了 _dl_sort_maps 和 _dl_map_object_deps ，并为之添加了图示，有利于从代码层面理解动态链接库的初始化顺序； 一般而言，_dl_sort_maps 不会产生任何影响，在这种情况下，动态链接库的初始化顺序是广度优先遍历依赖树的逆序； _dl_sort_maps 的核心思想是：被依赖的">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Init Order">
+<meta property="og:url" content="https://clcanny.github.io/2020/11/15/computer-science/dynamic-linking/init-order/index.html">
+<meta property="og:site_name" content="On The Road">
+<meta property="og:description" content="导读 这篇文章探讨了目前动态链接库的初始化顺序：  精华在 Code 一节，笔者简化了 _dl_sort_maps 和 _dl_map_object_deps ，并为之添加了图示，有利于从代码层面理解动态链接库的初始化顺序； 一般而言，_dl_sort_maps 不会产生任何影响，在这种情况下，动态链接库的初始化顺序是广度优先遍历依赖树的逆序； _dl_sort_maps 的核心思想是：被依赖的">
+<meta property="og:locale">
+<meta property="og:image" content="http://junbin-hexo-img.oss-cn-beijing.aliyuncs.com/dynamic-linking-init-order/makefile-compile-dont-need-sort.png">
+<meta property="og:image" content="http://junbin-hexo-img.oss-cn-beijing.aliyuncs.com/dynamic-linking-init-order/makefile-compile-need-sort.png">
+<meta property="article:published_time" content="2020-11-15T10:30:00.000Z">
+<meta property="article:modified_time" content="2021-06-25T05:05:02.356Z">
+<meta property="article:author" content="JunBin">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="http://junbin-hexo-img.oss-cn-beijing.aliyuncs.com/dynamic-linking-init-order/makefile-compile-dont-need-sort.png">
+
+<link rel="canonical" href="https://clcanny.github.io/2020/11/15/computer-science/dynamic-linking/init-order/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'zh-Hans'
+  };
+</script>
+
+  <title>Init Order | On The Road</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="Toggle navigation bar">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <span class="logo-line-before"><i></i></span>
+      <h1 class="site-title">On The Road</h1>
+      <span class="logo-line-after"><i></i></span>
+    </a>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+    </div>
+  </div>
+</div>
+
+
+
+
+<nav class="site-nav">
+  <ul id="menu" class="main-menu menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-home fa-fw"></i>Home</a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>Archives</a>
+
+  </li>
+        <li class="menu-item menu-item-categories">
+
+    <a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>Categories</a>
+
+  </li>
+  </ul>
+</nav>
+
+
+
+
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content post posts-expand">
+            
+
+    
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-Hans">
+    <link itemprop="mainEntityOfPage" href="https://clcanny.github.io/2020/11/15/computer-science/dynamic-linking/init-order/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="JunBin">
+      <meta itemprop="description" content="a programmer's blog">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="On The Road">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          Init Order
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">Posted on</span>
+
+              <time title="Created: 2020-11-15 18:30:00" itemprop="dateCreated datePublished" datetime="2020-11-15T18:30:00+08:00">2020-11-15</time>
+            </span>
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="far fa-calendar-check"></i>
+                </span>
+                <span class="post-meta-item-text">Edited on</span>
+                <time title="Modified: 2021-06-25 13:05:02" itemprop="dateModified" datetime="2021-06-25T13:05:02+08:00">2021-06-25</time>
+              </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">In</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/Computer-Science/" itemprop="url" rel="index"><span itemprop="name">Computer Science</span></a>
+                </span>
+                  , 
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/Computer-Science/Dynamic-Linking/" itemprop="url" rel="index"><span itemprop="name">Dynamic Linking</span></a>
+                </span>
+            </span>
+
+          <br>
+            <span class="post-meta-item" title="Symbols count in article">
+              <span class="post-meta-item-icon">
+                <i class="far fa-file-word"></i>
+              </span>
+                <span class="post-meta-item-text">Symbols count in article: </span>
+              <span>309</span>
+            </span>
+            <span class="post-meta-item" title="Reading time">
+              <span class="post-meta-item-icon">
+                <i class="far fa-clock"></i>
+              </span>
+                <span class="post-meta-item-text">Reading time &asymp;</span>
+              <span>1 mins.</span>
+            </span>
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <span id="more"></span>
+<h1 id="导读">导读</h1>
+<p>这篇文章探讨了<strong>目前</strong>动态链接库的初始化顺序：</p>
+<ol>
+<li>精华在 Code 一节，笔者简化了 <code>_dl_sort_maps</code> 和 <code>_dl_map_object_deps</code> ，并为之添加了图示，有利于从代码层面理解动态链接库的初始化顺序；</li>
+<li>一般而言，<code>_dl_sort_maps</code> 不会产生任何影响，在这种情况下，动态链接库的初始化顺序是广度优先遍历依赖树的逆序；</li>
+<li><code>_dl_sort_maps</code> 的核心思想是：被依赖的链接库应该先于依赖它的链接库初始化；</li>
+<li>用两个例子证明我们的理解是对的。</li>
+</ol>
+<h1 id="Code">Code</h1>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br><span class="line">86</span><br><span class="line">87</span><br><span class="line">88</span><br><span class="line">89</span><br><span class="line">90</span><br><span class="line">91</span><br><span class="line">92</span><br><span class="line">93</span><br><span class="line">94</span><br><span class="line">95</span><br><span class="line">96</span><br><span class="line">97</span><br><span class="line">98</span><br><span class="line">99</span><br><span class="line">100</span><br><span class="line">101</span><br><span class="line">102</span><br><span class="line">103</span><br><span class="line">104</span><br><span class="line">105</span><br><span class="line">106</span><br><span class="line">107</span><br><span class="line">108</span><br><span class="line">109</span><br><span class="line">110</span><br><span class="line">111</span><br><span class="line">112</span><br><span class="line">113</span><br><span class="line">114</span><br><span class="line">115</span><br><span class="line">116</span><br><span class="line">117</span><br><span class="line">118</span><br><span class="line">119</span><br><span class="line">120</span><br><span class="line">121</span><br><span class="line">122</span><br><span class="line">123</span><br><span class="line">124</span><br><span class="line">125</span><br><span class="line">126</span><br><span class="line">127</span><br><span class="line">128</span><br><span class="line">129</span><br><span class="line">130</span><br><span class="line">131</span><br><span class="line">132</span><br><span class="line">133</span><br><span class="line">134</span><br><span class="line">135</span><br><span class="line">136</span><br><span class="line">137</span><br><span class="line">138</span><br><span class="line">139</span><br><span class="line">140</span><br><span class="line">141</span><br><span class="line">142</span><br><span class="line">143</span><br><span class="line">144</span><br><span class="line">145</span><br><span class="line">146</span><br><span class="line">147</span><br><span class="line">148</span><br><span class="line">149</span><br><span class="line">150</span><br><span class="line">151</span><br><span class="line">152</span><br><span class="line">153</span><br><span class="line">154</span><br><span class="line">155</span><br><span class="line">156</span><br><span class="line">157</span><br><span class="line">158</span><br><span class="line">159</span><br><span class="line">160</span><br><span class="line">161</span><br><span class="line">162</span><br><span class="line">163</span><br><span class="line">164</span><br><span class="line">165</span><br><span class="line">166</span><br><span class="line">167</span><br><span class="line">168</span><br><span class="line">169</span><br><span class="line">170</span><br><span class="line">171</span><br><span class="line">172</span><br><span class="line">173</span><br><span class="line">174</span><br><span class="line">175</span><br><span class="line">176</span><br><span class="line">177</span><br><span class="line">178</span><br><span class="line">179</span><br><span class="line">180</span><br><span class="line">181</span><br><span class="line">182</span><br><span class="line">183</span><br><span class="line">184</span><br><span class="line">185</span><br><span class="line">186</span><br><span class="line">187</span><br><span class="line">188</span><br><span class="line">189</span><br><span class="line">190</span><br><span class="line">191</span><br><span class="line">192</span><br><span class="line">193</span><br><span class="line">194</span><br><span class="line">195</span><br><span class="line">196</span><br><span class="line">197</span><br><span class="line">198</span><br><span class="line">199</span><br><span class="line">200</span><br><span class="line">201</span><br><span class="line">202</span><br><span class="line">203</span><br><span class="line">204</span><br><span class="line">205</span><br><span class="line">206</span><br><span class="line">207</span><br><span class="line">208</span><br><span class="line">209</span><br><span class="line">210</span><br><span class="line">211</span><br><span class="line">212</span><br><span class="line">213</span><br><span class="line">214</span><br><span class="line">215</span><br><span class="line">216</span><br><span class="line">217</span><br><span class="line">218</span><br><span class="line">219</span><br><span class="line">220</span><br><span class="line">221</span><br><span class="line">222</span><br><span class="line">223</span><br><span class="line">224</span><br><span class="line">225</span><br><span class="line">226</span><br><span class="line">227</span><br><span class="line">228</span><br><span class="line">229</span><br><span class="line">230</span><br><span class="line">231</span><br><span class="line">232</span><br><span class="line">233</span><br><span class="line">234</span><br><span class="line">235</span><br><span class="line">236</span><br><span class="line">237</span><br><span class="line">238</span><br><span class="line">239</span><br><span class="line">240</span><br><span class="line">241</span><br><span class="line">242</span><br><span class="line">243</span><br><span class="line">244</span><br><span class="line">245</span><br><span class="line">246</span><br><span class="line">247</span><br><span class="line">248</span><br><span class="line">249</span><br><span class="line">250</span><br><span class="line">251</span><br><span class="line">252</span><br><span class="line">253</span><br><span class="line">254</span><br><span class="line">255</span><br><span class="line">256</span><br><span class="line">257</span><br><span class="line">258</span><br><span class="line">259</span><br><span class="line">260</span><br><span class="line">261</span><br><span class="line">262</span><br><span class="line">263</span><br><span class="line">264</span><br><span class="line">265</span><br><span class="line">266</span><br><span class="line">267</span><br><span class="line">268</span><br><span class="line">269</span><br><span class="line">270</span><br><span class="line">271</span><br><span class="line">272</span><br><span class="line">273</span><br><span class="line">274</span><br><span class="line">275</span><br><span class="line">276</span><br><span class="line">277</span><br><span class="line">278</span><br><span class="line">279</span><br><span class="line">280</span><br><span class="line">281</span><br><span class="line">282</span><br><span class="line">283</span><br><span class="line">284</span><br><span class="line">285</span><br><span class="line">286</span><br><span class="line">287</span><br><span class="line">288</span><br><span class="line">289</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/* Load the dependencies of a mapped object.</span></span><br><span class="line"><span class="comment">   Copyright (C) 1996-2018 Free Software Foundation, Inc.</span></span><br><span class="line"><span class="comment">   This file is part of the GNU C Library.</span></span><br><span class="line"><span class="comment"></span></span><br><span class="line"><span class="comment">   The GNU C Library is free software; you can redistribute it and/or</span></span><br><span class="line"><span class="comment">   modify it under the terms of the GNU Lesser General Public</span></span><br><span class="line"><span class="comment">   License as published by the Free Software Foundation; either</span></span><br><span class="line"><span class="comment">   version 2.1 of the License, or (at your option) any later version.</span></span><br><span class="line"><span class="comment"></span></span><br><span class="line"><span class="comment">   The GNU C Library is distributed in the hope that it will be useful,</span></span><br><span class="line"><span class="comment">   but WITHOUT ANY WARRANTY; without even the implied warranty of</span></span><br><span class="line"><span class="comment">   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU</span></span><br><span class="line"><span class="comment">   Lesser General Public License for more details.</span></span><br><span class="line"><span class="comment"></span></span><br><span class="line"><span class="comment">   You should have received a copy of the GNU Lesser General Public</span></span><br><span class="line"><span class="comment">   License along with the GNU C Library; if not, see</span></span><br><span class="line"><span class="comment">   &lt;http://www.gnu.org/licenses/&gt;.  */</span></span><br><span class="line"></span><br><span class="line"><span class="comment">// We use a very special kind of list to track the path through the list of</span></span><br><span class="line"><span class="comment">// loaded shared objects.  We have to produce a flat list with unique members of</span></span><br><span class="line"><span class="comment">// all involved objects.</span></span><br><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">list</span> &#123;</span></span><br><span class="line">    <span class="keyword">int</span> done;              <span class="comment">// Nonzero if this map was processed.</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">link_map</span>* <span class="title">map</span>;</span>  <span class="comment">// The data.</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">list</span>* <span class="title">next</span>;</span>     <span class="comment">// Elements for normal list.</span></span><br><span class="line">&#125;;</span><br><span class="line"></span><br><span class="line"><span class="comment">// Sort array `maps` according to dependencies of the contained objects.</span></span><br><span class="line"><span class="keyword">void</span> _dl_sort_maps(struct link_map** maps, <span class="keyword">unsigned</span> <span class="keyword">int</span> nmaps) &#123;</span><br><span class="line">    <span class="keyword">uint16_t</span> seen[nmaps];</span><br><span class="line">    <span class="built_in">memset</span>(seen, <span class="number">0</span>, nmaps * <span class="keyword">sizeof</span>(seen[<span class="number">0</span>]));</span><br><span class="line">    <span class="comment">//                                                  i</span></span><br><span class="line">    <span class="comment">//                                                  │</span></span><br><span class="line">    <span class="comment">// ┌───────────────────────┬───────────────────────┬▼┬─┬─┬─┬─┬─┐</span></span><br><span class="line">    <span class="comment">// │           a           │           b           │c│d│e│f│g│h│</span></span><br><span class="line">    <span class="comment">// ├───────────────────────┴───────────────────────┼─┴─┴─┴─┴─┴─┤</span></span><br><span class="line">    <span class="comment">// │  The elements between [0,i) has been sorted,  │Hasn&#x27;t been│</span></span><br><span class="line">    <span class="comment">// │they doesn&#x27;t depend on the subsequent elements.│  sorted.  │</span></span><br><span class="line">    <span class="comment">// └───────────────────────────────────────────────┴───────────┘</span></span><br><span class="line">    <span class="keyword">for</span> (<span class="keyword">unsigned</span> <span class="keyword">int</span> i = <span class="number">0</span>; i++; i &lt; nmaps) &#123;</span><br><span class="line">        <span class="comment">// `seen` records how many times we have seen element n at position `i`,</span></span><br><span class="line">        <span class="comment">// it is used to detect ring.</span></span><br><span class="line">        ++seen[i];</span><br><span class="line">        <span class="class"><span class="keyword">struct</span> <span class="title">link_map</span>* <span class="title">thisp</span> =</span> maps[i];</span><br><span class="line"></span><br><span class="line">        <span class="keyword">for</span> (<span class="keyword">unsigned</span> <span class="keyword">int</span> k = nmaps - <span class="number">1</span>; k &gt; i; k--) &#123;</span><br><span class="line">            <span class="comment">// Look through the dependencies of the object.</span></span><br><span class="line">            <span class="comment">//      i     k            i     k</span></span><br><span class="line">            <span class="comment">//      │     │            │     │</span></span><br><span class="line">            <span class="comment">// ┌─┬─┬▼┬─┬─┬▼┬─┬─┐  ┌─┬─┬▼┬─┬─┬▼┬─┬─┐</span></span><br><span class="line">            <span class="comment">// │a│b│c│d│e│f│g│h│  │a│b│d│e│f│c│g│h│</span></span><br><span class="line">            <span class="comment">// └─┴─┴▲┴─┴─┴┬┴─┴─┘  └─┴─┴─┴─┴─┴─┴─┴─┘</span></span><br><span class="line">            <span class="comment">//      │     │</span></span><br><span class="line">            <span class="comment">//      │     │</span></span><br><span class="line">            <span class="comment">//    f depends</span></span><br><span class="line">            <span class="comment">//      on c.─┘</span></span><br><span class="line">            <span class="keyword">for</span> (struct link_map** runp = maps[k]-&gt;l_initfini;</span><br><span class="line">                 runp != <span class="literal">NULL</span> &amp;&amp; *runp != <span class="literal">NULL</span>;</span><br><span class="line">                 runp++) &#123;</span><br><span class="line">                <span class="keyword">if</span> (__glibc_unlikely(*runp == thisp)) &#123;</span><br><span class="line">                    <span class="comment">// Move the current object to the back past the last</span></span><br><span class="line">                    <span class="comment">// object with it as the dependency.</span></span><br><span class="line">                    memmove(&amp;maps[i], &amp;maps[i + <span class="number">1</span>], (k - i) * <span class="keyword">sizeof</span>(maps[<span class="number">0</span>]));</span><br><span class="line">                    maps[k] = thisp;</span><br><span class="line">                    <span class="keyword">uint16_t</span> this_seen = seen[i];</span><br><span class="line">                    memmove(&amp;seen[i], &amp;seen[i + <span class="number">1</span>], (k - i) * <span class="keyword">sizeof</span>(seen[<span class="number">0</span>]));</span><br><span class="line">                    seen[k] = this_seen;</span><br><span class="line"></span><br><span class="line">                    <span class="comment">// Found a ring in dependency tree, don&#x27;t try to sort them.</span></span><br><span class="line">                    <span class="comment">// The following graph shows `seen[i] &gt; 1` isn&#x27;t right:</span></span><br><span class="line">                    <span class="comment">//    ┌─────┐</span></span><br><span class="line">                    <span class="comment">//    │     │    abcd</span></span><br><span class="line">                    <span class="comment">// ┌─┬▼┬───┬┴┐   bcad</span></span><br><span class="line">                    <span class="comment">// │a│b│ c │d│   cadb</span></span><br><span class="line">                    <span class="comment">// └▲┴─┴┬─▲┴┬┘   adcb // seen[0] = 2, not ring.</span></span><br><span class="line">                    <span class="comment">//  │   │ │ │    dcab</span></span><br><span class="line">                    <span class="comment">//  └───┘ └─┘</span></span><br><span class="line">                    <span class="keyword">if</span> (seen[i] &gt; nmaps - i) &#123;</span><br><span class="line">                        <span class="keyword">goto</span> next;</span><br><span class="line">                    &#125;</span><br><span class="line">                    <span class="comment">// Reset `k` and check dependencies once again.</span></span><br><span class="line">                    k = nmaps - <span class="number">1</span>;</span><br><span class="line">                    <span class="keyword">break</span>;</span><br><span class="line">                &#125;</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;</span><br><span class="line">    next:</span><br><span class="line">        <span class="built_in">memset</span>(&amp;seen[i], <span class="number">0</span>, (nmaps - i) * <span class="keyword">sizeof</span>(seen[<span class="number">0</span>]));</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">// This isn&#x27;t a recursive function.</span></span><br><span class="line"><span class="keyword">void</span> _dl_map_object_deps(struct link_map* <span class="built_in">map</span>,</span><br><span class="line">                         struct link_map** preloads,</span><br><span class="line">                         <span class="keyword">unsigned</span> <span class="keyword">int</span> npreloads,</span><br><span class="line">                         <span class="keyword">int</span> trace_mode,</span><br><span class="line">                         <span class="keyword">int</span> open_mode) &#123;</span><br><span class="line">    <span class="keyword">unsigned</span> <span class="keyword">int</span> nlist = <span class="number">1</span> + npreloads;</span><br><span class="line">    <span class="comment">// `__alloca` is used to allocate memory that is automatically freed.</span></span><br><span class="line">    <span class="comment">// `known` is the queue used in the depth-first search process.</span></span><br><span class="line">    <span class="comment">// `done` indicates whether the node has been searched, it is used to avoid</span></span><br><span class="line">    <span class="comment">// infinite recursion when search a directed cyclic graph.</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">list</span>* <span class="title">known</span> =</span> __alloca(<span class="keyword">sizeof</span>(struct <span class="built_in">list</span>) * (nlist + <span class="number">1</span>));</span><br><span class="line">    <span class="keyword">for</span> (<span class="keyword">unsigned</span> <span class="keyword">int</span> i = <span class="number">0</span>; i &lt; nlist + <span class="number">1</span>; i++) &#123;</span><br><span class="line">        known[i].done = <span class="number">0</span>;</span><br><span class="line">        known[i].next = &amp;known[i + <span class="number">1</span>];</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 1. Load `map` itself.</span></span><br><span class="line">    known[<span class="number">0</span>].<span class="built_in">map</span> = <span class="built_in">map</span>;</span><br><span class="line">    <span class="comment">// We use `l_reserved` as a mark bit to detect objects we have already put</span></span><br><span class="line">    <span class="comment">// in the search list and avoid adding duplicate elements later in the list.</span></span><br><span class="line">    <span class="built_in">map</span>-&gt;l_reserved = <span class="number">1</span>;</span><br><span class="line">    <span class="comment">// 2. Add the `preloaded` items after `map` but before any of its</span></span><br><span class="line">    <span class="comment">// dependencies.</span></span><br><span class="line">    <span class="keyword">for</span> (<span class="keyword">unsigned</span> <span class="keyword">int</span> i = <span class="number">0</span>; i &lt; npreloads; i++) &#123;</span><br><span class="line">        known[i + <span class="number">1</span>].<span class="built_in">map</span> = preloads[i];</span><br><span class="line">        preloads[i].l_reserved = <span class="number">1</span>;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="comment">// 3. Terminate the lists.</span></span><br><span class="line">    known[nlist - <span class="number">1</span>].next = <span class="literal">NULL</span>;</span><br><span class="line">    <span class="comment">// Pointer to last unique object.</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">list</span>* <span class="title">tail</span> =</span> &amp;known[nlist - <span class="number">1</span>];</span><br><span class="line">    <span class="comment">// clang-format off</span></span><br><span class="line">    <span class="comment">//  known                  tail</span></span><br><span class="line">    <span class="comment">//  │                      │</span></span><br><span class="line">    <span class="comment">// ┌▼──┬───────────┬──────┬▼────────────────────┬───────────────────────────────┐┌───────┐</span></span><br><span class="line">    <span class="comment">// │map│preloads[0]│......│preloads[npreloads-1]│known[1+preloads] // empty node││nullptr│</span></span><br><span class="line">    <span class="comment">// └┬──┴▲─────────┬┴▲────┬┴▲───────────────────┬┴───────────────────────────────┘└▲──────┘</span></span><br><span class="line">    <span class="comment">//  │   │         │ │    │ │                   │                                  │</span></span><br><span class="line">    <span class="comment">//  └───┘         └─┘    └─┘                   └──────────────────────────────────┘</span></span><br><span class="line">    <span class="comment">// clang-format on</span></span><br><span class="line"></span><br><span class="line">    <span class="comment">// Process each element of the search list, loading each of its</span></span><br><span class="line">    <span class="comment">// auxiliary objects and immediate dependencies.</span></span><br><span class="line">    <span class="comment">//</span></span><br><span class="line">    <span class="comment">// Auxiliary objects will be added in the list before the object itself.</span></span><br><span class="line">    <span class="comment">// https://docs.oracle.com/cd/E19120-01/open.solaris/819-0690/6n33n7f8u/index.html</span></span><br><span class="line">    <span class="comment">// Note: I ignore codes about auxiliary objects because they are rarely</span></span><br><span class="line">    <span class="comment">// used.</span></span><br><span class="line">    <span class="comment">//</span></span><br><span class="line">    <span class="comment">// Dependencies will be appended to the list as we step through it.</span></span><br><span class="line">    <span class="comment">// This produces a flat, ordered list that represents a breadth-first search</span></span><br><span class="line">    <span class="comment">// of the dependency tree.</span></span><br><span class="line">    <span class="keyword">for</span> (struct <span class="built_in">list</span>* runp = known; runp;) &#123;</span><br><span class="line">        <span class="class"><span class="keyword">struct</span> <span class="title">link_map</span>* <span class="title">l</span> =</span> runp-&gt;<span class="built_in">map</span>;</span><br><span class="line">        <span class="class"><span class="keyword">struct</span> <span class="title">link_map</span>** <span class="title">needed</span> =</span> <span class="literal">NULL</span>;</span><br><span class="line">        <span class="keyword">unsigned</span> <span class="keyword">int</span> nneeded = <span class="number">0</span>;</span><br><span class="line"></span><br><span class="line">        <span class="comment">// Unless otherwise stated, this object is handled.</span></span><br><span class="line">        <span class="comment">// If we have no auxiliary objects, `done` is 1.</span></span><br><span class="line">        runp-&gt;done = <span class="number">1</span>;</span><br><span class="line"></span><br><span class="line">        <span class="comment">// Allocate a temporary record to contain the references to the</span></span><br><span class="line">        <span class="comment">// dependencies of this object.</span></span><br><span class="line">        <span class="keyword">if</span> (l-&gt;l_searchlist.r_list == <span class="literal">NULL</span> &amp;&amp; l-&gt;l_initfini == <span class="literal">NULL</span> &amp;&amp;</span><br><span class="line">            l != <span class="built_in">map</span> &amp;&amp; l-&gt;l_ldnum &gt; <span class="number">0</span>) &#123;</span><br><span class="line">            <span class="comment">// l-&gt;l_ldnum includes space for the terminating NULL.</span></span><br><span class="line">            needed = (struct link_map**)<span class="built_in">malloc</span>(l-&gt;l_ldnum *</span><br><span class="line">                                               <span class="keyword">sizeof</span>(struct link_map*));</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        <span class="comment">// l_info stores same information as `readelf --dynamic $elf`.</span></span><br><span class="line">        <span class="comment">// Note: Omit l_info[AUXTAG] and l_info[FILTERTAG].</span></span><br><span class="line">        <span class="keyword">if</span> (l-&gt;l_info[DT_NEEDED]) &#123;</span><br><span class="line">            <span class="keyword">const</span> <span class="keyword">char</span>* strtab = (<span class="keyword">const</span> <span class="keyword">void</span>*)D_PTR(l, l_info[DT_STRTAB]);</span><br><span class="line">            <span class="class"><span class="keyword">struct</span> <span class="title">list</span>* <span class="title">orig</span>;</span></span><br><span class="line">            <span class="function"><span class="keyword">const</span> <span class="title">ElfW</span><span class="params">(Dyn)</span> * d</span>;</span><br><span class="line"></span><br><span class="line">            <span class="keyword">for</span> (d = l-&gt;l_ld; d-&gt;d_tag != DT_NULL; ++d) &#123;</span><br><span class="line">                <span class="keyword">if</span> (__builtin_expect(d-&gt;d_tag, DT_NEEDED) == DT_NEEDED) &#123;</span><br><span class="line">                    <span class="comment">// Recognize DSTs.</span></span><br><span class="line">                    <span class="keyword">const</span> <span class="keyword">char</span>* name = expand_dst(l, strtab + d-&gt;d_un.d_val, <span class="number">0</span>);</span><br><span class="line">                    <span class="comment">// Map in the needed object.</span></span><br><span class="line">                    <span class="class"><span class="keyword">struct</span> <span class="title">link_map</span>* <span class="title">dep</span> =</span> _dl_map_object(</span><br><span class="line">                        l,</span><br><span class="line">                        name,</span><br><span class="line">                        l-&gt;l_type == lt_executable ? lt_library : l-&gt;l_type,</span><br><span class="line">                        trace_mode,</span><br><span class="line">                        open_mode,</span><br><span class="line">                        l-&gt;l_ns);</span><br><span class="line"></span><br><span class="line">                    <span class="comment">// clang-format off</span></span><br><span class="line">                    <span class="comment">//  known                                                                           tail</span></span><br><span class="line">                    <span class="comment">//  │                                                                               │</span></span><br><span class="line">                    <span class="comment">// ┌▼──┬───────────┬──────┬─────────────────────┬────────────────────────────────┐ ┌▼───┐</span></span><br><span class="line">                    <span class="comment">// │map│preloads[0]│......│preloads[npreloads-1]│known[1+preloads] // empty node │ │newp│</span></span><br><span class="line">                    <span class="comment">// └┬──┴▲─────────┬┴▲────┬┴▲───────────────────┬┴────────────────────────────────┘ └▲───┘</span></span><br><span class="line">                    <span class="comment">//  │   │         │ │    │ │                   │                                    │</span></span><br><span class="line">                    <span class="comment">//  └───┘         └─┘    └─┘                   └────────────────────────────────────┘</span></span><br><span class="line">                    <span class="comment">// clang-format on</span></span><br><span class="line">                    <span class="comment">// `l_reserved` indicates if object is already in the search</span></span><br><span class="line">                    <span class="comment">// list.</span></span><br><span class="line">                    <span class="keyword">if</span> (!dep-&gt;l_reserved) &#123;</span><br><span class="line">                        <span class="comment">// Allocate new entry.</span></span><br><span class="line">                        <span class="class"><span class="keyword">struct</span> <span class="title">list</span>* <span class="title">newp</span> =</span> alloca(<span class="keyword">sizeof</span>(struct <span class="built_in">list</span>));</span><br><span class="line">                        <span class="comment">// Append DEP to the list.</span></span><br><span class="line">                        newp-&gt;<span class="built_in">map</span> = dep;</span><br><span class="line">                        newp-&gt;done = <span class="number">0</span>;</span><br><span class="line">                        newp-&gt;next = <span class="literal">NULL</span>;</span><br><span class="line">                        tail-&gt;next = newp;</span><br><span class="line">                        tail = newp;</span><br><span class="line">                        ++nlist;</span><br><span class="line">                        <span class="comment">// Set the mark bit that says it&#x27;s already in the list.</span></span><br><span class="line">                        dep-&gt;l_reserved = <span class="number">1</span>;</span><br><span class="line">                    &#125;</span><br><span class="line"></span><br><span class="line">                    <span class="comment">// Remember this dependency.</span></span><br><span class="line">                    <span class="keyword">if</span> (needed != <span class="literal">NULL</span>) &#123;</span><br><span class="line">                        needed[nneeded++] = dep;</span><br><span class="line">                    &#125;</span><br><span class="line">                &#125;</span><br><span class="line">                <span class="comment">// Note: Omit DT_AUXILIARY and DT_FILTER.</span></span><br><span class="line">            &#125;</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        <span class="comment">// Terminate the list of dependencies and store the array address.</span></span><br><span class="line">        <span class="keyword">if</span> (needed != <span class="literal">NULL</span>) &#123;</span><br><span class="line">            <span class="comment">// Please note nneeded include size of NULL.</span></span><br><span class="line">            needed[nneeded++] = <span class="literal">NULL</span>;</span><br><span class="line">            <span class="comment">// List of object in order of the init and fini calls.</span></span><br><span class="line">            <span class="class"><span class="keyword">struct</span> <span class="title">link_map</span>** <span class="title">l_initfini</span> =</span> (struct link_map**)<span class="built_in">malloc</span>(</span><br><span class="line">                (<span class="number">2</span> * nneeded + <span class="number">1</span>) * <span class="keyword">sizeof</span>(needed[<span class="number">0</span>]));</span><br><span class="line">            l_initfini[<span class="number">0</span>] = l;</span><br><span class="line">            <span class="built_in">memcpy</span>(&amp;l_initfini[<span class="number">1</span>], needed, nneeded * <span class="keyword">sizeof</span>(needed[<span class="number">0</span>]));</span><br><span class="line">            <span class="built_in">memcpy</span>(&amp;l_initfini[nneeded + <span class="number">1</span>],</span><br><span class="line">                   l_initfini,</span><br><span class="line">                   nneeded * <span class="keyword">sizeof</span>(needed[<span class="number">0</span>]));</span><br><span class="line">            <span class="comment">// clang-format off</span></span><br><span class="line">            <span class="comment">// ┌─┬─────────┬───┬─────────────────┬───────┬─┬─────────┬───┬─────────────────┐</span></span><br><span class="line">            <span class="comment">// │l│needed[0]│...│needed[nneeded-1]│nullptr│l│needed[0]│...│needed[nneeded-1]│</span></span><br><span class="line">            <span class="comment">// └─┴─────────┴───┴─────────────────┴───────┴─┴─────────┴───┴─────────────────┘</span></span><br><span class="line">            <span class="comment">// clang-format on</span></span><br><span class="line">            l-&gt;l_initfini = l_initfini;</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        <span class="comment">// If we have no auxiliary objects just go on to the next map.</span></span><br><span class="line">        <span class="keyword">if</span> (runp-&gt;done) &#123;</span><br><span class="line">            <span class="keyword">do</span> &#123;</span><br><span class="line">                runp = runp-&gt;next;</span><br><span class="line">            &#125; <span class="keyword">while</span> (runp != <span class="literal">NULL</span> &amp;&amp; runp-&gt;done);</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// Store the search list we built in the object.</span></span><br><span class="line">    <span class="comment">// It will be used for searches in the scope of this object.</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">link_map</span>** <span class="title">l_initfini</span> =</span></span><br><span class="line">        (struct link_map**)<span class="built_in">malloc</span>((<span class="number">2</span> * nlist + <span class="number">1</span>) * <span class="keyword">sizeof</span>(struct link_map*));</span><br><span class="line">    <span class="built_in">map</span>-&gt;l_searchlist.r_list = &amp;l_initfini[nlist + <span class="number">1</span>];</span><br><span class="line">    <span class="built_in">map</span>-&gt;l_searchlist.r_nlist = nlist;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">for</span> (nlist = <span class="number">0</span>, struct <span class="built_in">list</span>* runp = known; runp; runp = runp-&gt;next) &#123;</span><br><span class="line">        <span class="built_in">map</span>-&gt;l_searchlist.r_list[nlist++] = runp-&gt;<span class="built_in">map</span>;</span><br><span class="line"></span><br><span class="line">        <span class="comment">// <span class="doctag">TODO:</span> Why?</span></span><br><span class="line">        <span class="comment">// Now clear all the mark bits we set in the objects on the search list</span></span><br><span class="line">        <span class="comment">// to avoid duplicates, so the next call starts fresh.</span></span><br><span class="line">        runp-&gt;<span class="built_in">map</span>-&gt;l_reserved = <span class="number">0</span>;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// Sort the initializer list to take dependencies into account.</span></span><br><span class="line">    <span class="comment">// The binary itself will always be initialize last.</span></span><br><span class="line">    <span class="built_in">memcpy</span>(</span><br><span class="line">        l_initfini, <span class="built_in">map</span>-&gt;l_searchlist.r_list, nlist * <span class="keyword">sizeof</span>(struct link_map*));</span><br><span class="line">    <span class="comment">// Terminate the list of dependencies.</span></span><br><span class="line">    l_initfini[nlist] = <span class="literal">NULL</span>;</span><br><span class="line">    <span class="comment">//  map-&gt;l_initfini</span></span><br><span class="line">    <span class="comment">//  │</span></span><br><span class="line">    <span class="comment">// ┌▼──┬───────────┬───┬─────────────────────┬──────┬───┬──────┐</span></span><br><span class="line">    <span class="comment">// │map│preloads[0]│...│preloads[npreloads-1]│newp_1│...│newp_k│</span></span><br><span class="line">    <span class="comment">// ├───┴───┬───────┴───┴─────────────────────┴──────┴───┴──────┘</span></span><br><span class="line">    <span class="comment">// │nullptr│</span></span><br><span class="line">    <span class="comment">// ├───┬───┴───────┬───┬─────────────────────┬──────┬───┬──────┐</span></span><br><span class="line">    <span class="comment">// │map│preloads[0]│...│preloads[npreloads-1]│newp_1│...│newp_k│</span></span><br><span class="line">    <span class="comment">// └▲──┴───────────┴───┴─────────────────────┴──────┴───┴──────┘</span></span><br><span class="line">    <span class="comment">//  │</span></span><br><span class="line">    <span class="comment">//  map-&gt;l_searchlist.r_list</span></span><br><span class="line"></span><br><span class="line">    <span class="comment">// We can skip looking for the binary itself which is at the front of the</span></span><br><span class="line">    <span class="comment">// search list, and skip fini parts.</span></span><br><span class="line">    _dl_sort_maps(&amp;l_initfini[<span class="number">1</span>], nlist - <span class="number">1</span>);</span><br><span class="line">    <span class="built_in">map</span>-&gt;l_initfini = l_initfini;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">if</span> (l_reldeps != <span class="literal">NULL</span>) &#123;</span><br><span class="line">        <span class="keyword">void</span>* old_l_reldeps = <span class="built_in">map</span>-&gt;l_reldeps;</span><br><span class="line">        <span class="built_in">map</span>-&gt;l_reldeps = l_reldeps;</span><br><span class="line">        _dl_scope_free(old_l_reldeps);</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/* Run initializers for newly loaded objects.</span></span><br><span class="line"><span class="comment">   Copyright (C) 1995-2018 Free Software Foundation, Inc.</span></span><br><span class="line"><span class="comment">   This file is part of the GNU C Library.</span></span><br><span class="line"><span class="comment"></span></span><br><span class="line"><span class="comment">   The GNU C Library is free software; you can redistribute it and/or</span></span><br><span class="line"><span class="comment">   modify it under the terms of the GNU Lesser General Public</span></span><br><span class="line"><span class="comment">   License as published by the Free Software Foundation; either</span></span><br><span class="line"><span class="comment">   version 2.1 of the License, or (at your option) any later version.</span></span><br><span class="line"><span class="comment"></span></span><br><span class="line"><span class="comment">   The GNU C Library is distributed in the hope that it will be useful,</span></span><br><span class="line"><span class="comment">   but WITHOUT ANY WARRANTY; without even the implied warranty of</span></span><br><span class="line"><span class="comment">   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU</span></span><br><span class="line"><span class="comment">   Lesser General Public License for more details.</span></span><br><span class="line"><span class="comment"></span></span><br><span class="line"><span class="comment">   You should have received a copy of the GNU Lesser General Public</span></span><br><span class="line"><span class="comment">   License along with the GNU C Library; if not, see</span></span><br><span class="line"><span class="comment">   &lt;http://www.gnu.org/licenses/&gt;.  */</span></span><br><span class="line"></span><br><span class="line"><span class="keyword">void</span> _dl_init(struct link_map* main_map, <span class="keyword">int</span> argc, <span class="keyword">char</span>** argv, <span class="keyword">char</span>** env) &#123;</span><br><span class="line">    <span class="comment">/* Stupid users forced the ELF specification to be changed.  It now</span></span><br><span class="line"><span class="comment">       says that the dynamic loader is responsible for determining the</span></span><br><span class="line"><span class="comment">       order in which the constructors have to run.  The constructors</span></span><br><span class="line"><span class="comment">       for all dependencies of an object must run before the constructor</span></span><br><span class="line"><span class="comment">       for the object itself.  Circular dependencies are left unspecified.</span></span><br><span class="line"><span class="comment"></span></span><br><span class="line"><span class="comment">       This is highly questionable since it puts the burden on the dynamic</span></span><br><span class="line"><span class="comment">       loader which has to find the dependencies at runtime instead of</span></span><br><span class="line"><span class="comment">       letting the user do it right.  Stupidity rules!  */</span></span><br><span class="line">    <span class="keyword">for</span> (<span class="keyword">unsigned</span> i = main_map-&gt;l_searchlist.r_nlist - <span class="number">1</span>; i &gt; <span class="number">0</span>; i--) &#123;</span><br><span class="line">        call_init(main_map-&gt;l_initfini[i], argc, argv, env);</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<h1 id="证明">证明</h1>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// lib.cpp</span></span><br></pre></td></tr></table></figure>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// main.cpp</span></span><br><span class="line"><span class="function"><span class="keyword">int</span> <span class="title">main</span><span class="params">()</span> </span>&#123;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<figure class="highlight makefile"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># Makefile</span></span><br><span class="line">compile-need-sort :</span><br><span class="line">    <span class="comment"># Depth: 2.</span></span><br><span class="line">    gcc lib.cpp -shared -fPIC -o libg.so</span><br><span class="line">    gcc lib.cpp -shared -fPIC -L<span class="variable">$(PWD)</span> -Wl,-rpath=<span class="variable">$(PWD)</span> -lg -o libf.so</span><br><span class="line">    gcc lib.cpp -shared -fPIC -L<span class="variable">$(PWD)</span> -Wl,-rpath=<span class="variable">$(PWD)</span> -lf -o libe.so</span><br><span class="line">    gcc lib.cpp -shared -fPIC -L<span class="variable">$(PWD)</span> -Wl,-rpath=<span class="variable">$(PWD)</span> -le -o libh.so</span><br><span class="line">    <span class="comment"># Depth: 1.</span></span><br><span class="line">    gcc lib.cpp -shared -fPIC -L<span class="variable">$(PWD)</span> -Wl,-rpath=<span class="variable">$(PWD)</span> -le -lf -o liba.so</span><br><span class="line">    gcc lib.cpp -shared -fPIC -L<span class="variable">$(PWD)</span> -Wl,-rpath=<span class="variable">$(PWD)</span> -lg -lh -o libb.so</span><br><span class="line">    gcc main.cpp                                                                     \</span><br><span class="line">            -Wl,--dynamic-linker=<span class="variable">$(PWD)</span>/glibc/build/install/lib/ld-linux-x86-64.so.2 \</span><br><span class="line">            -L<span class="variable">$(PWD)</span> -Wl,-rpath=<span class="variable">$(PWD)</span> -la -lb                                       \</span><br><span class="line">            -o main</span><br><span class="line">    LD_DEBUG=all ./main 2&gt;&amp;1 | grep <span class="string">&quot;calling init&quot;</span></span><br><span class="line"></span><br><span class="line">compile-dont-need-sort :</span><br><span class="line">    <span class="comment"># Depth: 2.</span></span><br><span class="line">    gcc lib.cpp -shared -fPIC -o libg.so</span><br><span class="line">    gcc lib.cpp -shared -fPIC -o libf.so</span><br><span class="line">    gcc lib.cpp -shared -fPIC -o libe.so</span><br><span class="line">    gcc lib.cpp -shared -fPIC -o libh.so</span><br><span class="line">    <span class="comment"># Depth: 1.</span></span><br><span class="line">    gcc lib.cpp -shared -fPIC -L<span class="variable">$(PWD)</span> -Wl,-rpath=<span class="variable">$(PWD)</span> -le -lf -o liba.so</span><br><span class="line">    gcc lib.cpp -shared -fPIC -L<span class="variable">$(PWD)</span> -Wl,-rpath=<span class="variable">$(PWD)</span> -lg -lh -o libb.so</span><br><span class="line">    gcc main.cpp                                                                     \</span><br><span class="line">            -Wl,--dynamic-linker=<span class="variable">$(PWD)</span>/glibc/build/install/lib/ld-linux-x86-64.so.2 \</span><br><span class="line">            -L<span class="variable">$(PWD)</span> -Wl,-rpath=<span class="variable">$(PWD)</span> -la -lb                                       \</span><br><span class="line">            -o main</span><br><span class="line">    LD_DEBUG=all ./main 2&gt;&amp;1 | grep <span class="string">&quot;calling init&quot;</span></span><br></pre></td></tr></table></figure>
+<h2 id="Normal-Case">Normal Case</h2>
+<p><img src="http://junbin-hexo-img.oss-cn-beijing.aliyuncs.com/dynamic-linking-init-order/makefile-compile-dont-need-sort.png" alt="makefile-compile-dont-need-sort"></p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># make compile-dont-need-sort</span></span><br><span class="line">LD_DEBUG=all ./main 2&gt;&amp;1 | grep <span class="string">&quot;calling init&quot;</span></span><br><span class="line">     12859:     calling init: /home/demons/_dl_map_objects_validate/glibc/build/install/lib/libc.so.6</span><br><span class="line">     12859:     calling init: /home/demons/_dl_map_objects_validate/libh.so</span><br><span class="line">     12859:     calling init: /home/demons/_dl_map_objects_validate/libg.so</span><br><span class="line">     12859:     calling init: /home/demons/_dl_map_objects_validate/libf.so</span><br><span class="line">     12859:     calling init: /home/demons/_dl_map_objects_validate/libe.so</span><br><span class="line">     12859:     calling init: /home/demons/_dl_map_objects_validate/libb.so</span><br><span class="line">     12859:     calling init: /home/demons/_dl_map_objects_validate/liba.so</span><br></pre></td></tr></table></figure>
+<p>通过 <code>LD_DEBUG=all</code> 看到的初始化顺序与推断的顺序一致。</p>
+<h2 id="Special-Case">Special Case</h2>
+<p><img src="http://junbin-hexo-img.oss-cn-beijing.aliyuncs.com/dynamic-linking-init-order/makefile-compile-need-sort.png" alt="makefile-compile-need-sort"></p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># make compile-need-sort</span></span><br><span class="line">LD_DEBUG=all ./main 2&gt;&amp;1 | grep <span class="string">&quot;calling init&quot;</span></span><br><span class="line">     12802:     calling init: /home/demons/_dl_map_objects_validate/glibc/build/install/lib/libc.so.6</span><br><span class="line">     12802:     calling init: /home/demons/_dl_map_objects_validate/libg.so</span><br><span class="line">     12802:     calling init: /home/demons/_dl_map_objects_validate/libf.so</span><br><span class="line">     12802:     calling init: /home/demons/_dl_map_objects_validate/libe.so</span><br><span class="line">     12802:     calling init: /home/demons/_dl_map_objects_validate/libh.so</span><br><span class="line">     12802:     calling init: /home/demons/_dl_map_objects_validate/libb.so</span><br><span class="line">     12802:     calling init: /home/demons/_dl_map_objects_validate/liba.so</span><br></pre></td></tr></table></figure>
+<p>通过 <code>LD_DEBUG=all</code> 看到的初始化顺序与推断的顺序一致。</p>
+
+    </div>
+
+    
+    
+    
+
+      <footer class="post-footer">
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2020/10/24/computer-science/programming-language/java/build-openjdk/" rel="prev" title="Build OpenJDK">
+      <i class="fa fa-chevron-left"></i> Build OpenJDK
+    </a></div>
+      <div class="post-nav-item">
+    <a href="/2020/11/18/computer-science/dynamic-linking/symbol-search-order/" rel="next" title="Symbol Search Order">
+      Symbol Search Order <i class="fa fa-chevron-right"></i>
+    </a></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+
+
+          </div>
+          
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          Table of Contents
+        </li>
+        <li class="sidebar-nav-overview">
+          Overview
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#%E5%AF%BC%E8%AF%BB"><span class="nav-number">1.</span> <span class="nav-text">导读</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#Code"><span class="nav-number">2.</span> <span class="nav-text">Code</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#%E8%AF%81%E6%98%8E"><span class="nav-number">3.</span> <span class="nav-text">证明</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#Normal-Case"><span class="nav-number">3.1.</span> <span class="nav-text">Normal Case</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Special-Case"><span class="nav-number">3.2.</span> <span class="nav-text">Special Case</span></a></li></ol></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+  <p class="site-author-name" itemprop="name">JunBin</p>
+  <div class="site-description" itemprop="description">a programmer's blog</div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">22</span>
+          <span class="site-state-item-name">posts</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+          
+        <span class="site-state-item-count">14</span>
+        <span class="site-state-item-name">categories</span></a>
+      </div>
+  </nav>
+</div>
+
+
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+        
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2021</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">JunBin</span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item-icon">
+      <i class="fa fa-chart-area"></i>
+    </span>
+    <span title="Symbols count total">44k</span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item-icon">
+      <i class="fa fa-coffee"></i>
+    </span>
+    <span title="Reading time total">1:13</span>
+</div>
+  <div class="powered-by">Powered by <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> & <a href="https://muse.theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Muse</a>
+  </div>
+
+        
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/muse.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+</body>
+</html>

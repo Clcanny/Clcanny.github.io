@@ -1,0 +1,472 @@
+<!DOCTYPE html>
+<html lang="zh-Hans">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 5.4.0">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+<link rel="stylesheet" href="//fonts.googleapis.com/css?family=Lato:300,300italic,400,400italic,700,700italic&display=swap&subset=latin,latin-ext">
+<link rel="stylesheet" href="/lib/font-awesome/css/all.min.css">
+
+<script id="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"clcanny.github.io","root":"/","scheme":"Muse","version":"7.8.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":true,"show_result":true,"style":null},"back2top":{"enable":true,"sidebar":false,"scrollpercent":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":false,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}}};
+  </script>
+
+  <meta name="description" content="导读  本篇文章提及的 Global Offset Table 是 .got.plt section ，不是 .got section ，Dynamic Linking: Introduction To Elf File 介绍了两者的差异； GOT[0] 是 .dynamic section 的首地址，ld.so 自加载的过程会依赖于它； GOT[1] 指向 link_map ； GOT[2] 指">
+<meta property="og:type" content="article">
+<meta property="og:title" content="The First Three Items Of GOT">
+<meta property="og:url" content="https://clcanny.github.io/2021/01/30/computer-science/dynamic-linking/the-first-three-items-of-got/index.html">
+<meta property="og:site_name" content="On The Road">
+<meta property="og:description" content="导读  本篇文章提及的 Global Offset Table 是 .got.plt section ，不是 .got section ，Dynamic Linking: Introduction To Elf File 介绍了两者的差异； GOT[0] 是 .dynamic section 的首地址，ld.so 自加载的过程会依赖于它； GOT[1] 指向 link_map ； GOT[2] 指">
+<meta property="og:locale">
+<meta property="article:published_time" content="2021-01-29T16:06:34.000Z">
+<meta property="article:modified_time" content="2021-06-25T05:05:02.358Z">
+<meta property="article:author" content="JunBin">
+<meta name="twitter:card" content="summary">
+
+<link rel="canonical" href="https://clcanny.github.io/2021/01/30/computer-science/dynamic-linking/the-first-three-items-of-got/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'zh-Hans'
+  };
+</script>
+
+  <title>The First Three Items Of GOT | On The Road</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="Toggle navigation bar">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <span class="logo-line-before"><i></i></span>
+      <h1 class="site-title">On The Road</h1>
+      <span class="logo-line-after"><i></i></span>
+    </a>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+    </div>
+  </div>
+</div>
+
+
+
+
+<nav class="site-nav">
+  <ul id="menu" class="main-menu menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-home fa-fw"></i>Home</a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>Archives</a>
+
+  </li>
+        <li class="menu-item menu-item-categories">
+
+    <a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>Categories</a>
+
+  </li>
+  </ul>
+</nav>
+
+
+
+
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content post posts-expand">
+            
+
+    
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-Hans">
+    <link itemprop="mainEntityOfPage" href="https://clcanny.github.io/2021/01/30/computer-science/dynamic-linking/the-first-three-items-of-got/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="JunBin">
+      <meta itemprop="description" content="a programmer's blog">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="On The Road">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          The First Three Items Of GOT
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">Posted on</span>
+
+              <time title="Created: 2021-01-30 00:06:34" itemprop="dateCreated datePublished" datetime="2021-01-30T00:06:34+08:00">2021-01-30</time>
+            </span>
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="far fa-calendar-check"></i>
+                </span>
+                <span class="post-meta-item-text">Edited on</span>
+                <time title="Modified: 2021-06-25 13:05:02" itemprop="dateModified" datetime="2021-06-25T13:05:02+08:00">2021-06-25</time>
+              </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">In</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/Computer-Science/" itemprop="url" rel="index"><span itemprop="name">Computer Science</span></a>
+                </span>
+                  , 
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/Computer-Science/Dynamic-Linking/" itemprop="url" rel="index"><span itemprop="name">Dynamic Linking</span></a>
+                </span>
+            </span>
+
+          <br>
+            <span class="post-meta-item" title="Symbols count in article">
+              <span class="post-meta-item-icon">
+                <i class="far fa-file-word"></i>
+              </span>
+                <span class="post-meta-item-text">Symbols count in article: </span>
+              <span>1.1k</span>
+            </span>
+            <span class="post-meta-item" title="Reading time">
+              <span class="post-meta-item-icon">
+                <i class="far fa-clock"></i>
+              </span>
+                <span class="post-meta-item-text">Reading time &asymp;</span>
+              <span>2 mins.</span>
+            </span>
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <h1 id="导读">导读</h1>
+<ol>
+<li>本篇文章提及的 Global Offset Table 是 .got.plt section ，不是 .got section ，<a target="_blank" rel="noopener" href="https://stackoverflow.com/questions/49812485/where-is-the-got0-global-offset-table-used">Dynamic Linking: Introduction To Elf File</a> 介绍了两者的差异；</li>
+<li>GOT[0] 是 .dynamic section 的首地址，<a target="_blank" rel="noopener" href="http://ld.so">ld.so</a> 自加载的过程会依赖于它；</li>
+<li>GOT[1] 指向 <code>link_map</code> ；</li>
+<li>GOT[2] 指向 <code>_dl_runtime_resolve_xsave</code> 。</li>
+</ol>
+<h1 id="环境-例子">环境 &amp; 例子</h1>
+<p>本文使用的环境与 <a href="https://clcanny.github.io/2020/11/24/dynamic-linking-introduction-to-elf-file/#%E7%8E%AF%E5%A2%83">Dynamic Linking: Introduction To Elf File</a> 使用的环境一致。</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// gcc -fPIC -ggdb -O0 -shared -Wl,--dynamic-linker=/root/glibc/build/install/lib/ld-linux-x86-64.so.2 foo.cpp -o libfoo.so</span></span><br><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">foo</span><span class="params">()</span> </span>&#123;&#125;</span><br></pre></td></tr></table></figure>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// gcc main.cpp -L$PWD -Wl,-rpath=$PWD -Wl,--dynamic-linker=/root/glibc/build/install/lib/ld-linux-x86-64.so.2 -lfoo -o main</span></span><br><span class="line"><span class="function"><span class="keyword">extern</span> <span class="keyword">void</span> <span class="title">foo</span><span class="params">()</span></span>;</span><br><span class="line"><span class="function"><span class="keyword">int</span> <span class="title">main</span><span class="params">()</span> </span>&#123;</span><br><span class="line">    <span class="built_in">foo</span>();</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<h1 id="GOT-0">GOT[0]</h1>
+<p>摘抄自 <a target="_blank" rel="noopener" href="https://stackoverflow.com/questions/49812485/where-is-the-got0-global-offset-table">Stack Overflow: Where is the GOT[0] (global offset table) used?</a> ：</p>
+<blockquote>
+<p>The tables first entry (number zero) is reserved to hold the address of the dynamic structure, referenced with the symbol _DYNAMIC.</p>
+</blockquote>
+<p>摘抄自 <a target="_blank" rel="noopener" href="https://github.com/hjl-tools/x86-psABI/wiki/x86-64-psABI-1.0.pdf">System V Application Binary Interface (Version 1.0)</a> ：</p>
+<blockquote>
+<p>This (GOT[0]) allows a program, such as the dynamic linker, to find its own dynamic structure without having yet processed its relocation entries. This is especially important for the dynamic linker, because it must initialize itself without relying on other programs to relocate its memory image.</p>
+</blockquote>
+<h2 id="有人访问-ld-so-的-GOT-0">有人访问 <a target="_blank" rel="noopener" href="http://ld.so">ld.so</a> 的 GOT[0]</h2>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># readelf --section-headers /root/glibc/build/install/lib/ld-2.28.so | grep -E &quot;Nr|.got.plt|.dynamic&quot; -A1 | grep -v &quot;\-\-&quot;</span></span><br><span class="line">  [Nr] Name              Type             Address           Offset</span><br><span class="line">       Size              EntSize          Flags  Link  Info  Align</span><br><span class="line">  [17] .dynamic          DYNAMIC          0000000000026e78  00025e78</span><br><span class="line">       0000000000000170  0000000000000010  WA       5     0     8</span><br><span class="line">  [19] .got.plt          PROGBITS         0000000000027000  00026000</span><br><span class="line">       0000000000000050  0000000000000008  WA       0     0     8</span><br><span class="line"><span class="comment"># od --skip-bytes=0x26000 --read-bytes=8 --format=xL /root/glibc/build/install/lib/ld-2.28.so</span></span><br><span class="line">0460000 0000000000026e78</span><br></pre></td></tr></table></figure>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># (gdb) info proc mappings</span></span><br><span class="line">0x7ffff7fd6000     0x7ffff7fd7000     0x1000        0x0 /root/glibc/build/install/lib/ld-2.28.so</span><br><span class="line"><span class="comment"># (gdb) rwatch *(unsigned long long*)(0x7ffff7fd6000 + 0x27000)</span></span><br><span class="line"><span class="comment"># (gdb) start</span></span><br><span class="line">Hardware <span class="built_in">read</span> watchpoint 1: *(unsigned long long*)(0x7ffff7fd6000 + 0x27000)</span><br><span class="line">Value = 159352</span><br><span class="line"><span class="comment"># (gdb) bt</span></span><br><span class="line">0x00007ffff7fd7e01 <span class="keyword">in</span> _dl_start (arg=0x7fffffffed40) at ../sysdeps/x86_64/dl-machine.h:59</span><br><span class="line">0x00007ffff7fd7098 <span class="keyword">in</span> _start () from /root/glibc/build/install/lib/ld-linux-x86-64.so.2</span><br></pre></td></tr></table></figure>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// /root/glibc/glibc-2.28/sysdeps/x86_64/dl-machine.h</span></span><br><span class="line"><span class="comment">// Return the link-time address of _DYNAMIC.  Conveniently, this is the</span></span><br><span class="line"><span class="comment">// first element of the GOT.  This must be inlined in a function which</span></span><br><span class="line"><span class="comment">// uses global data.</span></span><br><span class="line"><span class="function"><span class="keyword">static</span> <span class="keyword">inline</span> <span class="title">ElfW</span><span class="params">(Addr)</span> __<span class="title">attribute__</span><span class="params">((unused))</span> <span class="title">elf_machine_dynamic</span><span class="params">(<span class="keyword">void</span>)</span> </span>&#123;</span><br><span class="line">    <span class="comment">// This produces an IP-relative reloc which is resolved at link time.</span></span><br><span class="line">    <span class="function"><span class="keyword">extern</span> <span class="keyword">const</span> <span class="title">ElfW</span><span class="params">(Addr)</span> _GLOBAL_OFFSET_TABLE_[] attribute_hidden</span>;</span><br><span class="line">    <span class="keyword">return</span> _GLOBAL_OFFSET_TABLE_[<span class="number">0</span>];</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">// Return the run-time load address of the shared object.</span></span><br><span class="line"><span class="function"><span class="keyword">static</span> <span class="keyword">inline</span> <span class="title">ElfW</span><span class="params">(Addr)</span> __<span class="title">attribute__</span><span class="params">((unused))</span></span></span><br><span class="line"><span class="function"><span class="title">elf_machine_load_address</span><span class="params">(<span class="keyword">void</span>)</span> </span>&#123;</span><br><span class="line">    <span class="comment">// Compute the difference between the runtime address of _DYNAMIC as seen</span></span><br><span class="line">    <span class="comment">// by an IP-relative reference, and the link-time address found in the</span></span><br><span class="line">    <span class="comment">// special unrelocated first GOT entry.</span></span><br><span class="line">    <span class="function"><span class="keyword">extern</span> <span class="title">ElfW</span><span class="params">(Dyn)</span> _DYNAMIC[] attribute_hidden</span>;</span><br><span class="line">    <span class="keyword">return</span> (<span class="built_in">ElfW</span>(Addr)) &amp; _DYNAMIC - <span class="built_in">elf_machine_dynamic</span>();</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<h2 id="无人访问其它-ELF-文件的-GOT-0">无人访问其它 ELF 文件的 GOT[0]</h2>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># readelf --section-headers main | grep -E &quot;Nr|.got.plt|.dynamic&quot; -A1 | grep -v &quot;\-\-&quot;</span></span><br><span class="line">  [Nr] Name              Type             Address           Offset</span><br><span class="line">       Size              EntSize          Flags  Link  Info  Align</span><br><span class="line">  [21] .dynamic          DYNAMIC          0000000000003dd8  00002dd8</span><br><span class="line">       0000000000000200  0000000000000010  WA       6     0     8</span><br><span class="line">  [23] .got.plt          PROGBITS         0000000000004000  00003000</span><br><span class="line">       0000000000000020  0000000000000008  WA       0     0     8</span><br><span class="line"><span class="comment"># od --skip-bytes=0x3000 --read-bytes=8 --format=xL main</span></span><br><span class="line">0030000 0000000000003dd8</span><br></pre></td></tr></table></figure>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># (gdb) info proc mappings</span></span><br><span class="line">0x555555554000     0x555555555000     0x1000        0x0 /root/main</span><br><span class="line"><span class="comment"># (gdb) rwatch *(unsigned long long*)(0x555555554000 + 0x4000)</span></span><br><span class="line"><span class="comment"># (gdb) start</span></span><br><span class="line">Temporary breakpoint 3, 0x0000555555555139 <span class="keyword">in</span> main ()</span><br></pre></td></tr></table></figure>
+<h1 id="GOT-1-GOT-2">GOT[1] &amp; GOT[2]</h1>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># readelf --section-headers main | grep -E &quot;Nr|.got.plt&quot; -A1 | grep -v &quot;\-\-&quot;</span></span><br><span class="line">  [Nr] Name              Type             Address           Offset</span><br><span class="line">       Size              EntSize          Flags  Link  Info  Align</span><br><span class="line">  [23] .got.plt          PROGBITS         0000000000004000  00003000</span><br><span class="line">       0000000000000020  0000000000000008  WA       0     0     8</span><br></pre></td></tr></table></figure>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># (gdb) watch *(unsigned long long*)(0x555555554000 + 0x4000 + 0x8)</span></span><br><span class="line"><span class="comment"># (gdb) start</span></span><br><span class="line">Hardware watchpoint 1: *(unsigned long long*)(0x555555554000 + 0x4000 + 0x8)</span><br><span class="line">Old value = 0</span><br><span class="line">New value = 140737354129808</span><br><span class="line"><span class="comment"># (gdb) bt</span></span><br><span class="line">elf_machine_runtime_setup (profile=0, lazy=1, l=0x7ffff7ffe190) at ../sysdeps/x86_64/dl-machine.h:100</span><br><span class="line">_dl_relocate_object (scope=0x7ffff7ffe4f0, reloc_mode=&lt;optimized out&gt;, consider_profiling=consider_profiling@entry=0) at dl-reloc.c:258</span><br><span class="line">0x00007ffff7fdb57d <span class="keyword">in</span> dl_main (phdr=&lt;optimized out&gt;, phnum=&lt;optimized out&gt;, user_entry=&lt;optimized out&gt;, auxv=&lt;optimized out&gt;) at rtld.c:2197</span><br></pre></td></tr></table></figure>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">static</span> <span class="keyword">inline</span> <span class="keyword">int</span> __attribute__((unused, always_inline))</span><br><span class="line"><span class="built_in">elf_machine_runtime_setup</span>(struct link_map* l, <span class="keyword">int</span> lazy, <span class="keyword">int</span> profile) &#123;</span><br><span class="line">    <span class="keyword">if</span> (l-&gt;l_info[DT_JMPREL] &amp;&amp; lazy) &#123;</span><br><span class="line">        <span class="comment">// The GOT entries for functions in the PLT have not yet been filled</span></span><br><span class="line">        <span class="comment">// in.  Their initial contents will arrange when called to push an</span></span><br><span class="line">        <span class="comment">// offset into the .rel.plt section, push _GLOBAL_OFFSET_TABLE_[1],</span></span><br><span class="line">        <span class="comment">// and then jump to _GLOBAL_OFFSET_TABLE_[2].</span></span><br><span class="line">        Elf64_Addr* got = (Elf64_Addr*)<span class="built_in">D_PTR</span>(l, l_info[DT_PLTGOT]);</span><br><span class="line"></span><br><span class="line">        <span class="comment">// Identify this shared object.</span></span><br><span class="line">        *(<span class="built_in">ElfW</span>(Addr)*)(got + <span class="number">1</span>) = (<span class="built_in">ElfW</span>(Addr))l;</span><br><span class="line"></span><br><span class="line">        <span class="comment">// The got[2] entry contains the address of a function which gets</span></span><br><span class="line">        <span class="comment">// called to get the address of a so far unresolved function and</span></span><br><span class="line">        <span class="comment">// jump to it.  The profiling extension of the dynamic linker allows</span></span><br><span class="line">        <span class="comment">// to intercept the calls to collect information.  In this case we</span></span><br><span class="line">        <span class="comment">// don&#x27;t store the address in the GOT so that all future calls also</span></span><br><span class="line">        <span class="comment">// end in this function.</span></span><br><span class="line">        <span class="comment">//</span></span><br><span class="line">        <span class="comment">// This function will get called to fix up the GOT entry</span></span><br><span class="line">        <span class="comment">// indicated by the offset on the stack, and then jump to</span></span><br><span class="line">        <span class="comment">// the resolved address.</span></span><br><span class="line">        *(<span class="built_in">ElfW</span>(Addr)*)(got + <span class="number">2</span>) = (<span class="built_in">ElfW</span>(Addr)) &amp; _dl_runtime_resolve_xsavec;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">return</span> lazy;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>GOT[1] 指向 <code>link_map</code> ，GOT[2] 指向 <code>_dl_runtime_resolve_xsavec</code> ，它们由 <code>elf_machine_runtime_setup</code> 函数负责填写。</p>
+<h1 id="如何合并-ELF-文件？">如何合并 ELF 文件？</h1>
+<ol>
+<li>.got.plt section 的前三项不要参与合并；</li>
+<li>.plt section 的跳转位置需要修正；</li>
+<li>.rela.plt section 的 <code>r_offset</code> 字段需要修正。</li>
+</ol>
+<h1 id="参考资料">参考资料</h1>
+<ul>
+<li><a target="_blank" rel="noopener" href="https://stackoverflow.com/questions/49812485/where-is-the-got0-global-offset-table-used">Stack Overflow: Where is the GOT[0] (global offset table) used?</a></li>
+<li><a target="_blank" rel="noopener" href="https://github.com/hjl-tools/x86-psABI/wiki/x86-64-psABI-1.0.pdf">System V Application Binary Interface (Version 1.0)</a></li>
+<li><a target="_blank" rel="noopener" href="https://www.ucw.cz/~hubicka/papers/abi/node22.html">System V Application Binary Interface (Draft Version 0.90): Dynamic Linking</a></li>
+</ul>
+
+    </div>
+
+    
+    
+    
+
+      <footer class="post-footer">
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2020/12/22/computer-science/dynamic-linking/compatibility-of-hash-tables/" rel="prev" title="Compatibility Of Hash Tables">
+      <i class="fa fa-chevron-left"></i> Compatibility Of Hash Tables
+    </a></div>
+      <div class="post-nav-item">
+    <a href="/2021/03/12/computer-science/dynamic-linking/about-global-strings/" rel="next" title="About Global Strings">
+      About Global Strings <i class="fa fa-chevron-right"></i>
+    </a></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+
+
+          </div>
+          
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          Table of Contents
+        </li>
+        <li class="sidebar-nav-overview">
+          Overview
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#%E5%AF%BC%E8%AF%BB"><span class="nav-number">1.</span> <span class="nav-text">导读</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#%E7%8E%AF%E5%A2%83-%E4%BE%8B%E5%AD%90"><span class="nav-number">2.</span> <span class="nav-text">环境 &amp; 例子</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#GOT-0"><span class="nav-number">3.</span> <span class="nav-text">GOT[0]</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%9C%89%E4%BA%BA%E8%AE%BF%E9%97%AE-ld-so-%E7%9A%84-GOT-0"><span class="nav-number">3.1.</span> <span class="nav-text">有人访问 ld.so 的 GOT[0]</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%97%A0%E4%BA%BA%E8%AE%BF%E9%97%AE%E5%85%B6%E5%AE%83-ELF-%E6%96%87%E4%BB%B6%E7%9A%84-GOT-0"><span class="nav-number">3.2.</span> <span class="nav-text">无人访问其它 ELF 文件的 GOT[0]</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#GOT-1-GOT-2"><span class="nav-number">4.</span> <span class="nav-text">GOT[1] &amp; GOT[2]</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#%E5%A6%82%E4%BD%95%E5%90%88%E5%B9%B6-ELF-%E6%96%87%E4%BB%B6%EF%BC%9F"><span class="nav-number">5.</span> <span class="nav-text">如何合并 ELF 文件？</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#%E5%8F%82%E8%80%83%E8%B5%84%E6%96%99"><span class="nav-number">6.</span> <span class="nav-text">参考资料</span></a></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+  <p class="site-author-name" itemprop="name">JunBin</p>
+  <div class="site-description" itemprop="description">a programmer's blog</div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">22</span>
+          <span class="site-state-item-name">posts</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+          
+        <span class="site-state-item-count">14</span>
+        <span class="site-state-item-name">categories</span></a>
+      </div>
+  </nav>
+</div>
+
+
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+        
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2021</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">JunBin</span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item-icon">
+      <i class="fa fa-chart-area"></i>
+    </span>
+    <span title="Symbols count total">44k</span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item-icon">
+      <i class="fa fa-coffee"></i>
+    </span>
+    <span title="Reading time total">1:13</span>
+</div>
+  <div class="powered-by">Powered by <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> & <a href="https://muse.theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Muse</a>
+  </div>
+
+        
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/muse.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+</body>
+</html>
