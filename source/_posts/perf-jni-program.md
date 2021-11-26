@@ -88,4 +88,12 @@ RUN tar -czvf linux-x86_64-normal-server-release-jdk8u131-b00.tar.gz build
 
 ```bash
 # docker build -t build_openjdk:jdk8u131-b00 -f build_openjdk.dockerfile .
+# docker cp $(docker create --rm build_openjdk:jdk8u131-b00):/jdk8u/linux-x86_64-normal-server-release-jdk8u131-b00.tar.gz .
 ```
+
+# 用 perf-map-agent 提供 Java 调用栈
+
+JIT 会动态地将热点代码编译成 native code ，这会导致 perf 没有这部分代码的符号表，从而不认识相关函数。[perf-map-agent](https://github.com/jvm-profiling-tools/perf-map-agent) 就是为了解决这个问题而诞生的。
+
+> Linux `perf` tools will expect symbols for code executed from unknown memory regions at `/tmp/perf-<pid>.map`. This allows runtimes that generate code on the fly to supply dynamic symbol mappings to be used with the `perf` suite of tools.
+> perf-map-agent is an agent that will generate such a mapping file for Java applications. It consists of a Java agent written C and a small Java bootstrap application which attaches the agent to a running Java process.
