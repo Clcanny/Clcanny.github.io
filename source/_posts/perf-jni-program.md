@@ -71,8 +71,11 @@ RUN ./configure --prefix=/usr
 RUN make && make install
 RUN make --version
 
-ADD jdk8u /jdk8u
+WORKDIR /
+RUN apt-get install -y git
+RUN git clone https://github.com/openjdk/jdk8u.git
 WORKDIR /jdk8u
+RUN git checkout jdk8u131-b00
 # https://stackoverflow.com/questions/52377684/compile-jdk8-error-could-not-find-freetype
 ENV DISABLE_HOTSPOT_OS_VERSION_CHECK ok
 RUN bash configure --with-freetype-include=/usr/include/freetype2 \
@@ -80,9 +83,9 @@ RUN bash configure --with-freetype-include=/usr/include/freetype2 \
                    --with-debug-level=release                     \
                    --enable-debug-symbols
 RUN make JOBS=8 all
-RUN tar -czvf linux-x86_64-normal-server-release-jdk8-b131.tar.gz build
+RUN tar -czvf linux-x86_64-normal-server-release-jdk8u131-b00.tar.gz build
 ```
 
 ```bash
-# docker build -t build_openjdk:jdk8-b131 -f build_openjdk.dockerfile .
+# docker build -t build_openjdk:jdk8u131-b00 -f build_openjdk.dockerfile .
 ```
