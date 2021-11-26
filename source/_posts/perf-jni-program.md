@@ -8,7 +8,7 @@ categories:
 
 # 如何下载 OpenJDK 的源代码？
 
-OpenJDK 的源代码可以从以下两个地址找：
+OpenJDK 的源代码可以从以下网址找：
 
 + [GitHub: openjdk/jdk](https://github.com/openjdk/jdk)
 + [OpenJDK projects](https://hg.openjdk.java.net/)
@@ -17,6 +17,8 @@ OpenJDK 的源代码可以从以下两个地址找：
 
 + [GitHub: openjdk/jdk jdk8-b120](https://github.com/openjdk/jdk/tree/jdk8-b120)
 + [OpenJDK projects: changeset 940:2a8f4c022aa0, Added tag jdk8-b131 for changeset 0c38dfecab2a](https://hg.openjdk.java.net/jdk8/jdk8/rev/2a8f4c022aa0)
+
+`hg.openjdk.java.net` 的稳定性不好，容易报错 http code 500 ，所以我们按照 commit 信息 Added tag jdk8-b131 for changeset 0c38dfecab2a 到 GitHub 上找到对应的 commit id `8bc9bd48f9d7ab758aede3be36318fe012c78863` ，然后用 git 下载代码。
 
 `hg` 需要高于某个版本才能工作，这里选用 `debian:buster` 自带的 `hg` （特别提醒：`debian:jessie` 自带的 `hg` 是无法在 2021 年正常下载 OpenJDK 源代码并切分支的）。
 
@@ -34,13 +36,13 @@ RUN hg clone https://hg.openjdk.java.net/jdk8u/jdk8u jdk8u
 WORKDIR /jdk8u
 RUN bash get_source.sh
 
-RUN hg up jdk8-b131 && hg id
-RUN find . -type d -maxdepth 1 | xargs -n1 -Isubdir -- sh -c "cd subdir && hg up jdk8-b131 && hg id"
+RUN hg up jdk8u131-b01 && hg id
+RUN find . -type d -maxdepth 1 | xargs -n1 -Isubdir -- sh -c "cd subdir && hg up jdk8u131-b01 && hg id"
 ```
 
 ```bash
-# docker build -t download_openjdk:jdk8-b131 -f download_openjdk.dockerfile .
-# docker cp $(docker create --rm download_openjdk:jdk8-b131):/jdk8u .
+# docker build -t download_openjdk:jdk8u131-b01 -f download_openjdk.dockerfile .
+# docker cp $(docker create --rm download_openjdk:jdk8u131-b01):/jdk8u .
 ```
 
 # 如何编译 OpenJDK ？
@@ -80,13 +82,13 @@ RUN apt-get install -y libfontconfig1-dev
 RUN apt-get install -y openjdk-7-jdk
 
 # Downgrade make to 3.82.
+WORKDIR /tmp
 RUN apt-get install -y wget
 RUN wget https://ftp.gnu.org/gnu/make/make-3.82.tar.gz --no-check-certificate
 RUN tar -xzvf make-3.82.tar.gz
-/tmp/make-3.82
+WORKDIR /tmp/make-3.82
 RUN ./configure --prefix=/usr
 RUN make && make install
-RUN apt-get remove -y make
 RUN make --version
 
 ADD jdk8u /jdk8u
@@ -98,7 +100,7 @@ RUN bash configure --with-freetype-include=/usr/include/freetype2 \
                    --with-debug-level=release                     \
                    --enable-debug-symbols
 RUN make JOBS=8 all
-# RUN tar -czvf linux-x86_64-normal-server-release-jdk8u65-b01.tar.gz build
+RUN tar -czvf linux-x86_64-normal-server-release-jdk8-b131.tar.gz build
 ```
 
 ```bash
