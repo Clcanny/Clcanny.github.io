@@ -11,38 +11,18 @@ categories:
 OpenJDK 的源代码可以从以下网址找：
 
 + [GitHub: openjdk/jdk](https://github.com/openjdk/jdk)
++ [GitHub: openjdk/jdk8u](https://github.com/openjdk/jdk8u)
 + [OpenJDK projects](https://hg.openjdk.java.net/)
 
 笔者目前工作中用到的 JDK 是 jdk1.8.0\_131 ，最接近的版本是：
 
 + [GitHub: openjdk/jdk jdk8-b120](https://github.com/openjdk/jdk/tree/jdk8-b120)
++ [GitHub: openjdk/jdk8u jdk8u131-b00](https://github.com/openjdk/jdk8u/tree/jdk8u131-b00)
 + [OpenJDK projects: changeset 940:2a8f4c022aa0, Added tag jdk8-b131 for changeset 0c38dfecab2a](https://hg.openjdk.java.net/jdk8/jdk8/rev/2a8f4c022aa0)
 
-`hg.openjdk.java.net` 的稳定性不好，容易报错 http code 500 ，所以我们按照 commit 信息 Added tag jdk8-b131 for changeset 0c38dfecab2a 到 GitHub 上找到对应的 commit id `8bc9bd48f9d7ab758aede3be36318fe012c78863` ，然后用 git 下载代码。
-
-`hg` 需要高于某个版本才能工作，这里选用 `debian:buster` 自带的 `hg` （特别提醒：`debian:jessie` 自带的 `hg` 是无法在 2021 年正常下载 OpenJDK 源代码并切分支的）。
-
-```dockerfile
-# download_openjdk.dockerfile
-FROM debian:buster
-LABEL maintainer="837940593@qq.com"
-
-ARG DEBIAN_FRONTEND=noninteractive
-RUN apt-get update
-RUN apt-get install -y mercurial
-
-# Download OpenJDK.
-RUN hg clone https://hg.openjdk.java.net/jdk8u/jdk8u jdk8u
-WORKDIR /jdk8u
-RUN bash get_source.sh
-
-RUN hg up jdk8u131-b01 && hg id
-RUN find . -type d -maxdepth 1 | xargs -n1 -Isubdir -- sh -c "cd subdir && hg up jdk8u131-b01 && hg id"
-```
-
 ```bash
-# docker build -t download_openjdk:jdk8u131-b01 -f download_openjdk.dockerfile .
-# docker cp $(docker create --rm download_openjdk:jdk8u131-b01):/jdk8u .
+git clone https://github.com/openjdk/jdk8u.git
+git checkout jdk8u131-b00
 ```
 
 # 如何编译 OpenJDK ？
