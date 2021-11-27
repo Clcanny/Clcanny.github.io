@@ -91,11 +91,10 @@ RUN ./configure --prefix=/usr
 RUN make && make install
 RUN make --version
 
-WORKDIR /
 RUN apt-get install -y git
-RUN git clone https://github.com/openjdk/jdk8u.git
+RUN git clone https://github.com/openjdk/jdk8u.git /jdk8u
 WORKDIR /jdk8u
-RUN git checkout jdk8u131-b11
+RUN git checkout -b jdk8u131-b11
 # https://stackoverflow.com/questions/52377684/compile-jdk8-error-could-not-find-freetype
 ENV DISABLE_HOTSPOT_OS_VERSION_CHECK ok
 RUN bash configure --with-freetype-include=/usr/include/freetype2 \
