@@ -169,14 +169,16 @@ public class App {
     }
   }
 
-  void sayHelloWorld() {
-    while (true) {
-      System.out.println("b:" + new java.util.Date().getTime());
-      sayHelloWorldInSynchronizedArea();
-      try {
-        Thread.sleep(100);
-      } catch (InterruptedException e) {
-      }
+  public void sayHelloWorld() {
+    if (sleepThread == null) {
+      sleep();
+    }
+    System.out.println("b:" + new java.util.Date().getTime());
+    sayHelloWorldInSynchronizedArea();
+    System.out.println("e:" + new java.util.Date().getTime());
+    try {
+      Thread.sleep(100);
+    } catch (InterruptedException e) {
     }
   }
 
@@ -185,5 +187,37 @@ public class App {
   }
 
   Thread sleepThread;
+}
+```
+
+```cpp
+// main.cpp
+#include <jni.h>
+
+#include <cassert>
+#include <cstdlib>
+#include <cstring>
+
+int main() {
+  JNIEnv* env = nullptr;
+  JavaVM* jvm = nullptr;
+
+  JavaVMOption options[1];
+  options[0].optionString = "-Djava.class.path=.";
+  JavaVMInitArgs vm_args;
+  std::memset(&vm_args, 0, sizeof(vm_args));
+  vm_args.version = JNI_VERSION_1_2;
+  vm_args.nOptions = 1;
+  vm_args.options = options;
+
+  assert(JNI_CreateJavaVM(&jvm, reinterpret_cast<void**>(&env), &vm_args) !=
+         JNI_ERR);
+  assert(env != nullptr);
+
+  jclass cls = env->FindClass("App");
+  assert(cls != 0);
+  jmethodID mid = env->GetStaticMethodID(cls, "sayHelloWorld", "()V");
+  assert(mid != 0);
+  env->CallStaticVoidMethod(cls, mid);
 }
 ```
