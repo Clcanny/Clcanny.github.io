@@ -6,6 +6,26 @@ categories:
   - [Computer Science, Performance Analysis]
 ---
 
+# 如何确认 OpenJDK 的版本号？
+
+用 [arthas dashboard](https://arthas.aliyun.com/doc/en/dashboard.html) 命令可以查看运行进程的 Java 位置：
+
+```bash
+# java -jar arthas-boot.jar 156
+# dashboard
+java.home /usr/lib/jvm/java-8-oracle/jre
+```
+
+再用 `java -version` 命令来查看版本号：
+```bash
+# /usr/lib/jvm/java-8-oracle/jre/bin/java -version
+java version "1.8.0_40"
+Java(TM) SE Runtime Environment (build 1.8.0_40-b25)
+Java HotSpot(TM) 64-Bit Server VM (build 25.40-b25, mixed mode)
+```
+
+笔者工作中用到的 OpenJDK build 是 1.8.0\_131-b11 ，下文都会使用这个版本的 OpenJDK 。
+
 # 如何下载 OpenJDK 的源代码？
 
 OpenJDK 的源代码可以从以下网址找：
@@ -13,12 +33,12 @@ OpenJDK 的源代码可以从以下网址找：
 + [GitHub: openjdk/jdk](https://github.com/openjdk/jdk)
 + [GitHub: openjdk/jdk8u](https://github.com/openjdk/jdk8u)
 + [OpenJDK projects](https://hg.openjdk.java.net/)
++ [OpenJDK projects: jdk8u/jdk8u/tags](https://hg.openjdk.java.net/jdk8u/jdk8u/tags)
 
 笔者目前工作中用到的 JDK 是 jdk1.8.0\_131 ，最接近的版本是：
 
-+ [GitHub: openjdk/jdk jdk8-b120](https://github.com/openjdk/jdk/tree/jdk8-b120)
-+ [GitHub: openjdk/jdk8u jdk8u131-b00](https://github.com/openjdk/jdk8u/tree/jdk8u131-b00)
-+ [OpenJDK projects: changeset 940:2a8f4c022aa0, Added tag jdk8-b131 for changeset 0c38dfecab2a](https://hg.openjdk.java.net/jdk8/jdk8/rev/2a8f4c022aa0)
++ [GitHub: openjdk/jdk8u jdk8u131-b11](https://github.com/openjdk/jdk8u/tree/jdk8u131-b11)
++ [OpenJDK projects: changeset 1915:94b119876028, Added tag jdk8u131-b10 for changeset 725620ca52fb](https://hg.openjdk.java.net/jdk8u/jdk8u/rev/94b119876028)
 
 ```bash
 git clone https://github.com/openjdk/jdk8u.git
@@ -75,7 +95,7 @@ WORKDIR /
 RUN apt-get install -y git
 RUN git clone https://github.com/openjdk/jdk8u.git
 WORKDIR /jdk8u
-RUN git checkout jdk8u131-b00
+RUN git checkout jdk8u131-b11
 # https://stackoverflow.com/questions/52377684/compile-jdk8-error-could-not-find-freetype
 ENV DISABLE_HOTSPOT_OS_VERSION_CHECK ok
 RUN bash configure --with-freetype-include=/usr/include/freetype2 \
@@ -83,12 +103,12 @@ RUN bash configure --with-freetype-include=/usr/include/freetype2 \
                    --with-debug-level=release                     \
                    --enable-debug-symbols
 RUN make JOBS=8 all
-RUN tar -czvf linux-x86_64-normal-server-release-jdk8u131-b00.tar.gz build
+RUN tar -czvf linux-x86_64-normal-server-release-jdk8u131-b11.tar.gz build
 ```
 
 ```bash
-# docker build -t build_openjdk:jdk8u131-b00 -f build_openjdk.dockerfile .
-# docker cp $(docker create --rm build_openjdk:jdk8u131-b00):/jdk8u/linux-x86_64-normal-server-release-jdk8u131-b00.tar.gz .
+# docker build -t build_openjdk:jdk8u131-b11 -f build_openjdk.dockerfile .
+# docker cp $(docker create --rm build_openjdk:jdk8u131-b11):/jdk8u/linux-x86_64-normal-server-release-jdk8u131-b11.tar.gz .
 ```
 
 # 用 perf-map-agent 提供 Java 调用栈
@@ -97,3 +117,16 @@ JIT 会动态地将热点代码编译成 native code ，这会导致 perf 没有
 
 > Linux `perf` tools will expect symbols for code executed from unknown memory regions at `/tmp/perf-<pid>.map`. This allows runtimes that generate code on the fly to supply dynamic symbol mappings to be used with the `perf` suite of tools.
 > perf-map-agent is an agent that will generate such a mapping file for Java applications. It consists of a Java agent written C and a small Java bootstrap application which attaches the agent to a running Java process.
+
+```dockerfile
+# build_perf_map_agent.dockerfile
+FROM build_openjdk:jdk8u131-b00
+RUN apt-get install -y cmake
+
+WORKDIR /
+RUN git clone https://github.com/jvm-profiling
+WORKDIR /jvm-profiling
+ENV JAVA_HOME /jdk8u/build
+RUN cmake .
+RUN make
+```
