@@ -135,3 +135,55 @@ RUN tar -czvf perf-map-agent-jdk8u131-b11.tar.gz \
 # docker build -t build_perf_map_agent:jdk8u131-b11 -f build_perf_map_agent.dockerfile .
 # docker cp $(docker create --rm build_perf_map_agent:jdk8u131-b11):/perf-map-agent/perf-map-agent-jdk8u131-b11.tar.gz .
 ```
+
+# 一个简化过的例子
+
+```java
+// App.java
+public class App {
+  public static void main(String args[]) {
+    App app = new App();
+    app.sleep();
+    app.sayHelloWorld();
+  }
+
+  void sleep() {
+    sleepThread = new Thread() {
+      public void run() {
+        while (true) {
+          sleepInSynchronizedArea();
+          try {
+            Thread.sleep(100);
+          } catch (InterruptedException e) {
+          }
+        }
+      }
+    };
+    sleepThread.start();
+  }
+
+  synchronized void sleepInSynchronizedArea() {
+    try {
+      Thread.sleep(1000);
+    } catch (InterruptedException e) {
+    }
+  }
+
+  void sayHelloWorld() {
+    while (true) {
+      System.out.println("b:" + new java.util.Date().getTime());
+      sayHelloWorldInSynchronizedArea();
+      try {
+        Thread.sleep(100);
+      } catch (InterruptedException e) {
+      }
+    }
+  }
+
+  synchronized void sayHelloWorldInSynchronizedArea() {
+    System.out.println("Hello, world!");
+  }
+
+  Thread sleepThread;
+}
+```
