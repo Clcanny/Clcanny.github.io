@@ -47,13 +47,11 @@ git checkout jdk8u131-b11
 
 # 如何编译 OpenJDK ？
 
-perf 需要符号表才能正确插入 uprobe ，所以编译 OpenJDK 时需要顺带编译符号表。有关符号的编译选项可以参考：
-
-+ [腾讯云：Centos 编译 JDK8 源码](https://cloud.tencent.com/developer/article/1701909)
-+ [OpenJDK building.md: Configure Arguments for Tailoring the Build](https://github.com/openjdk/jdk/blob/master/doc/building.md#configure-arguments-for-tailoring-the-build)
-+ [OpenJDK building.md: Native Debug Symbols](https://github.com/openjdk/jdk/blob/master/doc/building.md#native-debug-symbols)
-
-根据 [Stack Overflow: Scrambled arguments when building OpenJDK](https://stackoverflow.com/questions/21246042/scrambled-arguments-when-building-openjdk) 和 [JDK BUG SYSTEM: adjust-mflags.sh failed build with GNU Make 4.0 with -I\<path contains j\>](https://bugs.openjdk.java.net/browse/JDK-8028407) 的说法，`make` 不能使用 4.0 及以上版本，否则会报错：
++ perf 需要符号表才能正确插入 uprobe ，所以编译 OpenJDK 时需要顺带编译符号表。有关符号的编译选项可以参考：
+  + [腾讯云：Centos 编译 JDK8 源码](https://cloud.tencent.com/developer/article/1701909)
+  + [OpenJDK building.md: Configure Arguments for Tailoring the Build](https://github.com/openjdk/jdk/blob/master/doc/building.md#configure-arguments-for-tailoring-the-build)
+  + [OpenJDK building.md: Native Debug Symbols](https://github.com/openjdk/jdk/blob/master/doc/building.md#native-debug-symbols)
++ 根据 [Stack Overflow: Scrambled arguments when building OpenJDK](https://stackoverflow.com/questions/21246042/scrambled-arguments-when-building-openjdk) 和 [JDK BUG SYSTEM: adjust-mflags.sh failed build with GNU Make 4.0 with -I\<path contains j\>](https://bugs.openjdk.java.net/browse/JDK-8028407) 的说法，`make` 不能使用 4.0 及以上版本，否则会报错：
 
 ```bash
 /usr/bin/make: invalid option -- '8'
@@ -124,11 +122,16 @@ RUN apt-get install -y cmake
 
 RUN git clone https://github.com/jvm-profiling-tools/perf-map-agent.git /perf-map-agent
 WORKDIR /perf-map-agent
-ENV JAVA_HOME /jdk8u/build
-RUN cmake ..
+ENV JAVA_HOME /jdk8u/build/linux-x86_64-normal-server-release/jdk
+RUN cmake .
 RUN make
 RUN tar -czvf perf-map-agent-jdk8u131-b11.tar.gz \
               bin                                \
               out/attach-main.jar                \
               out/libperfmap.so
+```
+
+```bash
+# docker build -t build_perf_map_agent:jdk8u131-b11 -f build_perf_map_agent.dockerfile .
+# docker cp $(docker create --rm build_perf_map_agent:jdk8u131-b11):/perf-map-agent/perf-map-agent-jdk8u131-b11.tar.gz .
 ```
