@@ -35,14 +35,14 @@ OpenJDK 的源代码可以从以下网址找：
 + [OpenJDK projects](https://hg.openjdk.java.net/)
 + [OpenJDK projects: jdk8u/jdk8u/tags](https://hg.openjdk.java.net/jdk8u/jdk8u/tags)
 
-笔者目前工作中用到的 JDK 是 jdk1.8.0\_131 ，最接近的版本是：
+笔者目前工作中用到的 JDK 是 jdk1.8.0\_131-b11 ，最接近的版本是：
 
 + [GitHub: openjdk/jdk8u jdk8u131-b11](https://github.com/openjdk/jdk8u/tree/jdk8u131-b11)
 + [OpenJDK projects: changeset 1915:94b119876028, Added tag jdk8u131-b10 for changeset 725620ca52fb](https://hg.openjdk.java.net/jdk8u/jdk8u/rev/94b119876028)
 
 ```bash
 git clone https://github.com/openjdk/jdk8u.git
-git checkout jdk8u131-b00
+git checkout jdk8u131-b11
 ```
 
 # 如何编译 OpenJDK ？
@@ -120,13 +120,16 @@ JIT 会动态地将热点代码编译成 native code ，这会导致 perf 没有
 
 ```dockerfile
 # build_perf_map_agent.dockerfile
-FROM build_openjdk:jdk8u131-b00
+FROM build_openjdk:jdk8u131-b11
 RUN apt-get install -y cmake
 
-WORKDIR /
-RUN git clone https://github.com/jvm-profiling
-WORKDIR /jvm-profiling
+RUN git clone https://github.com/jvm-profiling-tools/perf-map-agent.git /perf-map-agent
+WORKDIR /perf-map-agent
 ENV JAVA_HOME /jdk8u/build
-RUN cmake .
+RUN cmake ..
 RUN make
+RUN tar -czvf perf-map-agent-jdk8u131-b11.tar.gz \
+              bin                                \
+              out/attach-main.jar                \
+              out/libperfmap.so
 ```
