@@ -100,12 +100,12 @@ RUN bash configure --with-freetype-include=/usr/include/freetype2 \
                    --with-debug-level=slowdebug                   \
                    --enable-debug-symbols
 RUN make JOBS=8 all
-RUN tar -czvf linux-x86_64-normal-server-release-jdk8u131-b11.tar.gz build
+RUN tar -czvf linux-x86_64-normal-server-slowdebug-jdk8u131-b11.tar.gz build
 ```
 
 ```bash
 # docker build -t build_openjdk:jdk8u131-b11 -f build_openjdk.dockerfile .
-# docker cp $(docker create --rm build_openjdk:jdk8u131-b11):/jdk8u/linux-x86_64-normal-server-release-jdk8u131-b11.tar.gz .
+# docker cp $(docker create --rm build_openjdk:jdk8u131-b11):/jdk8u/linux-x86_64-normal-server-slowdebug-jdk8u131-b11.tar.gz .
 ```
 
 # 用 perf-map-agent 提供 Java 调用栈
@@ -243,13 +243,13 @@ int main() {
 ```
 
 ```bash
-./build/linux-x86_64-normal-server-release/jdk/bin/javac HelloWorld.java
-g++ -std=c++11 -O0 -ggdb main.cpp                                            \
-  -I./build/linux-x86_64-normal-server-release/jdk/include                   \
-  -I./build/linux-x86_64-normal-server-release/jdk/include/linux             \
-  -L./build/linux-x86_64-normal-server-release/jdk/lib/amd64/server          \
-  -Wl,-rpath=./build/linux-x86_64-normal-server-release/jdk/lib/amd64/server \
-  -ljvm -lpthread -lunwind                                                   \
+./build/linux-x86_64-normal-server-slowdebug/jdk/bin/javac HelloWorld.java
+g++ -std=c++11 -O0 -ggdb main.cpp                                              \
+  -I./build/linux-x86_64-normal-server-slowdebug/jdk/include                   \
+  -I./build/linux-x86_64-normal-server-slowdebug/jdk/include/linux             \
+  -L./build/linux-x86_64-normal-server-slowdebug/jdk/lib/amd64/server          \
+  -Wl,-rpath=./build/linux-x86_64-normal-server-slowdebug/jdk/lib/amd64/server \
+  -ljvm -lpthread -lunwind                                                     \
   -o main
 ```
 
@@ -421,7 +421,7 @@ sh-thread  5292 [005] 40622.348448:  probe_main:exit_say_hello: (55e0d310d2ed <-
 + 看 `os::PlatformEvent::unpark` 更深的线程栈。
 
 ```bash
-# export JAVA_HOME=$PWD/build/linux-x86_64-normal-server-release/jdk
+# export JAVA_HOME=$PWD/build/linux-x86_64-normal-server-slowdebug/jdk
 ./bin/create-java-perf-map.sh 5272
 ```
 
@@ -429,7 +429,15 @@ sh-thread  5292 [005] 40622.348448:  probe_main:exit_say_hello: (55e0d310d2ed <-
 # perf script --max-stack 256
 ```
 
-## 一个完整的 Java 线程栈
+## 查看线程栈：JVM 部分
 
 [Stack Overflow: Printing backtraces when debugging java](https://stackoverflow.com/questions/54365079/printing-backtraces-when-debugging-java)
+
+
+
+
+
+
+# 查看线程栈：JIT 部分
+
 [Stack Overflow: Understanding perf.map](https://stackoverflow.com/questions/52392319/understanding-perf-map)
