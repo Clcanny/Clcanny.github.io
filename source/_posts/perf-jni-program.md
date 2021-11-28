@@ -136,7 +136,7 @@ RUN tar -czvf perf-map-agent-jdk8u131-b11.tar.gz \
 # docker cp $(docker create --rm build_perf_map_agent:jdk8u131-b11):/perf-map-agent/perf-map-agent-jdk8u131-b11.tar.gz .
 ```
 
-# 一个简化过的例子
+# 一个简单的例子
 
 ```java
 // HelloWorld.java
@@ -238,12 +238,12 @@ int main() {
 
 ```bash
 ./build/linux-x86_64-normal-server-release/jdk/bin/javac HelloWorld.java
-g++ -std=c++11 -O3 -ggdb main.cpp                                            \
+g++ -std=c++11 -O0 -ggdb main.cpp                                            \
   -I./build/linux-x86_64-normal-server-release/jdk/include                   \
   -I./build/linux-x86_64-normal-server-release/jdk/include/linux             \
   -L./build/linux-x86_64-normal-server-release/jdk/lib/amd64/server          \
   -Wl,-rpath=./build/linux-x86_64-normal-server-release/jdk/lib/amd64/server \
-  -ljvm -lpthread                                                            \
+  -ljvm -lpthread -lunwind                                                   \
   -o main
 ```
 
@@ -251,16 +251,30 @@ g++ -std=c++11 -O3 -ggdb main.cpp                                            \
 
 ## 插入 uprobe
 
+perf probe 的命令格式可以参考 [perf-probe(1) — Linux manual page](https://man7.org/linux/man-pages/man1/perf-probe.1.html) ，值得注意的是：
+
+> PROBE SYNTAX
+> Probe points are defined by following syntax.
+> 1) Define event based on function name
+>    [[GROUP:]EVENT=]FUNC[@SRC][:RLN|+OFFS|%return|;PTN] [ARG ...]
+
+以函数 `say_hello` 的 return probe 为例：
+
+```bash
+        exit_say_hello=_Z9say_helloP7JNIEnv_P8_jobjectP10_jmethodID%return
+[GROUP:]EVENT         =FUNC                                        %return
+```
+
 ```bash
 # whoami
 root
 # readelf --wide --symbols main | grep say_hello
 113: 0000000000001850 7 FUNC GLOBAL DEFAULT 14 _Z9say_helloP7JNIEnv_P8_jobjectP10_jmethodID
-# echo 'p:probe_main/entry_say_hello /home/demons/build/main:0x0000000000001850' >> /sys/kernel/debug/tracing/uprobe_events
-# echo 'r:probe_main/exit_say_hello /home/demons/build/main:0x0000000000001850' >> /sys/kernel/debug/tracing/uprobe_events
+# perf probe -x main --add entry_say_hello=_Z9say_helloP7JNIEnv_P8_jobjectP10_jmethodID
+# perf probe -x main --add exit_say_hello=_Z9say_helloP7JNIEnv_P8_jobjectP10_jmethodID%return
 # cat /sys/kernel/debug/tracing/uprobe_events
-p:probe_main/entry_say_hello /home/demons/build/main:0x0000000000001850
-r:probe_main/exit_say_hello /home/demons/build/main:0x0000000000001850
+p:probe_main/enter_say_hello /home/demons/build/main:0x000000000000122d
+r:probe_main/exit_say_hello /home/demons/build/main:0x000000000000122d
 # perf list | grep probe_main
 probe_main:entry_say_hello                         [Tracepoint event]
 probe_main:exit_say_hello                          [Tracepoint event]
@@ -268,4 +282,26 @@ probe_main:exit_say_hello                          [Tracepoint event]
 
 ## 跟踪 say_hello 函数耗时
 
+```bash
+# perf record
+Usage: perf record [<options>] [<command>]
+   or: perf record [<options>] -- <command> [<options>]
+   -R, --raw-samples     collect raw sample records from all opened counters
+```
 
+```bash
+# perf record -e probe_main:entry_say_hello -e probe_main:exit_say_hello -R -p 3429
+[ perf record: Woken up 1 times to write data ]
+[ perf record: Captured and wrote 0.090 MB perf.data (15 samples) ]
+# perf script | head -n 4
+main  3449 [004] 22430.470425: probe_main:entry_say_hello: (556a3249122d)
+main  3449 [004] 22431.470482:  probe_main:exit_say_hello: (556a3249122d <- 556a3249137f)
+main  3449 [004] 22431.570604: probe_main:entry_say_hello: (556a3249122d)
+main  3449 [004] 22432.570643:  probe_main:exit_say_hello: (556a3249122d <- 556a3249137f)
+```
+
+根据 [Stack Overflow: What is meaning of timestamp in perf?](https://stackoverflow.com/questions/61425982/what-is-meaning-of-timestamp-in-perf) 的说法：
+
+> Timestamps "X.Y" in perf output are X seconds and Y microseconds. In `perf script` output it probably X seconds since linux boot. Similar time format is used in `dmesg` output.
+
+我们发现每次执行 `say_hello` 函数都需要 1s+ 。接下来我们想知道为什么一个这么简单的函数会耗时这么久？
