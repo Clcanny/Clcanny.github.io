@@ -97,7 +97,7 @@ RUN git checkout -b jdk8u131-b11
 ENV DISABLE_HOTSPOT_OS_VERSION_CHECK ok
 RUN bash configure --with-freetype-include=/usr/include/freetype2 \
                    --with-freetype-lib=/usr/lib/x86_64-linux-gnu  \
-                   --with-debug-level=release                     \
+                   --with-debug-level=slowdebug                   \
                    --enable-debug-symbols
 RUN make JOBS=8 all
 RUN tar -czvf linux-x86_64-normal-server-release-jdk8u131-b11.tar.gz build
@@ -192,8 +192,11 @@ int main() {
   JNIEnv* env = nullptr;
   JavaVM* jvm = nullptr;
 
-  JavaVMOption options[1];
+  JavaVMOption options[4];
   options[0].optionString = "-Djava.class.path=.";
+  options[1].optionString = "-XX:+UnlockDiagnosticVMOptions";
+  options[2].optionString = "-XX:+PreserveFramePointer";
+  options[3].optionString = "-XX:+ShowHiddenFrames";
   JavaVMInitArgs vm_args;
   std::memset(&vm_args, 0, sizeof(vm_args));
   vm_args.version = JNI_VERSION_1_2;
@@ -223,7 +226,7 @@ int main() {
     }
   });
   std::thread say_hello_thread([jvm, obj, say_hello_mid]() {
-    pthread_setname_np(pthread_self(), "say-hello-thread");
+    pthread_setname_np(pthread_self(), "sh-thread");
     JNIEnv* env = nullptr;
     jvm->AttachCurrentThread(reinterpret_cast<void**>(&env), nullptr);
     assert(env != nullptr);
@@ -353,3 +356,80 @@ sleep-thread  5291 [003] 39160.217831: sched:sched_wakeup: sh-thread:5292 [120] 
 ```
 
 从 perf 的结果看，线程 `sh-thread` 每次获得 CPU 时间片（发生 `sched:sched_wakeup` 事件）之后，都会在 10 微秒后切走（发生 `sched:sched_switch` 事件）。而下次线程 `sh-thread` 获得时间片要在几毫秒 ~ 几百毫秒之后。因此，这是一个 IO 密集型函数。
+
+## 线程 `sh-thread` 在等谁？
+
+通过 `--call-graph dwarf,50` 查看线程切出时的线程栈。
+
+```bash
+perf record --call-graph dwarf,16384                                    \
+  -e probe_main:entry_say_hello -e probe_main:exit_say_hello            \
+  -e sched:sched_switch --filter 'prev_pid == 5292 || next_pid == 5292' \
+  -e sched:sched_wakeup --filter 'pid == 5292'                          \
+  -R -p 5272
+```
+
+```text
+sh-thread  5292 [005] 40621.348364: probe_main:entry_say_hello: (55e0d310d2ed)
+                    12ed say_hello+0xffff543e59de8000 (/home/demons/build/main)
+                    1466 main::{lambda()#2}::operator()+0xffff543e59de808e (/home/demons/build/main)
+        ffffffffffffffff [unknown] ([unknown])
+
+sh-thread  5292 [005] 40621.348390:         sched:sched_switch: sh-thread:5292 [120] S ==> swapper/5:0 [120]
+            7fff8b81f537 __schedule+0x800074e022a7 ([kernel.kallsyms])
+            7fff8b81f537 __schedule+0x800074e022a7 ([kernel.kallsyms])
+            7fff8b2ee154 hrtimer_start_range_ns+0x800074e02194 ([kernel.kallsyms])
+            7fff8b81f9b2 schedule+0x800074e02032 ([kernel.kallsyms])
+            7fff8b2fdae1 futex_wait_queue_me+0x800074e020c1 ([kernel.kallsyms])
+            7fff8b2fe816 futex_wait+0x800074e020f6 ([kernel.kallsyms])
+            7fff8b2ed940 hrtimer_wakeup+0x800074e02000 ([kernel.kallsyms])
+            7fff8b300a0f do_futex+0x800074e0214f ([kernel.kallsyms])
+            7fff8b3ec93b kmem_cache_alloc_trace+0x800074e0211b ([kernel.kallsyms])
+            7fff8b40be85 __check_object_size+0x800074e02105 ([kernel.kallsyms])
+            7fff8b25fe9c arch_uretprobe_hijack_return_addr+0x800074e020ec ([kernel.kallsyms])
+            7fff8b25fc4f arch_uprobe_post_xol+0x800074e0205f ([kernel.kallsyms])
+            7fff8b289bc7 recalc_sigpending+0x800074e02017 ([kernel.kallsyms])
+            7fff8b381d99 uprobe_notify_resume+0x800074e020c9 ([kernel.kallsyms])
+            7fff8b3014df sys_futex+0x800074e0207f ([kernel.kallsyms])
+            7fff8b205b7d do_syscall_64+0x800074e0208d ([kernel.kallsyms])
+            7fff8b82438e entry_SYSCALL_64_after_swapgs+0x800074e02058 ([kernel.kallsyms])
+                    d528 pthread_cond_timedwait@@GLIBC_2.3.2+0xffff00840a0b0128 (/lib/x86_64-linux-gnu/libpthread-2.24.so)
+        ffffffffffffffff [unknown] ([unknown])
+
+// ...
+
+sleep-thread  5291 [002] 40622.348349:         sched:sched_wakeup: sh-thread:5292 [120] success=1 CPU:005
+            7fff8b2a74ef ttwu_do_wakeup+0x800074e020bf ([kernel.kallsyms])
+            7fff8b2a74ef ttwu_do_wakeup+0x800074e020bf ([kernel.kallsyms])
+            7fff8b2a818a try_to_wake_up+0x800074e0218a ([kernel.kallsyms])
+            7fff8b2a841f wake_up_q+0x800074e0203f ([kernel.kallsyms])
+            7fff8b30116d do_futex+0x800074e028ad ([kernel.kallsyms])
+            7fff8b3014df sys_futex+0x800074e0207f ([kernel.kallsyms])
+            7fff8b205b7d do_syscall_64+0x800074e0208d ([kernel.kallsyms])
+            7fff8b82438e entry_SYSCALL_64_after_swapgs+0x800074e02058 ([kernel.kallsyms])
+                    d845 pthread_cond_signal@@GLIBC_2.3.2+0xffff00840a0b0065 (/lib/x86_64-linux-gnu/libpthread-2.24.so)
+                  9678c8 os::PlatformEvent::unpark+0xffff008409c76068 (/home/demons/build/build/linux-x86_64-normal-server-release/jdk/lib/amd64/server/libjvm.so)
+
+sh-thread  5292 [005] 40622.348448:  probe_main:exit_say_hello: (55e0d310d2ed <- 55e0d310d467)
+                    1467 main::{lambda()#2}::operator()+0xffff543e59de808f (/home/demons/build/main)
+        ffffffffffffffff [unknown] ([unknown])
+```
+
+怎么分析谁在持锁呢？
+
++ 看 `sys_futex` 被谁持有；
++ 看 `os::PlatformEvent::unpark` 更深的线程栈。
+
+```bash
+# export JAVA_HOME=$PWD/build/linux-x86_64-normal-server-release/jdk
+./bin/create-java-perf-map.sh 5272
+```
+
+```bash
+# perf script --max-stack 256
+```
+
+## 一个完整的 Java 线程栈
+
+[Stack Overflow: Printing backtraces when debugging java](https://stackoverflow.com/questions/54365079/printing-backtraces-when-debugging-java)
+[Stack Overflow: Understanding perf.map](https://stackoverflow.com/questions/52392319/understanding-perf-map)
