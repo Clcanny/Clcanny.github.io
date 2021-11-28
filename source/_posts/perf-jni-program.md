@@ -352,4 +352,4 @@ sleep-thread  5291 [003] 39160.217831: sched:sched_wakeup: sh-thread:5292 [120] 
    sh-thread  5292 [005] 39160.217958: probe_main:exit_say_hello: (55e0d310d2ed <- 55e0d310d467)
 ```
 
-从 perf 的结果看，线程 `sh-thread` 每次获得 CPU 时间片（发生 `sched:sched_wakeup` 事件）之后，都会在 10 微秒后切走（发生 `sched:sched_switch` 事件）。下次要在几毫秒 ~ 几百毫秒之后才能获得 CPU 时间片。因此，这是一个 IO 密集型函数。
+从 perf 的结果看，线程 `sh-thread` 每次获得 CPU 时间片（发生 `sched:sched_wakeup` 事件）之后，都会在 10 微秒后切走（发生 `sched:sched_switch` 事件）。而下次线程 `sh-thread` 获得时间片要在几毫秒 ~ 几百毫秒之后。因此，这是一个 IO 密集型函数。
