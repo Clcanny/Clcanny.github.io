@@ -139,30 +139,13 @@ RUN tar -czvf perf-map-agent-jdk8u131-b11.tar.gz \
 # 一个简化过的例子
 
 ```java
-// App.java
-public class App {
-  public static void main(String args[]) {
-    App app = new App();
-    app.sleep();
-    app.sayHelloWorld();
+// HelloWorld.java
+public class HelloWorld {
+  public void sleep() {
+    sleepInSynchronizedArea();
   }
 
-  void sleep() {
-    sleepThread = new Thread() {
-      public void run() {
-        while (true) {
-          sleepInSynchronizedArea();
-          try {
-            Thread.sleep(100);
-          } catch (InterruptedException e) {
-          }
-        }
-      }
-    };
-    sleepThread.start();
-  }
-
-  synchronized void sleepInSynchronizedArea() {
+  private synchronized void sleepInSynchronizedArea() {
     try {
       Thread.sleep(1000);
     } catch (InterruptedException e) {
@@ -170,23 +153,12 @@ public class App {
   }
 
   public void sayHelloWorld() {
-    if (sleepThread == null) {
-      sleep();
-    }
-    System.out.println("b:" + new java.util.Date().getTime());
     sayHelloWorldInSynchronizedArea();
-    System.out.println("e:" + new java.util.Date().getTime());
-    try {
-      Thread.sleep(100);
-    } catch (InterruptedException e) {
-    }
   }
 
-  synchronized void sayHelloWorldInSynchronizedArea() {
+  private synchronized void sayHelloWorldInSynchronizedArea() {
     System.out.println("Hello, world!");
   }
-
-  Thread sleepThread;
 }
 ```
 
@@ -195,29 +167,79 @@ public class App {
 #include <jni.h>
 
 #include <cassert>
+#include <chrono>
 #include <cstdlib>
 #include <cstring>
+#include <iostream>
+#include <thread>
 
 int main() {
-  JNIEnv* env = nullptr;
-  JavaVM* jvm = nullptr;
+    JNIEnv* env = nullptr;
+    JavaVM* jvm = nullptr;
 
-  JavaVMOption options[1];
-  options[0].optionString = "-Djava.class.path=.";
-  JavaVMInitArgs vm_args;
-  std::memset(&vm_args, 0, sizeof(vm_args));
-  vm_args.version = JNI_VERSION_1_2;
-  vm_args.nOptions = 1;
-  vm_args.options = options;
+    JavaVMOption options[1];
+    options[0].optionString = "-Djava.class.path=.";
+    JavaVMInitArgs vm_args;
+    std::memset(&vm_args, 0, sizeof(vm_args));
+    vm_args.version = JNI_VERSION_1_2;
+    vm_args.nOptions = 1;
+    vm_args.options = options;
 
-  assert(JNI_CreateJavaVM(&jvm, reinterpret_cast<void**>(&env), &vm_args) !=
-         JNI_ERR);
-  assert(env != nullptr);
+    assert(JNI_CreateJavaVM(&jvm, reinterpret_cast<void**>(&env), &vm_args) !=
+           JNI_ERR);
+    assert(env != nullptr);
 
-  jclass cls = env->FindClass("App");
-  assert(cls != 0);
-  jmethodID mid = env->GetStaticMethodID(cls, "sayHelloWorld", "()V");
-  assert(mid != 0);
-  env->CallStaticVoidMethod(cls, mid);
+    jclass cls = env->FindClass("HelloWorld");
+    assert(cls != 0);
+    jobject obj = env->AllocObject(cls);
+    jmethodID sleep_mid = env->GetMethodID(cls, "sleep", "()V");
+    assert(sleep_mid != 0);
+    jmethodID say_hello_mid = env->GetMethodID(cls, "sayHelloWorld", "()V");
+    assert(say_hello_mid != 0);
+
+    std::thread sleep_thread([jvm, obj, sleep_mid]() {
+        JNIEnv* env = nullptr;
+        jvm->AttachCurrentThread(reinterpret_cast<void**>(&env), nullptr);
+        assert(env != nullptr);
+        while (true) {
+            env->CallVoidMethod(obj, sleep_mid);
+            std::this_thread::sleep_for(std::chrono::milliseconds(100));
+        }
+    });
+    std::thread say_hello_thread([jvm, obj, say_hello_mid]() {
+        JNIEnv* env = nullptr;
+        jvm->AttachCurrentThread(reinterpret_cast<void**>(&env), nullptr);
+        assert(env != nullptr);
+        while (true) {
+            using std::chrono::duration_cast;
+            using std::chrono::milliseconds;
+            using std::chrono::system_clock;
+            std::cout << "b:"
+                      << duration_cast<milliseconds>(
+                             system_clock::now().time_since_epoch())
+                             .count()
+                      << std::endl;
+            env->CallVoidMethod(obj, say_hello_mid);
+            std::cout << "e:"
+                      << duration_cast<milliseconds>(
+                             system_clock::now().time_since_epoch())
+                             .count()
+                      << std::endl;
+            std::this_thread::sleep_for(std::chrono::milliseconds(100));
+        }
+    });
+    sleep_thread.join();
+    say_hello_thread.join();
 }
+```
+
+```bash
+./build/linux-x86_64-normal-server-release/jdk/bin/javac HelloWorld.java
+g++ -std=c++11 -O3 main.cpp                                                  \
+  -I./build/linux-x86_64-normal-server-release/jdk/include                   \
+  -I./build/linux-x86_64-normal-server-release/jdk/include/linux             \
+  -L./build/linux-x86_64-normal-server-release/jdk/lib/amd64/server          \
+  -Wl,-rpath=./build/linux-x86_64-normal-server-release/jdk/lib/amd64/server \
+  -ljvm -lpthread                                                            \
+  -o main
 ```
