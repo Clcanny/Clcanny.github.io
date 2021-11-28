@@ -165,6 +165,7 @@ public class HelloWorld {
 ```cpp
 // main.cpp
 #include <jni.h>
+#include <pthread.h>
 
 #include <cassert>
 #include <chrono>
@@ -212,6 +213,7 @@ int main() {
   assert(say_hello_mid != 0);
 
   std::thread sleep_thread([jvm, obj, sleep_mid]() {
+    pthread_setname_np(pthread_self(), "sleep-thread");
     JNIEnv* env = nullptr;
     jvm->AttachCurrentThread(reinterpret_cast<void**>(&env), nullptr);
     assert(env != nullptr);
@@ -280,7 +282,7 @@ probe_main:entry_say_hello                         [Tracepoint event]
 probe_main:exit_say_hello                          [Tracepoint event]
 ```
 
-## 跟踪 say_hello 函数耗时
+## 跟踪 `say_hello` 函数耗时
 
 ```bash
 # perf record
@@ -304,4 +306,25 @@ main  3449 [004] 22432.570643:  probe_main:exit_say_hello: (556a3249122d <- 556a
 
 > Timestamps "X.Y" in perf output are X seconds and Y microseconds. In `perf script` output it probably X seconds since linux boot. Similar time format is used in `dmesg` output.
 
-我们发现每次执行 `say_hello` 函数都需要 1s+ 。接下来我们想知道为什么一个这么简单的函数会耗时这么久？
+我们发现每次执行 `say_hello` 函数都需要 1s+ 。那为什么一个这么简单的函数会耗时这么久？
+
+## 分析 `say_hello` 函数是 CPU 密集型还是 IO 密集型
+
+当前线程出让 CPU 时会触发 `sched:sched_switch` 事件，当前线程获得 CPU 时会触发 `sched:sched_wakeup` 事件，我们可以利用这两个事件判断线程究竟是在等锁（ IO ）还是在执行耗 CPU 的代码。
+
+根据 [Basic Usage (with examples) for each of the Yocto Tracing Tools: Filtering](https://docs.yoctoproject.org/profile-manual/usage.html#filtering) 的介绍，perf event 支持过滤器，过滤掉我们不关心的事件。`sched:sched_switch` 支持 `--filter '(prev_pid >= xxx && prev_pid <= xxx) || (next_pid >= xxx && next_pid <= xxx)'` ，`sched:sched_wakeup` 支持 `--filter '(pid <= xxx && pid >= xxx)'` ，在目标进程拥有多个线程的情况下，这两个 filter 能过滤掉大量无关事件。需要说明的是 filter 中的 `pid` 是 thread id 。
+
+```bash
+# ps aux | grep main
+demons 3966 0.0 0.1 7006088 24212 pts/0 Sl+ 18:28 0:00 ./main
+# ps -eT | grep 3966
+3966  3985 pts/0    00:00:00 sleep-thread
+```
+
+```bash
+perf record                                                             \
+  -e probe_main:entry_say_hello -e probe_main:exit_say_hello            \
+  -e sched:sched_switch --filter 'prev_pid == 3985 || next_pid == 3985' \
+  -e sched:sched_wakeup --filter 'pid == 3985'                          \
+  -R -p 3966
+```
