@@ -223,6 +223,7 @@ int main() {
     }
   });
   std::thread say_hello_thread([jvm, obj, say_hello_mid]() {
+    pthread_setname_np(pthread_self(), "say-hello-thread");
     JNIEnv* env = nullptr;
     jvm->AttachCurrentThread(reinterpret_cast<void**>(&env), nullptr);
     assert(env != nullptr);
@@ -315,16 +316,40 @@ main  3449 [004] 22432.570643:  probe_main:exit_say_hello: (556a3249122d <- 556a
 根据 [Basic Usage (with examples) for each of the Yocto Tracing Tools: Filtering](https://docs.yoctoproject.org/profile-manual/usage.html#filtering) 的介绍，perf event 支持过滤器，过滤掉我们不关心的事件。`sched:sched_switch` 支持 `--filter '(prev_pid >= xxx && prev_pid <= xxx) || (next_pid >= xxx && next_pid <= xxx)'` ，`sched:sched_wakeup` 支持 `--filter '(pid <= xxx && pid >= xxx)'` ，在目标进程拥有多个线程的情况下，这两个 filter 能过滤掉大量无关事件。需要说明的是 filter 中的 `pid` 是 thread id 。
 
 ```bash
-# ps aux | grep main
-demons 3966 0.0 0.1 7006088 24212 pts/0 Sl+ 18:28 0:00 ./main
-# ps -eT | grep 3966
-3966  3985 pts/0    00:00:00 sleep-thread
+# ps aux | grep main | awk '{print $2}'
+4340
+# ps -eT | grep 4340
+4340  4359 pts/0    00:00:00 sleep-thread
+4340  4360 pts/0    00:00:01 sh-thread
 ```
 
 ```bash
 perf record                                                             \
   -e probe_main:entry_say_hello -e probe_main:exit_say_hello            \
-  -e sched:sched_switch --filter 'prev_pid == 3985 || next_pid == 3985' \
-  -e sched:sched_wakeup --filter 'pid == 3985'                          \
-  -R -p 3966
+  -e sched:sched_switch --filter 'prev_pid == 5292 || next_pid == 5292' \
+  -e sched:sched_wakeup --filter 'pid == 5292'                          \
+  -R -p 5272
 ```
+
+```text
+   sh-thread  5292 [005] 39159.217868: probe_main:entry_say_hello: (55e0d310d2ed)
+   sh-thread  5292 [005] 39159.217919: sched:sched_switch: sh-thread:5292 [120] S ==> swapper/5:0 [120]
+
+     swapper     0 [005] 39159.218968: sched:sched_wakeup: sh-thread:5292 [120] success=1 CPU:005
+   sh-thread  5292 [005] 39159.218977: sched:sched_switch: sh-thread:5292 [120] S ==> swapper/5:0 [120]
+
+     swapper     0 [005] 39159.227033: sched:sched_wakeup: sh-thread:5292 [120] success=1 CPU:005
+   sh-thread  5292 [005] 39159.227041: sched:sched_switch: sh-thread:5292 [120] S ==> swapper/5:0 [120]
+
+     swapper     0 [005] 39159.291101: sched:sched_wakeup: sh-thread:5292 [120] success=1 CPU:005
+   sh-thread  5292 [005] 39159.291113: sched:sched_switch: sh-thread:5292 [120] S ==> swapper/5:0 [120]
+
+     swapper     0 [005] 39159.803180: sched:sched_wakeup: sh-thread:5292 [120] success=1 CPU:005
+   sh-thread  5292 [005] 39159.803206: sched:sched_switch: sh-thread:5292 [120] S ==> swapper/5:0 [120]
+
+sleep-thread  5291 [003] 39160.217827: sched:sched_wakeup: sh-thread:5292 [120] success=1 CPU:005
+sleep-thread  5291 [003] 39160.217831: sched:sched_wakeup: sh-thread:5292 [120] success=1 CPU:005
+   sh-thread  5292 [005] 39160.217958: probe_main:exit_say_hello: (55e0d310d2ed <- 55e0d310d467)
+```
+
+从 perf 的结果看，线程 `sh-thread` 每次获得 CPU 时间片（发生 `sched:sched_wakeup` 事件）之后，都会在 10 微秒后切走（发生 `sched:sched_switch` 事件）。下次要在几毫秒 ~ 几百毫秒之后才能获得 CPU 时间片。因此，这是一个 IO 密集型函数。
