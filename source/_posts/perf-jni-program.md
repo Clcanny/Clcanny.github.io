@@ -433,10 +433,9 @@ sh-thread  5292 [005] 40622.348448:  probe_main:exit_say_hello: (55e0d310d2ed <-
 
 [Stack Overflow: Printing backtraces when debugging java](https://stackoverflow.com/questions/54365079/printing-backtraces-when-debugging-java)
 
+[Stack Overflow: How does linux's perf utility understand stack traces?](https://stackoverflow.com/questions/38277463/how-does-linuxs-perf-utility-understand-stack-traces)
 
-
-
-
+[Netflix Technology Blog: Java in Flames](https://netflixtechblog.com/java-in-flames-e763b3d32166)
 
 # 查看线程栈：JIT 部分
 
