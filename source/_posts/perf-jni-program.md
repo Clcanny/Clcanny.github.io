@@ -437,6 +437,8 @@ sh-thread  5292 [005] 40622.348448:  probe_main:exit_say_hello: (55e0d310d2ed <-
 
 [Netflix Technology Blog: Java in Flames](https://netflixtechblog.com/java-in-flames-e763b3d32166)
 
+[Brendan Gregg's Blog: Linux Profiling at Netflix](https://www.brendangregg.com/blog/2015-02-27/linux-profiling-at-netflix.html)
+
 # 查看线程栈：JIT 部分
 
 [Stack Overflow: Understanding perf.map](https://stackoverflow.com/questions/52392319/understanding-perf-map)
