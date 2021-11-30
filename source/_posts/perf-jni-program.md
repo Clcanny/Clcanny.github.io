@@ -435,12 +435,28 @@ JVM 在执行 JIT 时会开启类似于 GCC 对栈指针的优化，导致无法
 
 > For many years the gcc compiler has reused the frame pointer as a compiler optimization, breaking stack traces. Some applications compile with the gcc option -fno-omit-frame-pointer, to preserve this type of stack walking, however, the JVM had no equivalent option.
 
-Brendan 向 OpenJDK 团队提交了 patch ，新增了一个选项：`-XX:+PreserveFramePointer` ，这个选项会告诉 JIT 不要把栈指针给优化掉。完整的故事请阅读以下文章：
+Brendan 向 OpenJDK 团队提交了新增了选项 `-XX:+PreserveFramePointer` 的 patch ，这个选项会告诉 JIT 不要把栈指针给优化掉。完整的故事请阅读以下文章：
 
 + [Stack Overflow: Printing backtraces when debugging java](https://stackoverflow.com/questions/54365079/printing-backtraces-when-debugging-java)
 + [Stack Overflow: How does linux's perf utility understand stack traces?](https://stackoverflow.com/questions/38277463/how-does-linuxs-perf-utility-understand-stack-traces)
 + [Netflix Technology Blog: Java in Flames](https://netflixtechblog.com/java-in-flames-e763b3d32166)
 + [Brendan Gregg's Blog: Linux Profiling at Netflix](https://www.brendangregg.com/blog/2015-02-27/linux-profiling-at-netflix.html)
+
+### 用 GDB 验证 `-XX:+PreserveFramePointer` 的效果
+
+稍稍修改 HelloWorld.java 让 `sleepInSynchronizedArea` 停留更久一些：
+
+```java
+// HelloWorld.java
+public class HelloWorld {
+  synchronized void sleepInSynchronizedArea() {
+    try {
+      Thread.sleep(1 * 60 * 60 * 1000);
+    } catch (InterruptedException e) {
+    }
+  }
+}
+```
 
 # 查看线程栈：JIT 部分
 
