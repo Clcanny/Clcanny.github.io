@@ -458,6 +458,22 @@ public class HelloWorld {
 }
 ```
 
+增加 `-XX:+PreserveFramePointer` 选项后的线程栈：
+
+```text
+Thread 21 (Thread 0x7efdfaec9700 (LWP 2161)):
+#0  pthread_cond_timedwait@@GLIBC_2.3.2 () at ../sysdeps/unix/sysv/linux/x86_64/pthread_cond_timedwait.S:225
+#1  0x00007efe4eacb25e in os::Linux::safe_cond_timedwait (_cond=0x7efddc001d58, _mutex=0x7efddc001d30, _abstime=0x7efdfaec82c0) at /jdk8u/hotspot/src/os/linux/vm/os_linux.cpp:5433
+#2  0x00007efe4eaccb24 in os::PlatformEvent::park (this=0x7efddc001d00, millis=1000) at /jdk8u/hotspot/src/os/linux/vm/os_linux.cpp:6078
+#3  0x00007efe4eaa2fb2 in ObjectMonitor::EnterI (this=0x7efe040062b8, __the_thread__=0x7efddc001000) at /jdk8u/hotspot/src/share/vm/runtime/objectMonitor.cpp:632
+#4  0x00007efe4eaa26ca in ObjectMonitor::enter (this=0x7efe040062b8, __the_thread__=0x7efddc001000) at /jdk8u/hotspot/src/share/vm/runtime/objectMonitor.cpp:414
+#5  0x00007efe4ec0420a in ObjectSynchronizer::slow_enter (obj=..., lock=0x7efdfaec86f0, __the_thread__=0x7efddc001000) at /jdk8u/hotspot/src/share/vm/runtime/synchronizer.cpp:265
+#6  0x00007efe4ec03d82 in ObjectSynchronizer::fast_enter (obj=..., lock=0x7efdfaec86f0, attempt_rebias=true, __the_thread__=0x7efddc001000) at /jdk8u/hotspot/src/share/vm/runtime/synchronizer.cpp:183
+#7  0x00007efe4e7afa98 in InterpreterRuntime::monitorenter (thread=0x7efddc001000, elem=0x7efdfaec86f0) at /jdk8u/hotspot/src/share/vm/interpreter/interpreterRuntime.cpp:632
+#8  0x00007efe3ca0d42d in ?? ()
+#9  0x0000000000000000 in ?? ()
+```
+
 # 查看线程栈：JIT 部分
 
 [Stack Overflow: Understanding perf.map](https://stackoverflow.com/questions/52392319/understanding-perf-map)
