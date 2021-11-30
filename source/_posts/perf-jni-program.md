@@ -431,13 +431,16 @@ sh-thread  5292 [005] 40622.348448:  probe_main:exit_say_hello: (55e0d310d2ed <-
 
 ## 查看线程栈：JVM 部分
 
-[Stack Overflow: Printing backtraces when debugging java](https://stackoverflow.com/questions/54365079/printing-backtraces-when-debugging-java)
+JVM 在执行 JIT 时会开启类似于 GCC 对栈指针的优化，导致无法 perf 无法溯源线程栈。那么 JVM 有类似于 `-fno-omit-frame-pointer` 的选项吗？
 
-[Stack Overflow: How does linux's perf utility understand stack traces?](https://stackoverflow.com/questions/38277463/how-does-linuxs-perf-utility-understand-stack-traces)
+> For many years the gcc compiler has reused the frame pointer as a compiler optimization, breaking stack traces. Some applications compile with the gcc option -fno-omit-frame-pointer, to preserve this type of stack walking, however, the JVM had no equivalent option.
 
-[Netflix Technology Blog: Java in Flames](https://netflixtechblog.com/java-in-flames-e763b3d32166)
+Brendan 向 OpenJDK 团队提交了 patch ，新增了一个选项：`-XX:+PreserveFramePointer` ，这个选项会告诉 JIT 不要把栈指针给优化掉。完整的故事请阅读以下文章：
 
-[Brendan Gregg's Blog: Linux Profiling at Netflix](https://www.brendangregg.com/blog/2015-02-27/linux-profiling-at-netflix.html)
++ [Stack Overflow: Printing backtraces when debugging java](https://stackoverflow.com/questions/54365079/printing-backtraces-when-debugging-java)
++ [Stack Overflow: How does linux's perf utility understand stack traces?](https://stackoverflow.com/questions/38277463/how-does-linuxs-perf-utility-understand-stack-traces)
++ [Netflix Technology Blog: Java in Flames](https://netflixtechblog.com/java-in-flames-e763b3d32166)
++ [Brendan Gregg's Blog: Linux Profiling at Netflix](https://www.brendangregg.com/blog/2015-02-27/linux-profiling-at-netflix.html)
 
 # 查看线程栈：JIT 部分
 
