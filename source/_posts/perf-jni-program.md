@@ -449,11 +449,43 @@ Brendan 向 OpenJDK 团队提交了新增了选项 `-XX:+PreserveFramePointer` �
 ```java
 // HelloWorld.java
 public class HelloWorld {
-  synchronized void sleepInSynchronizedArea() {
+  public void sleep() {
+    sleepInSynchronizedArea();
+  }
+
+  private synchronized void sleepInSynchronizedArea() {
     try {
       Thread.sleep(1 * 60 * 60 * 1000);
     } catch (InterruptedException e) {
     }
+  }
+
+  public void sayHelloWorld() {
+    sayHelloWorldProxy1();
+  }
+
+  private void sayHelloWorldProxy1() {
+    sayHelloWorldProxy2();
+  }
+
+  private void sayHelloWorldProxy2() {
+    sayHelloWorldProxy3();
+  }
+
+  private void sayHelloWorldProxy3() {
+    sayHelloWorldProxy4();
+  }
+
+  private void sayHelloWorldProxy4() {
+    sayHelloWorldProxy5();
+  }
+
+  private void sayHelloWorldProxy5() {
+    sayHelloWorldInSynchronizedArea();
+  }
+
+  private synchronized void sayHelloWorldInSynchronizedArea() {
+    System.out.println("Hello, world!");
   }
 }
 ```
@@ -461,17 +493,53 @@ public class HelloWorld {
 增加 `-XX:+PreserveFramePointer` 选项后的线程栈：
 
 ```text
-Thread 21 (Thread 0x7efdfaec9700 (LWP 2161)):
+Thread 21 (Thread 0x7f81b6ec9700 (LWP 11374)):
 #0  pthread_cond_timedwait@@GLIBC_2.3.2 () at ../sysdeps/unix/sysv/linux/x86_64/pthread_cond_timedwait.S:225
-#1  0x00007efe4eacb25e in os::Linux::safe_cond_timedwait (_cond=0x7efddc001d58, _mutex=0x7efddc001d30, _abstime=0x7efdfaec82c0) at /jdk8u/hotspot/src/os/linux/vm/os_linux.cpp:5433
-#2  0x00007efe4eaccb24 in os::PlatformEvent::park (this=0x7efddc001d00, millis=1000) at /jdk8u/hotspot/src/os/linux/vm/os_linux.cpp:6078
-#3  0x00007efe4eaa2fb2 in ObjectMonitor::EnterI (this=0x7efe040062b8, __the_thread__=0x7efddc001000) at /jdk8u/hotspot/src/share/vm/runtime/objectMonitor.cpp:632
-#4  0x00007efe4eaa26ca in ObjectMonitor::enter (this=0x7efe040062b8, __the_thread__=0x7efddc001000) at /jdk8u/hotspot/src/share/vm/runtime/objectMonitor.cpp:414
-#5  0x00007efe4ec0420a in ObjectSynchronizer::slow_enter (obj=..., lock=0x7efdfaec86f0, __the_thread__=0x7efddc001000) at /jdk8u/hotspot/src/share/vm/runtime/synchronizer.cpp:265
-#6  0x00007efe4ec03d82 in ObjectSynchronizer::fast_enter (obj=..., lock=0x7efdfaec86f0, attempt_rebias=true, __the_thread__=0x7efddc001000) at /jdk8u/hotspot/src/share/vm/runtime/synchronizer.cpp:183
-#7  0x00007efe4e7afa98 in InterpreterRuntime::monitorenter (thread=0x7efddc001000, elem=0x7efdfaec86f0) at /jdk8u/hotspot/src/share/vm/interpreter/interpreterRuntime.cpp:632
-#8  0x00007efe3ca0d42d in ?? ()
-#9  0x0000000000000000 in ?? ()
+#1  0x00007f820aabe25e in os::Linux::safe_cond_timedwait (_cond=0x7f819c001d58, _mutex=0x7f819c001d30, _abstime=0x7f81b6ec8110) at /jdk8u/hotspot/src/os/linux/vm/os_linux.cpp:5433
+#2  0x00007f820aabfb24 in os::PlatformEvent::park (this=0x7f819c001d00, millis=1000) at /jdk8u/hotspot/src/os/linux/vm/os_linux.cpp:6078
+#3  0x00007f820aa95fb2 in ObjectMonitor::EnterI (this=0x7f81c0006368, __the_thread__=0x7f819c001000) at /jdk8u/hotspot/src/share/vm/runtime/objectMonitor.cpp:632
+#4  0x00007f820aa956ca in ObjectMonitor::enter (this=0x7f81c0006368, __the_thread__=0x7f819c001000) at /jdk8u/hotspot/src/share/vm/runtime/objectMonitor.cpp:414
+#5  0x00007f820abf720a in ObjectSynchronizer::slow_enter (obj=..., lock=0x7f81b6ec8538, __the_thread__=0x7f819c001000) at /jdk8u/hotspot/src/share/vm/runtime/synchronizer.cpp:265
+#6  0x00007f820abf6d82 in ObjectSynchronizer::fast_enter (obj=..., lock=0x7f81b6ec8538, attempt_rebias=true, __the_thread__=0x7f819c001000) at /jdk8u/hotspot/src/share/vm/runtime/synchronizer.cpp:183
+#7  0x00007f820a7a2a98 in InterpreterRuntime::monitorenter (thread=0x7f819c001000, elem=0x7f81b6ec8538) at /jdk8u/hotspot/src/share/vm/interpreter/interpreterRuntime.cpp:632
+#8  0x00007f81f8a0043b in ?? ()
+#9  0x00007f81f8a002ec in ?? ()
+#10 0x0000000000000003 in ?? ()
+#11 0x000000076c65a5e8 in ?? ()
+#12 0x00007f81b6ec8538 in ?? ()
+#13 0x00007f81f662b958 in ?? ()
+#14 0x00007f81b6ec8598 in ?? ()
+#15 0x00007f81f662b9d0 in ?? ()
+#16 0x0000000000000000 in ?? ()
+```
+
+可能是因为 debug 版本的关系，不加 perserve 选项也能看到这些线程栈。
+
+但是通过 perf 看到的栈却少于通过 gdb 看到的栈：
+
+```text
+main 11644 [001] 88497.197837:         sched:sched_switch: main:11644 [120] S ==> swapper/1:0 [120]
+            7fffa741f537 __schedule+0x8000592022a7 ([kernel.kallsyms])
+            7fffa741f537 __schedule+0x8000592022a7 ([kernel.kallsyms])
+            7fffa7282981 proc_fork_connector+0x800059202001 ([kernel.kallsyms])
+            7fffa741f9b2 schedule+0x800059202032 ([kernel.kallsyms])
+            7fffa6efdae1 futex_wait_queue_me+0x8000592020c1 ([kernel.kallsyms])
+            7fffa6efe816 futex_wait+0x8000592020f6 ([kernel.kallsyms])
+            7fffa6f357c7 ftrace_ops_assist_func+0x8000592020f7 ([kernel.kallsyms])
+            7fffa6f70380 perf_event_task_output+0x800059202000 ([kernel.kallsyms])
+            7fffa6f734ee perf_iterate_ctx+0x80005920205e ([kernel.kallsyms])
+            7fffa6f00a0f do_futex+0x80005920214f ([kernel.kallsyms])
+            7fffa6eb5d42 enqueue_task_fair+0x800059202082 ([kernel.kallsyms])
+            7fffa6e5e03a kvm_sched_clock_read+0x80005920201a ([kernel.kallsyms])
+            7fffa6e318f5 sched_clock+0x800059202005 ([kernel.kallsyms])
+            7fffa6e54a79 x2apic_send_IPI+0x800059202049 ([kernel.kallsyms])
+            7fffa6ea926e wake_up_new_task+0x80005920214e ([kernel.kallsyms])
+            7fffa6f014df sys_futex+0x80005920207f ([kernel.kallsyms])
+            7fffa6e65508 __do_page_fault+0x800059202278 ([kernel.kallsyms])
+            7fffa6e05b7d do_syscall_64+0x80005920208d ([kernel.kallsyms])
+            7fffa742438e entry_SYSCALL_64_after_swapgs+0x800059202058 ([kernel.kallsyms])
+                    d17f pthread_cond_wait@@GLIBC_2.3.2+0xffff00e19b6860bf (/lib/x86_64-linux-gnu/libpthread-2.24.so)
+                  b94763 os::PlatformEvent::park+0xffff00e19b24c1a1 (/home/demons/build/build/linux-x86_64-normal-server-slowdebug/jdk/lib/amd64/server/libjvm.so)
 ```
 
 # 查看线程栈：JIT 部分
