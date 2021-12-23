@@ -542,6 +542,8 @@ main 11644 [001] 88497.197837:         sched:sched_switch: main:11644 [120] S ==
                   b94763 os::PlatformEvent::park+0xffff00e19b24c1a1 (/home/demons/build/build/linux-x86_64-normal-server-slowdebug/jdk/lib/amd64/server/libjvm.so)
 ```
 
+代码可能是不连续的，但栈是连续的，所以 `perf_output_sample_ustack` 的实现没问题。
+
 # 查看线程栈：JIT 部分
 
 [Stack Overflow: Understanding perf.map](https://stackoverflow.com/questions/52392319/understanding-perf-map)
