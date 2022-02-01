@@ -19,6 +19,14 @@ tags:
 
 在本篇文章中，我们假设 jemalloc 不绑核，因而在阅读源码的过程中可以忽略 `arena_s::last_thd` 等字段。
 
+## tcache
+
+根据 [jemalloc: opt.tcache](http://jemalloc.net/jemalloc.3.html#opt.tcache) 的说法，tcache 是线程级别的内存块缓存，目的是减少内存分配过程中的线程竞争：
+
+> tcache = Thread-specific caching
+>
+> When there are multiple threads, each thread uses a tcache for objects up to a certain size. Thread-specific caching allows many allocations to be satisfied without performing any thread synchronization, at the cost of increased memory use.
+
 ```c
 #define TSD_INITIALIZER {                 \
     ATOMIC_INIT(tsd_state_uninitialized), \
