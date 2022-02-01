@@ -35,3 +35,66 @@ tags:
 |              LG_SLAB_MAXREGS              |        (LG_PAGE - SC_LG_TINY_MIN)        |  9  |                                                                          一页内存页最多存多少个 objects ？                                                                          |
 |             LG_BITMAP_MAXBITS             | MAX(LG_SLAB_MAXREGS, LG_CEIL(SC_NSIZES)) |  9  | 为什么需要考虑 LG_CEIL(SC_NSIZES) ？[jemalloc: Use a bitmap in extents_t to speed up search.](https://github.com/jemalloc/jemalloc/commit/5d33233a5e6601902df7cddd8cc8aa0b135c77b2) |
 | LG_BITMAP_MAXBITS - LG_BITMAP_GROUP_NBITS |                  9 - 6                   |  3  |                                                                            没有定义 BITMAP_USE_TREE 宏。                                                                            |
+
+bitmap 是只有 extends 一个人用吗？不然为什么决策要不要用树的地方放在 macro ？
+
+[GCC](https://gcc.gnu.org/onlinedocs/gcc/Other-Builtins.html) 提供了内建函数 `__builtin_ffsl` ，入参是 `long x` ，返回值是入参 `x` 中「位于最低位且为 1 的 bit 」的下标 + 1 ：
+
+> Returns one plus the index of the least significant 1-bit of x, or if x is zero, returns zero.
+
+jemalloc 利用该函数实现了 bitmap 的查找操作 find first unset >= bit ，由于 GCC 提供的函数是 `__builtin_ffsl` ，所以 jemalloc 只能把 1 当做 unset ，把 0 当做 set（这违背了我们的直觉）：
+
+```c
+/* ffu: find first unset >= bit. */
+static inline size_t
+bitmap_ffu(const bitmap_t *bitmap, const bitmap_info_t *binfo, size_t min_bit) {
+  assert(min_bit < binfo->nbits);
+  // goff: group offset.
+  size_t goff = min_bit >> LG_BITMAP_GROUP_NBITS;
+  bitmap_t g = bitmap[goff] & ~((1LU << (min_bit & BITMAP_GROUP_NBITS_MASK)) - 1);
+  size_t bit;
+  do {
+      bit = ffs_lu(g); // Call __builtin_ffsl inside.
+      if (bit != 0) {
+        return (goff << LG_BITMAP_GROUP_NBITS) + (bit - 1);
+      }
+      goff++;
+      g = bitmap[goff];
+  } while (goff < binfo->ngroups);
+  return binfo->nbits;
+}
+```
+
+`bitmap_set` 同样将 1 当做 unset ，将 0 当做 set ：
+
+```c
+static inline void bitmap_set(bitmap_t *bitmap,
+                              const bitmap_info_t *binfo,
+                              size_t bit) {
+  assert(bit < binfo->nbits);
+  assert(!bitmap_get(bitmap, binfo, bit));
+  size_t goff = bit >> LG_BITMAP_GROUP_NBITS;
+  bitmap_t* gp = &bitmap[goff];
+  bitmap_t g = *gp;
+  // 验证指定的 bit 是 1 ，即处于 unset 状态。
+  assert(g & (ZU(1) << (bit & BITMAP_GROUP_NBITS_MASK)));
+  // 将指定的 bit 翻转成 0 ，其余 bits 不变，即置成 unset 状态。
+  // 1 ^ 1 = 0
+  // 1 ^ 0 = 1
+  // 0 ^ 1 = 1
+  // 0 ^ 0 = 0
+  g ^= ZU(1) << (bit & BITMAP_GROUP_NBITS_MASK);
+  *gp = g;
+  assert(bitmap_get(bitmap, binfo, bit));
+}
+```
+
+`sz_psz2ind` 晦涩难懂，我们需要翻看它的历史：
+
++ [Implement pz2ind(), pind2sz(), and psz2u().](https://github.com/jemalloc/jemalloc/commit/226c44697)
+
+  > These compute size classes and indices similarly to `size2index()`, `index2size()` and `s2u()`, respectively, but using the subset of size classes that are multiples of the page size. Note that `pszind_t` and `szind_t` are not interchangeable.
+
++ [Fix psz/pind edge cases.](https://github.com/jemalloc/jemalloc/commit/ea9961acd)
+
+  > Add an "over-size" extent heap in which to store extents which exceed the maximum size class (plus cache-oblivious padding, if enabled). Remove `psz2ind_clamp()` and use `psz2ind()` instead so that trying to allocate the maximum size class can in principle succeed. In practice, this allows assertions to hold so that OOM errors can be successfully generated.
