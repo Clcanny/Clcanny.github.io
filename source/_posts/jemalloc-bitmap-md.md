@@ -89,7 +89,7 @@ static inline void bitmap_set(bitmap_t *bitmap,
 }
 ```
 
-`sz_psz2ind` 晦涩难懂，我们需要翻看它的历史：
+`sz_psz2ind` 晦涩难懂，我们需要翻看它的历史才能理解它：
 
 + [Implement pz2ind(), pind2sz(), and psz2u().](https://github.com/jemalloc/jemalloc/commit/226c44697)
 
@@ -98,3 +98,72 @@ static inline void bitmap_set(bitmap_t *bitmap,
 + [Fix psz/pind edge cases.](https://github.com/jemalloc/jemalloc/commit/ea9961acd)
 
   > Add an "over-size" extent heap in which to store extents which exceed the maximum size class (plus cache-oblivious padding, if enabled). Remove `psz2ind_clamp()` and use `psz2ind()` instead so that trying to allocate the maximum size class can in principle succeed. In practice, this allows assertions to hold so that OOM errors can be successfully generated.
+
+```c
+pszind_t
+sz_psz2ind(size_t psz) {
+  if (unlikely(psz > SC_LARGE_MAXCLASS)) {
+    return SC_NPSIZES;
+  }
+  // pow(2, x - 1) < psz <= pow(2, x)
+  pszind_t x = lg_floor((psz<<1)-1);
+  // 1. 每组 regular group 的「最后一个 size class 的大小」都是
+  //    上一组 regular group 的「最后一个 size class 的大小」的两倍。
+  // 2. 以覆盖范围为 (LG_PAGE, SC_LG_NGROUP * LG_PAGE] 的 regular group
+  //    为基准，计算当前 regular group 到它的距离。
+  //    之所以选择覆盖范围为 (LG_PAGE, SC_LG_NGROUP * LG_PAGE]
+  //    的 regular group 为基准，是因为从它开始，之后的每一个 size class
+  //    的大小都恰好是内存页大小的整数倍。regular group 7
+  pszind_t shift = (x < SC_LG_NGROUP + LG_PAGE) ?
+    0 : x - (SC_LG_NGROUP + LG_PAGE);
+  // regular group 的开头 class size 的 index
+  pszind_t grp = shift << SC_LG_NGROUP;
+  // 4. 求出当前 regular group 的参数 lg_delta 。
+  // regular group 7 的 lg_delta 是 11 。
+  // x - (SC_LG_NGROUP + LG_PAGE) + 11 = (x - SC_LG_NGROUP) - (LG_PAGE - 11) = (x - SC_LG_NGROUP) - 1
+  pszind_t lg_delta = (x < SC_LG_NGROUP + LG_PAGE + 1) ?
+    LG_PAGE : x - SC_LG_NGROUP - 1;
+
+  size_t delta_inverse_mask = ZU(-1) << lg_delta;
+  // mod = ndelta - 1
+  // |----|____|-----|
+  pszind_t mod = (((((psz - 1) & delta_inverse_mask) >> lg_delta)) &
+    ((ZU(1) << SC_LG_NGROUP) - 1));
+
+  pszind_t ind = grp + mod;
+  return ind;
+}
+```
+
+```c
+JEMALLOC_ALWAYS_INLINE pszind_t(size_t psz) {
+  if (unlikely(psz > SC_LARGE_MAXCLASS)) {
+    return SC_NPSIZES;
+  }
+  // pow(2, x - 1) < psz <= pow(2, x)
+  pszind_t x = lg_floor((psz << 1) - 1);
+  // first_ps_rg: first page size regular group.
+  // The range of first_ps_rg is (base, base * 2],
+  // and base == pow(2, LG_PAGE) * pow(2, SC_LG_NGROUP).
+  // Each size class in or after first_ps_rg
+  // is an integer multiple of pow(2, LG_PAGE).
+  pszind_t shift_to_first_ps_rg = (x < SC_LG_NGROUP + LG_PAGE) ?
+      0 : x - (SC_LG_NGROUP + LG_PAGE);
+  pszind_t base_ind = shift_to_first_ps_rg << SC_LG_NGROUP;
+
+  // Same as sc_s::lg_delta.
+  // For regular group r, lg_delta(r) - regular_group_index(r) == Constant.
+  // lg_delta(r) - rg_ind(r) == lg_delta(first_ps_rg) - rg_ind(first_ps_rg)
+  // lg_delta(r) = lg_delta(first_ps_rg) + (rg_ind(r) - rg_ind(first_ps_rg))
+  //             = lg_delta(first_pg_rg) + (shift_to_first_ps_rg - 1)
+  //             = LG_PAGE + ((x - (SC_LG_NGROUP + LG_PAGE)) - 1)
+  //             = x - SC_LG_NGROUP - 1
+  pszind_t lg_delta = (x < SC_LG_NGROUP + LG_PAGE + 1) ?
+    LG_PAGE : x - SC_LG_NGROUP - 1;
+  // mod = ndelta - 1
+  // |----|____|-----|
+  size_t delta_inverse_mask = ZU(-1) << lg_delta;
+  pszind_t mod = (((((psz - 1) & delta_inverse_mask) >> lg_delta)) &
+    ((ZU(1) << SC_LG_NGROUP) - 1));
+}
+```
