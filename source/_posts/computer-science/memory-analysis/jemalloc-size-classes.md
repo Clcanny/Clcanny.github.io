@@ -17,50 +17,66 @@ tags:
 
 ![](http://junbin-hexo-img.oss-cn-beijing.aliyuncs.com/jemalloc-size-classes/size-class.png)
 
-|        group         | index | lg\_base | lg\_delta | ndelta |  psz  | bin  | pgs  | lg\_delta\_lookup | size |
-| :------------------: | :---: | :-----:  | :------:  | :----: | :---: | :--: | :--: |  :-------------:  | :-:  |
-|  Tiny size classes   |       |          |           |        |       |      |      |                   |      |
-|                      |   0   |    3     |     3     |   0    | false | true |  1   |         3         |  8   |
-|                      |   1   |    3     |     3     |   1    | false | true |  1   |         3         |  16  |
-| Initial pseudo-group |       |          |           |        |       |      |      |                   |      |
-|                      |   2   |    4     |     4     |   1    | false | true |  1   |         4         |  32  |
-|                      |   3   |    4     |     4     |   2    | false | true |  3   |         4         |  48  |
-|                      |   4   |    4     |     4     |   3    | false | true |  1   |         4         |  64  |
-|   Regular group 0    |       |          |           |        |       |      |      |                   |      |
-|                      |   5   |    6     |     4     |   1    | false | true |  5   |         4         |  80  |
-|                      |   6   |    6     |     4     |   2    | false | true |  3   |         4         |  96  |
-|                      |   7   |    6     |     4     |   3    | false | true |  7   |         4         | 112  |
-|                      |   8   |    6     |     4     |   4    | false | true |  1   |         4         | 128  |
-|   Regular group 1    |       |          |           |        |       |      |      |                   |      |
-|                      |   9   |    7     |     5     |   1    | false | true |  5   |         5         | 160  |
-|                      |  10   |    7     |     5     |   2    | false | true |  3   |         5         | 192  |
-|                      |  11   |    7     |     5     |   3    | false | true |  7   |         5         | 224  |
-|                      |  12   |    7     |     5     |   4    | false | true |  1   |         5         | 256  |
-|   Regular group 2    |       |          |           |        |       |      |      |                   |      |
-|                      |  13   |    8     |     6     |   1    | false | true |  5   |         6         | 320  |
-|                      |  14   |    8     |     6     |   2    | false | true |  3   |         6         | 384  |
-|                      |  15   |    8     |     6     |   3    | false | true |  7   |         6         | 448  |
-|                      |  16   |    8     |     6     |   4    | false | true |  1   |         6         | 512  |
-|   Regular group 3    |       |          |           |        |       |      |      |                   |      |
-|                      |  17   |    9     |     7     |   1    | false | true |  5   |         7         | 640  |
-|                      |  18   |    9     |     7     |   2    | false | true |  3   |         7         | 768  |
-|                      |  19   |    9     |     7     |   3    | false | true |  7   |         7         | 896  |
-|                      |  20   |    9     |     7     |   4    | false | true |  1   |         7         | 1024 |
-|   Regular group 4    |       |          |           |        |       |      |      |                   |      |
-|                      |  21   |    10    |     8     |   1    | false | true |  5   |         8         | 1280 |
-|                      |  22   |    10    |     8     |   2    | false | true |  3   |         8         | 1536 |
-|                      |  23   |    10    |     8     |   3    | false | true |  7   |         8         | 1792 |
-|                      |  24   |    10    |     8     |   4    | false | true |  1   |         8         | 2048 |
-|   Regular group 5    |       |          |           |        |       |      |      |                   |      |
-|                      |  25   |    11    |     9     |   1    | false | true |  5   |         9         | 2560 |
-|                      |  26   |    11    |     9     |   2    | false | true |  3   |         9         | 3072 |
-|                      |  27   |    11    |     9     |   3    | false | true |  7   |         9         | 3584 |
-|                      |  28   |    11    |     9     |   4    | true  | true |  1   |         9         | 4096 |
-|   Regular group 6    |       |          |           |        |       |      |      |                   |      |
-|                      |  29   |    12    |    10     |   1    | false | true |  5   |         0         | 5120 |
-|                      |  30   |    12    |    10     |   2    | false | true |  3   |         0         | 6144 |
-|                      |  31   |    12    |    10     |   3    | false | true |  7   |         0         | 7168 |
-|                      |  32   |    12    |    10     |   4    | true  | true |  2   |         0         | 8192 |
+|     var     |                           expression                            | value |
+|     :-:     |                               :-:                               |  :-:  |
+|  SC_NTINY   |                   LG_QUANTUM - SC_LG_TINY_MIN                   |   1   |
+| SC_NPSEUDO  |                            SC_NGROUP                            |   4   |
+| SC_NREGULAR | SC_NGROUP * (SC_LG_BASE_MAX - SC_LG_FIRST_REGULAR_BASE + 1) - 1 |  227  |
+
+|        group         | index | lg_base | lg_delta | ndelta |  psz  |  bin  | pgs | lg_delta_lookup |        size         |
+|         :-:          |  :-:  |   :-:   |   :-:    |  :-:   |  :-:  |  :-:  | :-: |       :-:       |         :-:         |
+|  Tiny size classes   |       |         |          |        |       |       |     |                 |                     |
+|                      |   0   |    3    |    3     |   0    | false | true  |  1  |        3        |          8          |
+| Initial pseudo-group |       |         |          |        |       |       |     |                 |                     |
+|                      |   1   |    3    |    3     |   1    | false | true  |  1  |        3        |         16          |
+|                      |   2   |    4    |    4     |   1    | false | true  |  1  |        4        |         32          |
+|                      |   3   |    4    |    4     |   2    | false | true  |  3  |        4        |         48          |
+|                      |   4   |    4    |    4     |   3    | false | true  |  1  |        4        |         64          |
+|   Regular group 0    |       |         |          |        |       |       |     |                 |                     |
+|                      |   5   |    6    |    4     |   1    | false | true  |  5  |        4        |         80          |
+|                      |   6   |    6    |    4     |   2    | false | true  |  3  |        4        |         96          |
+|                      |   7   |    6    |    4     |   3    | false | true  |  7  |        4        |         112         |
+|                      |   8   |    6    |    4     |   4    | false | true  |  1  |        4        |         128         |
+|   Regular group 1    |       |         |          |        |       |       |     |                 |                     |
+|                      |   9   |    7    |    5     |   1    | false | true  |  5  |        5        |         160         |
+|                      |  10   |    7    |    5     |   2    | false | true  |  3  |        5        |         192         |
+|                      |  11   |    7    |    5     |   3    | false | true  |  7  |        5        |         224         |
+|                      |  12   |    7    |    5     |   4    | false | true  |  1  |        5        |         256         |
+|   Regular group 2    |       |         |          |        |       |       |     |                 |                     |
+|                      |  13   |    8    |    6     |   1    | false | true  |  5  |        6        |         320         |
+|                      |  14   |    8    |    6     |   2    | false | true  |  3  |        6        |         384         |
+|                      |  15   |    8    |    6     |   3    | false | true  |  7  |        6        |         448         |
+|                      |  16   |    8    |    6     |   4    | false | true  |  1  |        6        |         512         |
+|   Regular group 3    |       |         |          |        |       |       |     |                 |                     |
+|                      |  17   |    9    |    7     |   1    | false | true  |  5  |        7        |         640         |
+|                      |  18   |    9    |    7     |   2    | false | true  |  3  |        7        |         768         |
+|                      |  19   |    9    |    7     |   3    | false | true  |  7  |        7        |         896         |
+|                      |  20   |    9    |    7     |   4    | false | true  |  1  |        7        |        1024         |
+|   Regular group 4    |       |         |          |        |       |       |     |                 |                     |
+|                      |  21   |   10    |    8     |   1    | false | true  |  5  |        8        |        1280         |
+|                      |  22   |   10    |    8     |   2    | false | true  |  3  |        8        |        1536         |
+|                      |  23   |   10    |    8     |   3    | false | true  |  7  |        8        |        1792         |
+|                      |  24   |   10    |    8     |   4    | false | true  |  1  |        8        |        2048         |
+|   Regular group 5    |       |         |          |        |       |       |     |                 |                     |
+|                      |  25   |   11    |    9     |   1    | false | true  |  5  |        9        |        2560         |
+|                      |  26   |   11    |    9     |   2    | false | true  |  3  |        9        |        3072         |
+|                      |  27   |   11    |    9     |   3    | false | true  |  7  |        9        |        3584         |
+|                      |  28   |   11    |    9     |   4    | true  | true  |  1  |        9        |        4096         |
+|   Regular group 6    |       |         |          |        |       |       |     |                 |                     |
+|                      |  29   |   12    |    10    |   1    | false | true  |  5  |        0        |        5120         |
+|                      |  30   |   12    |    10    |   2    | false | true  |  3  |        0        |        6144         |
+|                      |  31   |   12    |    10    |   3    | false | true  |  7  |        0        |        7168         |
+|                      |  32   |   12    |    10    |   4    | true  | true  |  2  |        0        |        8192         |
+|         ...          |       |         |          |        |       |       |     |                 |                     |
+|   Regular group 55   |       |         |          |        |       |       |     |                 |                     |
+|                      |  225  |   61    |    59    |   1    | true  | false |  0  |        0        | 2882303761517117440 |
+|                      |  226  |   61    |    59    |   2    | true  | false |  0  |        0        | 3458764513820540928 |
+|                      |  227  |   61    |    59    |   3    | true  | false |  0  |        0        | 4035225266123964416 |
+|                      |  228  |   61    |    59    |   4    | true  | false |  0  |        0        | 4611686018427387904 |
+|   Regular group 56   |       |         |          |        |       |       |     |                 |                     |
+|                      |  229  |   62    |    60    |   1    | true  | false |  0  |        0        | 5764607523034234880 |
+|                      |  230  |   62    |    60    |   2    | true  | false |  0  |        0        | 6917529027641081856 |
+|                      |  231  |   62    |    60    |   3    | true  | false |  0  |        0        | 8070450532247928832 |
 
 [jemalloc/include/jemalloc/internal/sc.h](https://github.com/jemalloc/jemalloc/blob/ea6b3e973b477b8061e0076bb257dbd7f3faa756/include/jemalloc/internal/sc.h#L6) 的注释详细地描述了三种类型的 size class group 是如何产生的：
 
