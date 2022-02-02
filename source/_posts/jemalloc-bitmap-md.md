@@ -147,8 +147,8 @@ JEMALLOC_ALWAYS_INLINE pszind_t(size_t psz) {
   // and base == pow(2, LG_PAGE) * pow(2, SC_LG_NGROUP).
   // Each size class in or after first_ps_rg
   // is an integer multiple of pow(2, LG_PAGE).
-  pszind_t shift_to_first_ps_rg = (x < SC_LG_NGROUP + LG_PAGE) ?
-      0 : x - (SC_LG_NGROUP + LG_PAGE);
+  pszind_t off_to_first_ps_rg = (x < SC_LG_NGROUP + LG_PAGE) ?
+    0 : x - (SC_LG_NGROUP + LG_PAGE);
 
   // Same as sc_s::lg_delta.
   // For regular group r, lg_delta(r) - regular_group_index(r) == Constant.
@@ -169,7 +169,7 @@ JEMALLOC_ALWAYS_INLINE pszind_t(size_t psz) {
   pszind_t rg_inner_off = (((((psz - 1) & delta_inverse_mask) >> lg_delta)) &
     ((ZU(1) << SC_LG_NGROUP) - 1));
 
-  pszind_t base_ind = shift_to_first_ps_rg << SC_LG_NGROUP;
+  pszind_t base_ind = off_to_first_ps_rg << SC_LG_NGROUP;
   pszind_t ind = base_ind + rg_inner_off;
   return ind;
 }
