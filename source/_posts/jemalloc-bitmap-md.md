@@ -149,7 +149,6 @@ JEMALLOC_ALWAYS_INLINE pszind_t(size_t psz) {
   // is an integer multiple of pow(2, LG_PAGE).
   pszind_t shift_to_first_ps_rg = (x < SC_LG_NGROUP + LG_PAGE) ?
       0 : x - (SC_LG_NGROUP + LG_PAGE);
-  pszind_t base_ind = shift_to_first_ps_rg << SC_LG_NGROUP;
 
   // Same as sc_s::lg_delta.
   // For regular group r, lg_delta(r) - regular_group_index(r) == Constant.
@@ -160,10 +159,18 @@ JEMALLOC_ALWAYS_INLINE pszind_t(size_t psz) {
   //             = x - SC_LG_NGROUP - 1
   pszind_t lg_delta = (x < SC_LG_NGROUP + LG_PAGE + 1) ?
     LG_PAGE : x - SC_LG_NGROUP - 1;
-  // mod = ndelta - 1
-  // |----|____|-----|
+  // |xxxxxxxxx|-------------------------|xxxxxxxxx|
+  //           |<--      ndelta       -->|
+  //           |<-- len: SC_LG_NGROUP -->|
+  //        lg_base                  lg_delta
+  // rg_inner_off = ndelta - 1
+  // Why use (psz - 1)? Handle case: psz % pow(2, lg_delta) == 0.
   size_t delta_inverse_mask = ZU(-1) << lg_delta;
-  pszind_t mod = (((((psz - 1) & delta_inverse_mask) >> lg_delta)) &
+  pszind_t rg_inner_off = (((((psz - 1) & delta_inverse_mask) >> lg_delta)) &
     ((ZU(1) << SC_LG_NGROUP) - 1));
+
+  pszind_t base_ind = shift_to_first_ps_rg << SC_LG_NGROUP;
+  pszind_t ind = base_ind + rg_inner_off;
+  return ind;
 }
 ```
