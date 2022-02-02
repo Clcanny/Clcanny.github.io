@@ -129,7 +129,8 @@ JEMALLOC_ALWAYS_INLINE pszind_t(size_t psz) {
   //           |<-- len: SC_LG_NGROUP -->|
   //        lg_base                  lg_delta
   // rg_inner_off = ndelta - 1
-  // Why use (psz - 1)? Handle case: psz % pow(2, lg_delta) == 0.
+  // Why use (psz - 1)?
+  // To handle case: psz % pow(2, lg_delta) == 0.
   size_t delta_inverse_mask = ZU(-1) << lg_delta;
   pszind_t rg_inner_off = (((((psz - 1) & delta_inverse_mask) >> lg_delta)) &
     ((ZU(1) << SC_LG_NGROUP) - 1));
