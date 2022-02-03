@@ -89,29 +89,24 @@ static inline void bitmap_set(bitmap_t *bitmap,
 }
 ```
 
-`sz_psz2ind` 晦涩难懂，我们需要翻看它的历史才能理解它：
-
-+ [Implement pz2ind(), pind2sz(), and psz2u().](https://github.com/jemalloc/jemalloc/commit/226c44697)
-
-  > These compute size classes and indices similarly to `size2index()`, `index2size()` and `s2u()`, respectively, but using the subset of size classes that are multiples of the page size. Note that `pszind_t` and `szind_t` are not interchangeable.
-
-+ [Fix psz/pind edge cases.](https://github.com/jemalloc/jemalloc/commit/ea9961acd)
-
-  > Add an "over-size" extent heap in which to store extents which exceed the maximum size class (plus cache-oblivious padding, if enabled). Remove `psz2ind_clamp()` and use `psz2ind()` instead so that trying to allocate the maximum size class can in principle succeed. In practice, this allows assertions to hold so that OOM errors can be successfully generated.
+`sz_psz2ind` 比较难懂，笔者加上了一些注释：
 
 ```c
-JEMALLOC_ALWAYS_INLINE pszind_t(size_t psz) {
+JEMALLOC_ALWAYS_INLINE pszind_t
+sz_psz2ind(size_t psz) {
   if (unlikely(psz > SC_LARGE_MAXCLASS)) {
     return SC_NPSIZES;
   }
-  // pow(2, x - 1) < psz <= pow(2, x)
+  // (1 << (x - 1)) < psz <= (1 << x) if psz > 0.
   pszind_t x = lg_floor((psz << 1) - 1);
   // first_ps_rg: first page size regular group.
   // The range of first_ps_rg is (base, base * 2],
-  // and base == pow(2, LG_PAGE) * pow(2, SC_LG_NGROUP).
+  // and base == (1 << LG_PAGE) * (1 << SC_LG_NGROUP).
   // Each size class in or after first_ps_rg
-  // is an integer multiple of pow(2, LG_PAGE).
+  // is an integer multiple of (1 << LG_PAGE).
   // off_to_first_ps_rg is begin from 1, instead of 0.
+  // e.g. off_to_first_ps_rg is 1 when psz is
+  // ((1 << LG_PAGE) * (1 << SC_LG_NGROUP) + 1).
   pszind_t off_to_first_ps_rg = (x < SC_LG_NGROUP + LG_PAGE) ?
     0 : x - (SC_LG_NGROUP + LG_PAGE);
 
@@ -119,21 +114,22 @@ JEMALLOC_ALWAYS_INLINE pszind_t(size_t psz) {
   // For regular group r, lg_delta(r) - regular_group_index(r) == Constant.
   // lg_delta(r) - rg_ind(r) == lg_delta(first_ps_rg) - rg_ind(first_ps_rg)
   // lg_delta(r) = lg_delta(first_ps_rg) + (rg_ind(r) - rg_ind(first_ps_rg))
-  //             = lg_delta(first_pg_rg) + (shift_to_first_ps_rg - 1)
+  //             = lg_delta(first_pg_rg) + (off_to_first_ps_rg - 1)
   //             = LG_PAGE + ((x - (SC_LG_NGROUP + LG_PAGE)) - 1)
   //             = x - SC_LG_NGROUP - 1
   pszind_t lg_delta = (x < SC_LG_NGROUP + LG_PAGE + 1) ?
     LG_PAGE : x - SC_LG_NGROUP - 1;
+
   // |xxxxxxxxx|-------------------------|xxxxxxxxx|
   //           |<--      ndelta       -->|
   //           |<-- len: SC_LG_NGROUP -->|
-  //        lg_base                  lg_delta
+  //        lg_base                   lg_delta
   // rg_inner_off = ndelta - 1
   // Why use (psz - 1)?
-  // To handle case: psz % pow(2, lg_delta) == 0.
+  // To handle case: psz % (1 << lg_delta) == 0.
   size_t delta_inverse_mask = ZU(-1) << lg_delta;
-  pszind_t rg_inner_off = (((((psz - 1) & delta_inverse_mask) >> lg_delta)) &
-    ((ZU(1) << SC_LG_NGROUP) - 1));
+  pszind_t rg_inner_off = ((((psz - 1) & delta_inverse_mask) >> lg_delta)) &
+    ((ZU(1) << SC_LG_NGROUP) - 1);
 
   pszind_t base_ind = off_to_first_ps_rg << SC_LG_NGROUP;
   pszind_t ind = base_ind + rg_inner_off;
