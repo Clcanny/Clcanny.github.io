@@ -89,7 +89,7 @@ static inline void bitmap_set(bitmap_t *bitmap,
 }
 ```
 
-`sz_psz2ind` 比较难懂，笔者加上了一些注释：
+因为 `sz_psz2ind` 比较难懂，笔者给它加了一些注释：
 
 ```c
 JEMALLOC_ALWAYS_INLINE pszind_t
