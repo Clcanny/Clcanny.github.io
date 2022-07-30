@@ -128,3 +128,5 @@ counter(counter(std::__n4861::coroutine_handle<void>*)::counter(std::__n4861::co
 + [x86 calling conventions](https://libdl.so/articles/x86_calling_conventions.html)
 + [Stack Overflow: What are the ESP and the EBP registers?](https://stackoverflow.com/questions/21718397/what-are-the-esp-and-the-ebp-registers)
 + [Stack Overflow: Why does the stack address grow towards decreasing memory addresses?](https://stackoverflow.com/questions/4560720/why-does-the-stack-address-grow-towards-decreasing-memory-addresses)
+
++ [Mircosoft, The Old New Thing: Debugging coroutine handles: The Microsoft Visual C++ compiler, clang, and gcc](https://devblogs.microsoft.com/oldnewthing/20211007-00/?p=105777)
