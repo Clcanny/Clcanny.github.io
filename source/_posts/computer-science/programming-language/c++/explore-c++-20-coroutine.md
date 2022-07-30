@@ -135,3 +135,4 @@ counter(counter(std::__n4861::coroutine_handle<void>*)::counter(std::__n4861::co
 + [](https://github.com/gcc-mirror/gcc/blob/49789fd08378e3ff7a6efd7c4f72b72654259b89/gcc/cp/coroutines.cc#L2847)
 https://jamespascoe.github.io/accu2022/#/Title-Slide
 https://itnext.io/c-20-coroutines-complete-guide-7c3fc08db89d
+https://github.com/gcc-mirror/gcc/blob/2fa8c4a659a19ec971c80704f48f96c13aae9ac3/gcc/cp/coroutines.cc#L4336
