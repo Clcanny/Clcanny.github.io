@@ -130,3 +130,7 @@ counter(counter(std::__n4861::coroutine_handle<void>*)::counter(std::__n4861::co
 + [Stack Overflow: Why does the stack address grow towards decreasing memory addresses?](https://stackoverflow.com/questions/4560720/why-does-the-stack-address-grow-towards-decreasing-memory-addresses)
 
 + [Mircosoft, The Old New Thing: Debugging coroutine handles: The Microsoft Visual C++ compiler, clang, and gcc](https://devblogs.microsoft.com/oldnewthing/20211007-00/?p=105777)
++
++ [gcc-mirror/gcc: \[C++ coroutines\] Initial implementation.](https://github.com/gcc-mirror/gcc/commit/49789fd08378e3ff7a6efd7c4f72b72654259b89)
++ [](https://github.com/gcc-mirror/gcc/blob/49789fd08378e3ff7a6efd7c4f72b72654259b89/gcc/cp/coroutines.cc#L2847)
+https://jamespascoe.github.io/accu2022/#/Title-Slide
