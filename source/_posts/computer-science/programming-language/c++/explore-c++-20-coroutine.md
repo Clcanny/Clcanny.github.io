@@ -73,20 +73,6 @@ int main() {
   40121b:  callq  401080 <_Znwm@plt> ; operator new(unsigned long)
   401220:  mov    %rax,-0x18(%rbp)   ; RAX is the result of operator new.
   401224:  mov    -0x18(%rbp),%rax   ; Memory layout is as follow:
-; -------- 0x00
-; 0x4012a9
-; Start address of function counter(counter(std::__n4861::coroutine_handle<void>*)
-; ::counter(std::__n4861::coroutine_handle<void>*).Frame*) [clone .actor].
-counter(counter(std::__n4861::coroutine_handle<void>*)::counter(std::__n4861::coroutine_handle<void>*).Frame*) [clone .destroy]
-; https://github.com/gcc-mirror/gcc/blob/master/gcc/cp/coroutines.cc
-; https://github.com/gcc-mirror/gcc/blob/master/gcc/cp/coroutines.cc#L1449
-; -------- 0x08
-; 0x0      0x8      0x10     0x18       0x20      0x28
-; |--------|--------|--------|--------   |--------|--
-; |0x4012a9|0x401594|        |-0x28(%rbp)|        | 1
-;                   |
-;                   |
-; The first argument of ReturnObject::promise_type::get_return_object().
   401228:  movb   $0x1,0x2a(%rax)
   40122c:  mov    -0x18(%rbp),%rax
 
@@ -122,17 +108,39 @@ counter(counter(std::__n4861::coroutine_handle<void>*)::counter(std::__n4861::co
   4012a8:  retq
 ```
 
+```cpp
+// coroutine frame
+struct counter(std::__n4861::coroutine_handle<void>*).Frame {
+  void (*_Coro_resume_fn)(counter(std::__n4861::coroutine_handle<void>*).Frame *);
+  void (*_Coro_destroy_fn)(counter(std::__n4861::coroutine_handle<void>*).Frame *);
+  std::__n4861::__coroutine_traits_impl<ReturnObject, void>::promise_type _Coro_promise;
+  std::__n4861::coroutine_handle<ReturnObject::promise_type> _Coro_self_handle;
+  std::__n4861::coroutine_handle<void> *continuation_out;
+  unsigned short _Coro_resume_index;
+  bool _Coro_frame_needs_free;
+  bool _Coro_initial_await_resume_called;
+  std::__n4861::suspend_never Is_1_1;
+  Awaiter a_1_2;
+  unsigned int i_2_3;
+  std::__n4861::suspend_never Fs_1_5;
+};
+```
+
 # Reference
+
+Calling conventions:
 
 + [The 64 bit x86 C Calling Convention](https://aaronbloomfield.github.io/pdr/book/x86-64bit-ccc-chapter.pdf)
 + [x86 calling conventions](https://libdl.so/articles/x86_calling_conventions.html)
 + [Stack Overflow: What are the ESP and the EBP registers?](https://stackoverflow.com/questions/21718397/what-are-the-esp-and-the-ebp-registers)
 + [Stack Overflow: Why does the stack address grow towards decreasing memory addresses?](https://stackoverflow.com/questions/4560720/why-does-the-stack-address-grow-towards-decreasing-memory-addresses)
 
+Coroutine frame:
+
 + [Mircosoft, The Old New Thing: Debugging coroutine handles: The Microsoft Visual C++ compiler, clang, and gcc](https://devblogs.microsoft.com/oldnewthing/20211007-00/?p=105777)
-+
-+ [gcc-mirror/gcc: \[C++ coroutines\] Initial implementation.](https://github.com/gcc-mirror/gcc/commit/49789fd08378e3ff7a6efd7c4f72b72654259b89)
-+ [](https://github.com/gcc-mirror/gcc/blob/49789fd08378e3ff7a6efd7c4f72b72654259b89/gcc/cp/coroutines.cc#L2847)
++ [Clang 16.0.0: Debugging C++ Coroutines, coroutine frame](https://clang.llvm.org/docs/DebuggingCoroutines.html#coroutine-frame)
++ [gcc-mirror/gcc: C++ coroutines Initial implementation.](https://github.com/gcc-mirror/gcc/commit/49789fd08378e3ff7a6efd7c4f72b72654259b89)
++ [gcc-mirror/gcc: coroutines.cc]https://github.com/gcc-mirror/gcc/blob/2fa8c4a659a19ec971c80704f48f96c13aae9ac3/gcc/cp/coroutines.cc#L4336
+
 https://jamespascoe.github.io/accu2022/#/Title-Slide
 https://itnext.io/c-20-coroutines-complete-guide-7c3fc08db89d
-https://github.com/gcc-mirror/gcc/blob/2fa8c4a659a19ec971c80704f48f96c13aae9ac3/gcc/cp/coroutines.cc#L4336
