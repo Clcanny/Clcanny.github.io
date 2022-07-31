@@ -64,34 +64,45 @@ int main() {
   401203:  movq   $0x0,-0x18(%rbp)
   40120b:  movb   $0x0,-0x19(%rbp)
   40120f:  movb   $0x0,-0x1a(%rbp)
-                                     ; The co_await operator ensures the current state of a function
-                                     ; is bundled up somewhere on the heap and creates a callable object
-                                     ; whose invocation continues execution of the current function.
-                                     ; The callable object is of type std::coroutine_handle<>.
-  401213:  mov    $0x40,%eax         ; Allocate 64 bytes.
-  401218:  mov    %rax,%rdi          ; RDI is the first argument of operator new.
-  40121b:  callq  401080 <_Znwm@plt> ; operator new(unsigned long)
-  401220:  mov    %rax,-0x18(%rbp)   ; RAX is the result of operator new.
-  401224:  mov    -0x18(%rbp),%rax   ; Memory layout is as follow:
-  401228:  movb   $0x1,0x2a(%rax)
-  40122c:  mov    -0x18(%rbp),%rax
 
-  401230:  movq   $0x4012a9,(%rax)
-  401237:  mov    -0x18(%rbp),%rax
-  40123b:  movq   $0x401594,0x8(%rax)
-  401243:  mov    -0x28(%rbp),%rdx
-  401247:  mov    -0x18(%rbp),%rax
-  40124b:  mov    %rdx,0x20(%rax)
-  40124f:  mov    -0x18(%rbp),%rax
-  401253:  add    $0x10,%rax
-  401257:  mov    %rax,%rdi
+                                      ; The co_await operator ensures the current state of a function
+                                      ; is bundled up somewhere on the heap and creates a callable object
+                                      ; whose invocation continues execution of the current function.
+                                      ; The current state is coroutine frame.
+                                      ; The callable object is of type std::coroutine_handle<>.
+                                      ; Init coroutine frame:
+  401213:  mov    $0x40,%eax          ; Allocate 64 bytes.
+  401218:  mov    %rax,%rdi           ; RDI is the first argument of operator new.
+  40121b:  callq  401080 <_Znwm@plt>  ; operator new(unsigned long)
+  401220:  mov    %rax,-0x18(%rbp)    ; RAX is the result of operator new.
+  401224:  mov    -0x18(%rbp),%rax    ;
+  401228:  movb   $0x1,0x2a(%rax)     ; Set Frame::_Coro_frame_needs_free to true.
+  40122c:  mov    -0x18(%rbp),%rax    ;
+  401230:  movq   $0x4012a9,(%rax)    ; Set Frame::_Coro_resume_fn to actor.
+  401237:  mov    -0x18(%rbp),%rax    ;
+  40123b:  movq   $0x401594,0x8(%rax) ; Set Frame::_Coro_destroy_fn to destory.
+  401243:  mov    -0x28(%rbp),%rdx    ;
+  401247:  mov    -0x18(%rbp),%rax    ; Set Frame::continuation_out,
+  40124b:  mov    %rdx,0x20(%rax)     ; which is the first parameter of func counter.
+
+  40124f:  mov    -0x18(%rbp),%rax ;
+  401253:  add    $0x10,%rax       ;
+  401257:  mov    %rax,%rdi        ; type(Frame::_Coro_promise)
+                                   ; = std::__n4861::__coroutine_traits_impl<ReturnObject, void>::promise_type
+                                   ; = ReturnObject::promise_type
   40125a:  callq  401718 <_ZN12ReturnObject12promise_type17get_return_objectEv>
-  40125f:  mov    -0x18(%rbp),%rax
-  401263:  movw   $0x0,0x28(%rax)
-  401269:  mov    -0x18(%rbp),%rax
-  40126d:  mov    %rax,%rdi
+                                   ; Call ReturnObject::promise_type::get_return_object()
+                                   ; with this = &Frame::_Coro_promise.
+
+  40125f:  mov    -0x18(%rbp),%rax ;
+  401263:  movw   $0x0,0x28(%rax)  ; Set Frame::_Coro_resume_index to 0.
+  401269:  mov    -0x18(%rbp),%rax ;
+  40126d:  mov    %rax,%rdi        ; Call actor(frame).
   401270:  callq  4012a9 <_Z7counterPZ7counterPNSt7__n486116coroutine_handleIvEEE50_Z7counterPNSt7__n486116coroutine_handleIvEE.Frame.actor>
   401275:  jmp    4012a3 <_Z7counterPNSt7__n486116coroutine_handleIvEE+0xad>
+                                   ; After actor function returns,
+                                   ; current function returns instead of continuing execution.
+
   401277:  mov    %rax,%rdi
   40127a:  callq  401030 <__cxa_begin_catch@plt>
   40127f:  mov    -0x18(%rbp),%rax
