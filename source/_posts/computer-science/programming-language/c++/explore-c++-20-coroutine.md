@@ -161,22 +161,22 @@ struct counter(std::__n4861::coroutine_handle<void>*).Frame {
   4012c1:   test   ax,ax                   ; then jump to 0x401301.
   4012c4:   je     401301 <[clone .actor]+0x58>
 
-  4012c6:   mov    rax,QWORD PTR [rbp-0x28]     ; Else if Frame::_Coro_resume_index is an odd number.
+  4012c6:   mov    rax,QWORD PTR [rbp-0x28]      ; Else if Frame::_Coro_resume_index is an odd number.
   4012ca:   movzx  eax,WORD PTR [rax+0x28]
-  4012ce:   movzx  eax,ax                       ; switch(Frame::_Coro_resume_index) { case 1,3,5,7 }
-  4012d1:   cmp    eax,0x7
-  4012d4:   je     4014bb <[clone .actor]+0x212>
+  4012ce:   movzx  eax,ax                        ; switch(Frame::_Coro_resume_index) { case 1,3,5,7 }
+  4012d1:   cmp    eax,0x7                       ; 1. Free coroutine frame if Frame::_Coro_frame_needs_free is true.
+  4012d4:   je     4014bb                        ; 2. Return.
   4012da:   cmp    eax,0x7
-  4012dd:   jg     4012ff <[clone .actor]+0x56> ; Throw exception if Frame::_Coro_resume_index > 0x7.
-  4012df:   cmp    eax,0x5
-  4012e2:   je     401431 <[clone .actor]+0x188>
+  4012dd:   jg     4012ff <[clone .actor]+0x56>  ; Throw exception if Frame::_Coro_resume_index > 0x7.
+  4012df:   cmp    eax,0x5                       ; 1. Free coroutine frame if Frame::_Coro_frame_needs_free is true.
+  4012e2:   je     401431 <[clone .actor]+0x188> ; 2. Return.
   4012e8:   cmp    eax,0x5
-  4012eb:   jg     4012ff <[clone .actor]+0x56> ; Throw exception if Frame::_Coro_resume_index > 0x5.
-  4012ed:   cmp    eax,0x1
-  4012f0:   je     4014cf <[clone .actor]+0x226>
-  4012f6:   cmp    eax,0x3
-  4012f9:   je     4013b0 <[clone .actor]+0x107>
-  4012ff:   ud2                                 ; Raise invalid opcode exception.
+  4012eb:   jg     4012ff <[clone .actor]+0x56>  ; Throw exception if Frame::_Coro_resume_index > 0x5.
+  4012ed:   cmp    eax,0x1                       ; 1. Free coroutine frame if Frame::_Coro_frame_needs_free is true.
+  4012f0:   je     4014cf                        ; 2. Return.
+  4012f6:   cmp    eax,0x3                       ; 1. Free coroutine frame if Frame::_Coro_frame_needs_free is true.
+  4012f9:   je     4013b0 <[clone .actor]+0x107> ; 2. Return.
+  4012ff:   ud2                                  ; Raise invalid opcode exception.
 
   401301:   mov    rax,QWORD PTR [rbp-0x28]
   401305:   movzx  eax,WORD PTR [rax+0x28]
@@ -226,8 +226,8 @@ struct counter(std::__n4861::coroutine_handle<void>*).Frame {
   4013a0:   mov    rsi,rax
   4013a3:   mov    rdi,rbx
   4013a6:   call   401708 <std::__n4861::suspend_never::await_suspend(std::__n4861::coroutine_handle<void>) const>
-  4013ab:   jmp    4014f4 <counter(counter(std::__n4861::coroutine_handle<void>*)::_Z7counterPNSt7__n486116coroutine_handleIvEE.Frame*) [clone .actor]+0x24b>
-  4013b0:   jmp    4014d0 <counter(counter(std::__n4861::coroutine_handle<void>*)::_Z7counterPNSt7__n486116coroutine_handleIvEE.Frame*) [clone .actor]+0x227>
+  4013ab:   jmp    4014f4 ; Return and don't free coroutine frame.
+  4013b0:   jmp    4014d0
   4013b5:   mov    rax,QWORD PTR [rbp-0x28]
   4013b9:   mov    BYTE PTR [rax+0x2b],0x1
   4013bd:   mov    rax,QWORD PTR [rbp-0x28]
@@ -258,34 +258,25 @@ struct counter(std::__n4861::coroutine_handle<void>*).Frame {
   401421:   mov    rsi,rax
   401424:   mov    rdi,rbx
   401427:   call   401764 <Awaiter::await_suspend(std::__n4861::coroutine_handle<void>)>
-  40142c:   jmp    4014f4 <counter(counter(std::__n4861::coroutine_handle<void>*)::_Z7counterPNSt7__n486116coroutine_handleIvEE.Frame*) [clone .actor]+0x24b>
-  401431:   jmp    4014d0 <counter(counter(std::__n4861::coroutine_handle<void>*)::_Z7counterPNSt7__n486116coroutine_handleIvEE.Frame*) [clone .actor]+0x227>
+  40142c:   jmp    4014f4 ; Return and don't free coroutine frame.
+  401431:   jmp    4014d0
+
   401436:   mov    rax,QWORD PTR [rbp-0x28]
-  40143a:   add    rax,0x30
-  40143e:   mov    rdi,rax
+  40143a:   add    rax,0x30                 ; &Frame::a_1_2, whose type is Awaiter*.
+  40143e:   mov    rdi,rax                  ; Call Awaiter::await_resume() with this = &Frame::a_1_2.
   401441:   call   401782 <Awaiter::await_resume() const>
-  401446:   mov    esi,0x402004
-  40144b:   mov    edi,0x4040c0
-  401450:   call   401070 <std::basic_ostream<char, std::char_traits<char> >& std::operator<< <std::char_traits<char> >(std::basic_ostream<char, std::char_traits<char> >&, char const*)@plt>
-  401455:   mov    rdx,rax
-  401458:   mov    rax,QWORD PTR [rbp-0x28]
-  40145c:   mov    eax,DWORD PTR [rax+0x38]
-  40145f:   mov    esi,eax
-  401461:   mov    rdi,rdx
-  401464:   call   4010a0 <std::ostream::operator<<(unsigned int)@plt>
-  401469:   mov    esi,0x401040
-  40146e:   mov    rdi,rax
-  401471:   call   401090 <std::ostream::operator<<(std::ostream& (*)(std::ostream&))@plt>
-  401476:   mov    rax,QWORD PTR [rbp-0x28]
-  40147a:   mov    eax,DWORD PTR [rax+0x38]
+                                            ; The code equivalent to the following code has been omitted:
+                                            ; std::cout << "counter: " << i << std::endl.
+  40147a:   mov    eax,DWORD PTR [rax+0x38] ; Frame::i_2_3, whose type is unsigned int.
   40147d:   lea    edx,[rax+0x1]
   401480:   mov    rax,QWORD PTR [rbp-0x28]
-  401484:   mov    DWORD PTR [rax+0x38],edx
-  401487:   jmp    4013e8 <counter(counter(std::__n4861::coroutine_handle<void>*)::_Z7counterPNSt7__n486116coroutine_handleIvEE.Frame*) [clone .actor]+0x13f>
+  401484:   mov    DWORD PTR [rax+0x38],edx ; Frame:i_2_3 += 1
+  401487:   jmp    4013e8                   ; Skip to the beginning of the for loop?
+
   40148c:   mov    rax,QWORD PTR [rbp-0x28]
-  401490:   mov    WORD PTR [rax+0x28],0x6
+  401490:   mov    WORD PTR [rax+0x28],0x6 ; Frame::_Coro_resume_index = 0x6.
   401496:   mov    rax,QWORD PTR [rbp-0x28]
-  40149a:   lea    rbx,[rax+0x3c]
+  40149a:   lea    rbx,[rax+0x3c]          ; &Frame::Fs_1_5, whose type is std::__n4861::suspend_never*.
   40149e:   mov    rax,QWORD PTR [rbp-0x28]
   4014a2:   add    rax,0x18
   4014a6:   mov    rdi,rax
@@ -293,28 +284,29 @@ struct counter(std::__n4861::coroutine_handle<void>*).Frame {
   4014ae:   mov    rsi,rax
   4014b1:   mov    rdi,rbx
   4014b4:   call   401708 <std::__n4861::suspend_never::await_suspend(std::__n4861::coroutine_handle<void>) const>
-  4014b9:   jmp    4014f4 <counter(counter(std::__n4861::coroutine_handle<void>*)::_Z7counterPNSt7__n486116coroutine_handleIvEE.Frame*) [clone .actor]+0x24b>
-  4014bb:   jmp    4014d0 <counter(counter(std::__n4861::coroutine_handle<void>*)::_Z7counterPNSt7__n486116coroutine_handleIvEE.Frame*) [clone .actor]+0x227>
+  4014b9:   jmp    4014f4                  ; Return and don't free coroutine frame.
+
+  4014bb:   jmp    4014d0
 
   4014bd:   mov    rax,QWORD PTR [rbp-0x28]
-  4014c1:   add    rax,0x3c ; &Frame::Fs_1_5, whose type is std::__n4861::suspend_never.
+  4014c1:   add    rax,0x3c ; &Frame::Fs_1_5, whose type is std::__n4861::suspend_never*.
   4014c5:   mov    rdi,rax  ; Call suspend_never::await_resume with this = &Frame::Fs_1_5.
   4014c8:   call   401718 <std::__n4861::suspend_never::await_resume() const>
   4014cd:   jmp    4014d0   ; 1. Free coroutine frame if Frame::_Coro_frame_needs_free is true.
                             ; 2. Return.
-  4014cf:   nop
 
+  4014cf:   nop
   4014d0:   mov    rax,QWORD PTR [rbp-0x28]
   4014d4:   movzx  eax,BYTE PTR [rax+0x2a]  ; Frame::_Coro_frame_needs_free
   4014d8:   movzx  eax,al                   ; AL is a part of AX.
   4014db:   test   eax,eax                  ; If Frame::_Coro_frame_needs_free is false,
   4014dd:   je     40158d                   ; then just return and do nothing.
   4014e3:   mov    rax,QWORD PTR [rbp-0x28] ; Else if Frame::_Coro_frame_needs_free is true,
-  4014e7:   mov    rdi,rax                  ; then free coroutine frame.
+  4014e7:   mov    rdi,rax                  ; then free coroutine frame,
   4014ea:   call   401060 <operator delete(void*)@plt>
-  4014ef:   jmp    40158d                   ; And return.
-
+  4014ef:   jmp    40158d                   ; and return.
   4014f4:   jmp    40158d
+
   4014f9:   mov    rdi,rax
   4014fc:   call   401030 <__cxa_begin_catch@plt>
   401501:   mov    rax,QWORD PTR [rbp-0x28]
