@@ -49,6 +49,10 @@ int main() {
 }
 ```
 
+```bash
+objdump -M intel,intel-mnemonic --demangle=auto --no-recurse-limit --no-show-raw-insn -d main.o
+```
+
 ```assembly
 00000000004011f6 <_Z7counterPNSt7__n486116coroutine_handleIvEE>:
 ; counter(std::__n4861::coroutine_handle<void>*)
@@ -137,14 +141,233 @@ struct counter(std::__n4861::coroutine_handle<void>*).Frame {
 };
 ```
 
+```assembly
+00000000004012a9 <counter(counter(std::__n4861::coroutine_handle<void>*)::_Z7counterPNSt7__n486116coroutine_handleIvEE.Frame*) [clone .actor]>:
+  4012a9:   push   rbp      ; Save address of previous stack frame.
+  4012aa:   mov    rbp,rsp  ; RBP/EBP is extended base pointer,
+                            ; it points to the bottom of current stack frame.
+  4012ad:   push   rbx      ; RBX is a callee-saved register.
+  4012ae:   sub    rsp,0x28 ; RSP/ESP is extended stack pointer,
+                            ; it points to the top of current stack frame.
+                            ; Notice stack frame grows from higher address to lower address.
+                            ; Reserve 40 bytes for local variables.
+
+  4012b2:   mov    QWORD PTR [rbp-0x28],rdi ; RDI is the first argument of function actor,
+                                            ; which is coroutine frame.
+
+  4012b6:   mov    rax,QWORD PTR [rbp-0x28]
+  4012ba:   movzx  eax,WORD PTR [rax+0x28] ; Test if Frame::_Coro_resume_index is an even number.
+  4012be:   and    eax,0x1                 ; If Frame::_Coro_resume_index is an even number,
+  4012c1:   test   ax,ax                   ; then jump to 0x401301.
+  4012c4:   je     401301 <[clone .actor]+0x58>
+
+  4012c6:   mov    rax,QWORD PTR [rbp-0x28]     ; Else if Frame::_Coro_resume_index is an odd number.
+  4012ca:   movzx  eax,WORD PTR [rax+0x28]
+  4012ce:   movzx  eax,ax                       ; switch(Frame::_Coro_resume_index) { case 1,3,5,7 }
+  4012d1:   cmp    eax,0x7
+  4012d4:   je     4014bb <[clone .actor]+0x212>
+  4012da:   cmp    eax,0x7
+  4012dd:   jg     4012ff <[clone .actor]+0x56> ; Throw exception if Frame::_Coro_resume_index > 0x7.
+  4012df:   cmp    eax,0x5
+  4012e2:   je     401431 <[clone .actor]+0x188>
+  4012e8:   cmp    eax,0x5
+  4012eb:   jg     4012ff <[clone .actor]+0x56> ; Throw exception if Frame::_Coro_resume_index > 0x5.
+  4012ed:   cmp    eax,0x1
+  4012f0:   je     4014cf <[clone .actor]+0x226>
+  4012f6:   cmp    eax,0x3
+  4012f9:   je     4013b0 <[clone .actor]+0x107>
+  4012ff:   ud2                                 ; Raise invalid opcode exception.
+
+  401301:   mov    rax,QWORD PTR [rbp-0x28]
+  401305:   movzx  eax,WORD PTR [rax+0x28]
+  401309:   movzx  eax,ax ; switch(Frame::_Coro_resume_index) { case 2,4,6,8 }
+  40130c:   cmp    eax,0x6
+  40130f:   je     4014bd
+  401315:   cmp    eax,0x6
+  401318:   jg     40137c ; Throw exceptin if Frame::_Coro_resume_index > 0x6.
+  40131a:   cmp    eax,0x4
+  40131d:   je     401436
+  401323:   cmp    eax,0x4
+  401326:   jg     40137c ; Throw exception if Frame::_Coro_resume_index > 0x4.
+  401328:   test   eax,eax
+  40132a:   je     401337
+  40132c:   cmp    eax,0x2
+  40132f:   je     4013b5
+  401335:   jmp    40137c
+  401337:   mov    rbx,QWORD PTR [rbp-0x28]
+  40133b:   mov    rax,QWORD PTR [rbp-0x28]
+  40133f:   mov    rdi,rax
+  401342:   call   4017b0 <std::__n4861::coroutine_handle<ReturnObject::promise_type>::from_address(void*)>
+  401347:   mov    QWORD PTR [rbx+0x18],rax
+  40134b:   mov    rax,QWORD PTR [rbp-0x28]
+  40134f:   mov    BYTE PTR [rax+0x2b],0x0
+  401353:   mov    rax,QWORD PTR [rbp-0x28]
+  401357:   add    rax,0x10
+  40135b:   mov    rdi,rax
+  40135e:   call   401730 <ReturnObject::promise_type::initial_suspend()>
+  401363:   mov    rax,QWORD PTR [rbp-0x28]
+  401367:   add    rax,0x2c
+  40136b:   mov    rdi,rax
+  40136e:   call   4016f8 <std::__n4861::suspend_never::await_ready() const>
+  401373:   xor    eax,0x1
+  401376:   test   al,al
+  401378:   jne    40137e
+  40137a:   jmp    4013b5
+  40137c:   ud2           ; Raise invalid opcode exception.
+
+  40137e:   mov    rax,QWORD PTR [rbp-0x28]
+  401382:   mov    WORD PTR [rax+0x28],0x2
+  401388:   mov    rax,QWORD PTR [rbp-0x28]
+  40138c:   lea    rbx,[rax+0x2c]
+  401390:   mov    rax,QWORD PTR [rbp-0x28]
+  401394:   add    rax,0x18
+  401398:   mov    rdi,rax
+  40139b:   call   40178e <std::__n4861::coroutine_handle<ReturnObject::promise_type>::operator std::__n4861::coroutine_handle<void>() const>
+  4013a0:   mov    rsi,rax
+  4013a3:   mov    rdi,rbx
+  4013a6:   call   401708 <std::__n4861::suspend_never::await_suspend(std::__n4861::coroutine_handle<void>) const>
+  4013ab:   jmp    4014f4 <counter(counter(std::__n4861::coroutine_handle<void>*)::_Z7counterPNSt7__n486116coroutine_handleIvEE.Frame*) [clone .actor]+0x24b>
+  4013b0:   jmp    4014d0 <counter(counter(std::__n4861::coroutine_handle<void>*)::_Z7counterPNSt7__n486116coroutine_handleIvEE.Frame*) [clone .actor]+0x227>
+  4013b5:   mov    rax,QWORD PTR [rbp-0x28]
+  4013b9:   mov    BYTE PTR [rax+0x2b],0x1
+  4013bd:   mov    rax,QWORD PTR [rbp-0x28]
+  4013c1:   add    rax,0x2c
+  4013c5:   mov    rdi,rax
+  4013c8:   call   401718 <std::__n4861::suspend_never::await_resume() const>
+  4013cd:   mov    rax,QWORD PTR [rbp-0x28]
+  4013d1:   mov    rdx,QWORD PTR [rax+0x20]
+  4013d5:   mov    rax,QWORD PTR [rbp-0x28]
+  4013d9:   mov    QWORD PTR [rax+0x30],rdx
+  4013dd:   mov    rax,QWORD PTR [rbp-0x28]
+  4013e1:   mov    DWORD PTR [rax+0x38],0x0
+  4013e8:   mov    rax,QWORD PTR [rbp-0x28]
+  4013ec:   add    rax,0x30
+  4013f0:   mov    rdi,rax
+  4013f3:   call   401754 <Awaiter::await_ready() const>
+  4013f8:   xor    eax,0x1
+  4013fb:   test   al,al
+  4013fd:   je     401436 <counter(counter(std::__n4861::coroutine_handle<void>*)::_Z7counterPNSt7__n486116coroutine_handleIvEE.Frame*) [clone .actor]+0x18d>
+  4013ff:   mov    rax,QWORD PTR [rbp-0x28]
+  401403:   mov    WORD PTR [rax+0x28],0x4
+  401409:   mov    rax,QWORD PTR [rbp-0x28]
+  40140d:   lea    rbx,[rax+0x30]
+  401411:   mov    rax,QWORD PTR [rbp-0x28]
+  401415:   add    rax,0x18
+  401419:   mov    rdi,rax
+  40141c:   call   40178e <std::__n4861::coroutine_handle<ReturnObject::promise_type>::operator std::__n4861::coroutine_handle<void>() const>
+  401421:   mov    rsi,rax
+  401424:   mov    rdi,rbx
+  401427:   call   401764 <Awaiter::await_suspend(std::__n4861::coroutine_handle<void>)>
+  40142c:   jmp    4014f4 <counter(counter(std::__n4861::coroutine_handle<void>*)::_Z7counterPNSt7__n486116coroutine_handleIvEE.Frame*) [clone .actor]+0x24b>
+  401431:   jmp    4014d0 <counter(counter(std::__n4861::coroutine_handle<void>*)::_Z7counterPNSt7__n486116coroutine_handleIvEE.Frame*) [clone .actor]+0x227>
+  401436:   mov    rax,QWORD PTR [rbp-0x28]
+  40143a:   add    rax,0x30
+  40143e:   mov    rdi,rax
+  401441:   call   401782 <Awaiter::await_resume() const>
+  401446:   mov    esi,0x402004
+  40144b:   mov    edi,0x4040c0
+  401450:   call   401070 <std::basic_ostream<char, std::char_traits<char> >& std::operator<< <std::char_traits<char> >(std::basic_ostream<char, std::char_traits<char> >&, char const*)@plt>
+  401455:   mov    rdx,rax
+  401458:   mov    rax,QWORD PTR [rbp-0x28]
+  40145c:   mov    eax,DWORD PTR [rax+0x38]
+  40145f:   mov    esi,eax
+  401461:   mov    rdi,rdx
+  401464:   call   4010a0 <std::ostream::operator<<(unsigned int)@plt>
+  401469:   mov    esi,0x401040
+  40146e:   mov    rdi,rax
+  401471:   call   401090 <std::ostream::operator<<(std::ostream& (*)(std::ostream&))@plt>
+  401476:   mov    rax,QWORD PTR [rbp-0x28]
+  40147a:   mov    eax,DWORD PTR [rax+0x38]
+  40147d:   lea    edx,[rax+0x1]
+  401480:   mov    rax,QWORD PTR [rbp-0x28]
+  401484:   mov    DWORD PTR [rax+0x38],edx
+  401487:   jmp    4013e8 <counter(counter(std::__n4861::coroutine_handle<void>*)::_Z7counterPNSt7__n486116coroutine_handleIvEE.Frame*) [clone .actor]+0x13f>
+  40148c:   mov    rax,QWORD PTR [rbp-0x28]
+  401490:   mov    WORD PTR [rax+0x28],0x6
+  401496:   mov    rax,QWORD PTR [rbp-0x28]
+  40149a:   lea    rbx,[rax+0x3c]
+  40149e:   mov    rax,QWORD PTR [rbp-0x28]
+  4014a2:   add    rax,0x18
+  4014a6:   mov    rdi,rax
+  4014a9:   call   40178e <std::__n4861::coroutine_handle<ReturnObject::promise_type>::operator std::__n4861::coroutine_handle<void>() const>
+  4014ae:   mov    rsi,rax
+  4014b1:   mov    rdi,rbx
+  4014b4:   call   401708 <std::__n4861::suspend_never::await_suspend(std::__n4861::coroutine_handle<void>) const>
+  4014b9:   jmp    4014f4 <counter(counter(std::__n4861::coroutine_handle<void>*)::_Z7counterPNSt7__n486116coroutine_handleIvEE.Frame*) [clone .actor]+0x24b>
+  4014bb:   jmp    4014d0 <counter(counter(std::__n4861::coroutine_handle<void>*)::_Z7counterPNSt7__n486116coroutine_handleIvEE.Frame*) [clone .actor]+0x227>
+
+  4014bd:   mov    rax,QWORD PTR [rbp-0x28]
+  4014c1:   add    rax,0x3c ; &Frame::Fs_1_5, whose type is std::__n4861::suspend_never.
+  4014c5:   mov    rdi,rax  ; Call suspend_never::await_resume with this = &Frame::Fs_1_5.
+  4014c8:   call   401718 <std::__n4861::suspend_never::await_resume() const>
+  4014cd:   jmp    4014d0   ; 1. Free coroutine frame if Frame::_Coro_frame_needs_free is true.
+                            ; 2. Return.
+  4014cf:   nop
+
+  4014d0:   mov    rax,QWORD PTR [rbp-0x28]
+  4014d4:   movzx  eax,BYTE PTR [rax+0x2a]  ; Frame::_Coro_frame_needs_free
+  4014d8:   movzx  eax,al                   ; AL is a part of AX.
+  4014db:   test   eax,eax                  ; If Frame::_Coro_frame_needs_free is false,
+  4014dd:   je     40158d                   ; then just return and do nothing.
+  4014e3:   mov    rax,QWORD PTR [rbp-0x28] ; Else if Frame::_Coro_frame_needs_free is true,
+  4014e7:   mov    rdi,rax                  ; then free coroutine frame.
+  4014ea:   call   401060 <operator delete(void*)@plt>
+  4014ef:   jmp    40158d                   ; And return.
+
+  4014f4:   jmp    40158d
+  4014f9:   mov    rdi,rax
+  4014fc:   call   401030 <__cxa_begin_catch@plt>
+  401501:   mov    rax,QWORD PTR [rbp-0x28]
+  401505:   movzx  eax,BYTE PTR [rax+0x2b]
+  401509:   xor    eax,0x1
+  40150c:   test   al,al
+  40150e:   je     401515 <counter(counter(std::__n4861::coroutine_handle<void>*)::_Z7counterPNSt7__n486116coroutine_handleIvEE.Frame*) [clone .actor]+0x26c>
+  401510:   call   4010b0 <__cxa_rethrow@plt>
+  401515:   mov    rax,QWORD PTR [rbp-0x28]
+  401519:   mov    QWORD PTR [rax],0x0
+  401520:   mov    rax,QWORD PTR [rbp-0x28]
+  401524:   mov    WORD PTR [rax+0x28],0x0
+  40152a:   mov    rax,QWORD PTR [rbp-0x28]
+  40152e:   add    rax,0x10
+  401532:   mov    rdi,rax
+  401535:   call   401748 <ReturnObject::promise_type::unhandled_exception()>
+  40153a:   call   4010d0 <__cxa_end_catch@plt>
+  40153f:   mov    rax,QWORD PTR [rbp-0x28]
+  401543:   mov    QWORD PTR [rax],0x0
+  40154a:   mov    rax,QWORD PTR [rbp-0x28]
+  40154e:   add    rax,0x10
+  401552:   mov    rdi,rax
+  401555:   call   40173c <ReturnObject::promise_type::final_suspend()>
+  40155a:   mov    rax,QWORD PTR [rbp-0x28]
+  40155e:   add    rax,0x3c
+  401562:   mov    rdi,rax
+  401565:   call   4016f8 <std::__n4861::suspend_never::await_ready() const>
+  40156a:   xor    eax,0x1
+  40156d:   test   al,al
+  40156f:   jne    40148c <counter(counter(std::__n4861::coroutine_handle<void>*)::_Z7counterPNSt7__n486116coroutine_handleIvEE.Frame*) [clone .actor]+0x1e3>
+  401575:   jmp    4014bd <counter(counter(std::__n4861::coroutine_handle<void>*)::_Z7counterPNSt7__n486116coroutine_handleIvEE.Frame*) [clone .actor]+0x214>
+  40157a:   mov    rbx,rax
+  40157d:   call   4010d0 <__cxa_end_catch@plt>
+  401582:   mov    rax,rbx
+  401585:   mov    rdi,rax
+  401588:   call   4010f0 <_Unwind_Resume@plt>
+  40158d:   nop
+  40158e:   mov    rbx,QWORD PTR [rbp-0x8]
+  401592:   leave
+  401593:   ret
+```
+
 # Reference
 
-Calling conventions:
+Assembly language:
 
 + [The 64 bit x86 C Calling Convention](https://aaronbloomfield.github.io/pdr/book/x86-64bit-ccc-chapter.pdf)
 + [x86 calling conventions](https://libdl.so/articles/x86_calling_conventions.html)
 + [Stack Overflow: What are the ESP and the EBP registers?](https://stackoverflow.com/questions/21718397/what-are-the-esp-and-the-ebp-registers)
 + [Stack Overflow: Why does the stack address grow towards decreasing memory addresses?](https://stackoverflow.com/questions/4560720/why-does-the-stack-address-grow-towards-decreasing-memory-addresses)
++ [Intel 64 and IA-32 Architectures Software Developer's Manual: Volume 2](https://www.intel.com/content/www/us/en/architecture-and-technology/64-ia-32-architectures-software-developer-instruction-set-reference-manual-325383.html)
++ [OSDev.org: CPU Registers x86](https://wiki.osdev.org/CPU_Registers_x86)
++ [Stack Overflow: Assembly language je jump function](https://stackoverflow.com/questions/1582960/assembly-language-je-jump-function)
 
 Coroutine frame:
 
