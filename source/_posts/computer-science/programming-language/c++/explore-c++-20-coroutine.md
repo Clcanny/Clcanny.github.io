@@ -180,11 +180,11 @@ struct counter(std::__n4861::coroutine_handle<void>*).Frame {
 
   401301:   mov    rax,QWORD PTR [rbp-0x28]
   401305:   movzx  eax,WORD PTR [rax+0x28]
-  401309:   movzx  eax,ax ; switch(Frame::_Coro_resume_index) { case 2,4,6,8 }
+  401309:   movzx  eax,ax ; switch(Frame::_Coro_resume_index) { case 2,4,6 }
   40130c:   cmp    eax,0x6
   40130f:   je     4014bd
   401315:   cmp    eax,0x6
-  401318:   jg     40137c ; Throw exceptin if Frame::_Coro_resume_index > 0x6.
+  401318:   jg     40137c ; Throw exception if Frame::_Coro_resume_index > 0x6.
   40131a:   cmp    eax,0x4
   40131d:   je     401436
   401323:   cmp    eax,0x4
@@ -193,7 +193,7 @@ struct counter(std::__n4861::coroutine_handle<void>*).Frame {
   40132a:   je     401337
   40132c:   cmp    eax,0x2
   40132f:   je     4013b5
-  401335:   jmp    40137c
+  401335:   jmp    40137c ; Throw exception if Frame::_Coro_resume_index == 0x0.
   401337:   mov    rbx,QWORD PTR [rbp-0x28]
   40133b:   mov    rax,QWORD PTR [rbp-0x28]
   40133f:   mov    rdi,rax
@@ -228,37 +228,51 @@ struct counter(std::__n4861::coroutine_handle<void>*).Frame {
   4013a6:   call   401708 <std::__n4861::suspend_never::await_suspend(std::__n4861::coroutine_handle<void>) const>
   4013ab:   jmp    4014f4 ; Return and don't free coroutine frame.
   4013b0:   jmp    4014d0
-  4013b5:   mov    rax,QWORD PTR [rbp-0x28]
-  4013b9:   mov    BYTE PTR [rax+0x2b],0x1
+
+  4013b5:   mov    rax,QWORD PTR [rbp-0x28] ; When Frame::_Coro_resume_index == 2.
+  4013b9:   mov    BYTE PTR [rax+0x2b],0x1  ; Set Frame::_Coro_initial_await_resume_called to 1.
   4013bd:   mov    rax,QWORD PTR [rbp-0x28]
-  4013c1:   add    rax,0x2c
-  4013c5:   mov    rdi,rax
+  4013c1:   add    rax,0x2c                 ; &Frame::Is_1_1, whose type is std::__n4861::suspend_never*.
+  4013c5:   mov    rdi,rax                  ; Call suspend_never::await_resume() with this = &Frame::Is_1_1.
   4013c8:   call   401718 <std::__n4861::suspend_never::await_resume() const>
+                                            ; suspend_never::await_resume does nothing.
   4013cd:   mov    rax,QWORD PTR [rbp-0x28]
-  4013d1:   mov    rdx,QWORD PTR [rax+0x20]
+  4013d1:   mov    rdx,QWORD PTR [rax+0x20] ; &Frame::continuation_out, whose type is std::__n4861::coroutine_handle<void>*.
   4013d5:   mov    rax,QWORD PTR [rbp-0x28]
-  4013d9:   mov    QWORD PTR [rax+0x30],rdx
+  4013d9:   mov    QWORD PTR [rax+0x30],rdx ; Set Frame::a_1_2::hp_ to &Frame::continuation_out.
   4013dd:   mov    rax,QWORD PTR [rbp-0x28]
-  4013e1:   mov    DWORD PTR [rax+0x38],0x0
+  4013e1:   mov    DWORD PTR [rax+0x38],0x0 ; Set Frame::i_2_3 to 0x0.
   4013e8:   mov    rax,QWORD PTR [rbp-0x28]
-  4013ec:   add    rax,0x30
+  4013ec:   add    rax,0x30                 ; &Frame::a_1_2, whose type is Awaiter.
   4013f0:   mov    rdi,rax
+  ; Call Awaiter::await_ready() with this = &Frame::a_1_2.
   4013f3:   call   401754 <Awaiter::await_ready() const>
+  ; Test if return value is true.
+  ; await_ready is an optimization.
+  ; If it returns true, then co_await does not suspend the function.
+  ; In this example, Awaiter::await_ready() will always return false.
   4013f8:   xor    eax,0x1
   4013fb:   test   al,al
-  4013fd:   je     401436 <counter(counter(std::__n4861::coroutine_handle<void>*)::_Z7counterPNSt7__n486116coroutine_handleIvEE.Frame*) [clone .actor]+0x18d>
+  4013fd:   je     401436
   4013ff:   mov    rax,QWORD PTR [rbp-0x28]
+  ; Set Frame::_Coro_resume_index to 0x4.
   401403:   mov    WORD PTR [rax+0x28],0x4
   401409:   mov    rax,QWORD PTR [rbp-0x28]
+  ; &Frame::a_1_2, whose type is Awaiter.
   40140d:   lea    rbx,[rax+0x30]
   401411:   mov    rax,QWORD PTR [rbp-0x28]
+  ; &Frame::_Coro_self_handle, whose type if coroutine_handle<ReturnObject::promise_type>.
   401415:   add    rax,0x18
+  ; Call coroutine_handle::operator() with this = &Frame::_Coro_self_handle.
   401419:   mov    rdi,rax
   40141c:   call   40178e <std::__n4861::coroutine_handle<ReturnObject::promise_type>::operator std::__n4861::coroutine_handle<void>() const>
+  ; Call Awaiter::await_suspend(coroutine_handle<void>) with this = &Frame::a_1_2, h = rax
   401421:   mov    rsi,rax
   401424:   mov    rdi,rbx
   401427:   call   401764 <Awaiter::await_suspend(std::__n4861::coroutine_handle<void>)>
-  40142c:   jmp    4014f4 ; Return and don't free coroutine frame.
+  ; Return and don't free coroutine frame.
+  40142c:   jmp    4014f4
+
   401431:   jmp    4014d0
 
   401436:   mov    rax,QWORD PTR [rbp-0x28]
