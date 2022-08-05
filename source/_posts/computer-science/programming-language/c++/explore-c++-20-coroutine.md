@@ -229,21 +229,29 @@ struct counter(std::__n4861::coroutine_handle<void>*).Frame {
   4013ab:   jmp    4014f4 ; Return and don't free coroutine frame.
   4013b0:   jmp    4014d0
 
-  4013b5:   mov    rax,QWORD PTR [rbp-0x28] ; When Frame::_Coro_resume_index == 2.
-  4013b9:   mov    BYTE PTR [rax+0x2b],0x1  ; Set Frame::_Coro_initial_await_resume_called to 1.
+  ; Execute following code when Frame::_Coro_resume_index == 0x2.
+  4013b5:   mov    rax,QWORD PTR [rbp-0x28]
+  ; Set Frame::_Coro_initial_await_resume_called to 1.
+  4013b9:   mov    BYTE PTR [rax+0x2b],0x1
   4013bd:   mov    rax,QWORD PTR [rbp-0x28]
-  4013c1:   add    rax,0x2c                 ; &Frame::Is_1_1, whose type is std::__n4861::suspend_never*.
-  4013c5:   mov    rdi,rax                  ; Call suspend_never::await_resume() with this = &Frame::Is_1_1.
+  ; &Frame::Is_1_1, whose type is std::__n4861::suspend_never*.
+  4013c1:   add    rax,0x2c
+  ; Call suspend_never::await_resume() with this = &Frame::Is_1_1.
+  4013c5:   mov    rdi,rax
+  ; suspend_never::await_resume does nothing.
   4013c8:   call   401718 <std::__n4861::suspend_never::await_resume() const>
-                                            ; suspend_never::await_resume does nothing.
   4013cd:   mov    rax,QWORD PTR [rbp-0x28]
-  4013d1:   mov    rdx,QWORD PTR [rax+0x20] ; &Frame::continuation_out, whose type is std::__n4861::coroutine_handle<void>*.
+  ; &Frame::continuation_out, whose type is std::__n4861::coroutine_handle<void>*.
+  4013d1:   mov    rdx,QWORD PTR [rax+0x20]
   4013d5:   mov    rax,QWORD PTR [rbp-0x28]
-  4013d9:   mov    QWORD PTR [rax+0x30],rdx ; Set Frame::a_1_2::hp_ to &Frame::continuation_out.
+  ; Set Frame::a_1_2::hp_ to &Frame::continuation_out.
+  4013d9:   mov    QWORD PTR [rax+0x30],rdx
   4013dd:   mov    rax,QWORD PTR [rbp-0x28]
-  4013e1:   mov    DWORD PTR [rax+0x38],0x0 ; Set Frame::i_2_3 to 0x0.
+  ; Set Frame::i_2_3 to 0x0.
+  4013e1:   mov    DWORD PTR [rax+0x38],0x0
   4013e8:   mov    rax,QWORD PTR [rbp-0x28]
-  4013ec:   add    rax,0x30                 ; &Frame::a_1_2, whose type is Awaiter.
+  ; &Frame::a_1_2, whose type is Awaiter.
+  4013ec:   add    rax,0x30
   4013f0:   mov    rdi,rax
   ; Call Awaiter::await_ready() with this = &Frame::a_1_2.
   4013f3:   call   401754 <Awaiter::await_ready() const>
@@ -263,10 +271,11 @@ struct counter(std::__n4861::coroutine_handle<void>*).Frame {
   401411:   mov    rax,QWORD PTR [rbp-0x28]
   ; &Frame::_Coro_self_handle, whose type if coroutine_handle<ReturnObject::promise_type>.
   401415:   add    rax,0x18
-  ; Call coroutine_handle::operator() with this = &Frame::_Coro_self_handle.
+  ; Call std::__n4861::coroutine_handle::operator() with this = &Frame::_Coro_self_handle.
   401419:   mov    rdi,rax
   40141c:   call   40178e <std::__n4861::coroutine_handle<ReturnObject::promise_type>::operator std::__n4861::coroutine_handle<void>() const>
-  ; Call Awaiter::await_suspend(coroutine_handle<void>) with this = &Frame::a_1_2, h = rax
+  ; Call Awaiter::await_suspend(coroutine_handle<void>) with this = &Frame::a_1_2,
+  ; h = return value of std::__n4861::coroutine_handle::operator().
   401421:   mov    rsi,rax
   401424:   mov    rdi,rbx
   401427:   call   401764 <Awaiter::await_suspend(std::__n4861::coroutine_handle<void>)>
@@ -275,17 +284,23 @@ struct counter(std::__n4861::coroutine_handle<void>*).Frame {
 
   401431:   jmp    4014d0
 
+  ; Execute following code when Frame::_Coro_resume_index == 0x4.
   401436:   mov    rax,QWORD PTR [rbp-0x28]
-  40143a:   add    rax,0x30                 ; &Frame::a_1_2, whose type is Awaiter*.
-  40143e:   mov    rdi,rax                  ; Call Awaiter::await_resume() with this = &Frame::a_1_2.
+  ; &Frame::a_1_2, whose type is Awaiter*.
+  40143a:   add    rax,0x30
+  ; Call Awaiter::await_resume() with this = &Frame::a_1_2.
+  40143e:   mov    rdi,rax
   401441:   call   401782 <Awaiter::await_resume() const>
-                                            ; The code equivalent to the following code has been omitted:
-                                            ; std::cout << "counter: " << i << std::endl.
-  40147a:   mov    eax,DWORD PTR [rax+0x38] ; Frame::i_2_3, whose type is unsigned int.
+  ; The code equivalent to the following code has been omitted:
+  ; std::cout << "counter: " << i << std::endl.
+  ; Frame::i_2_3, whose type is unsigned int.
+  40147a:   mov    eax,DWORD PTR [rax+0x38]
+  ; Frame:i_2_3 += 1
   40147d:   lea    edx,[rax+0x1]
   401480:   mov    rax,QWORD PTR [rbp-0x28]
-  401484:   mov    DWORD PTR [rax+0x38],edx ; Frame:i_2_3 += 1
-  401487:   jmp    4013e8                   ; Skip to the beginning of the for loop?
+  401484:   mov    DWORD PTR [rax+0x38],edx
+  ; Skip to the beginning of the for loop?
+  401487:   jmp    4013e8
 
   40148c:   mov    rax,QWORD PTR [rbp-0x28]
   401490:   mov    WORD PTR [rax+0x28],0x6 ; Frame::_Coro_resume_index = 0x6.
