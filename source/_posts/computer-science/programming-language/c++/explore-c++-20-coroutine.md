@@ -303,17 +303,25 @@ struct counter(std::__n4861::coroutine_handle<void>*).Frame {
   401487:   jmp    4013e8
 
   40148c:   mov    rax,QWORD PTR [rbp-0x28]
-  401490:   mov    WORD PTR [rax+0x28],0x6 ; Frame::_Coro_resume_index = 0x6.
+  ; Set Frame::_Coro_resume_index to 0x6.
+  401490:   mov    WORD PTR [rax+0x28],0x6
   401496:   mov    rax,QWORD PTR [rbp-0x28]
-  40149a:   lea    rbx,[rax+0x3c]          ; &Frame::Fs_1_5, whose type is std::__n4861::suspend_never*.
+  ; &Frame::Fs_1_5, whose type is std::__n4861::suspend_never*.
+  40149a:   lea    rbx,[rax+0x3c]
   40149e:   mov    rax,QWORD PTR [rbp-0x28]
+  ; &Frame::_Coro_self_handle, whose type is std::__n4861::coroutine_handle<ReturnObject::promise_type>.
   4014a2:   add    rax,0x18
   4014a6:   mov    rdi,rax
+  ; Call std::__n4861::coroutine_handle<ReturnObject::promise_type>::operator() with this = &Frame::_Coro_self_handle.
   4014a9:   call   40178e <std::__n4861::coroutine_handle<ReturnObject::promise_type>::operator std::__n4861::coroutine_handle<void>() const>
+  ; Call std::__n4861::suspend_never::await_suspend(std::__n4861::coroutine_handle<void>)
+  ; with this = &Frame::Fs_1_5 and
+  ; h = return value of std::__n4861::coroutine_handle<ReturnObject::promise_type>::operator().
   4014ae:   mov    rsi,rax
   4014b1:   mov    rdi,rbx
   4014b4:   call   401708 <std::__n4861::suspend_never::await_suspend(std::__n4861::coroutine_handle<void>) const>
-  4014b9:   jmp    4014f4                  ; Return and don't free coroutine frame.
+  ; Return and don't free coroutine frame.
+  4014b9:   jmp    4014f4
 
   4014bb:   jmp    4014d0
 
