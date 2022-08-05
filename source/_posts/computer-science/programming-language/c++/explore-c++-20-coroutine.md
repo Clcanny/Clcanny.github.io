@@ -317,12 +317,16 @@ struct counter(std::__n4861::coroutine_handle<void>*).Frame {
 
   4014bb:   jmp    4014d0
 
+  ; Execute following code when Frame::_Coro_resume_index == 0x6.
   4014bd:   mov    rax,QWORD PTR [rbp-0x28]
-  4014c1:   add    rax,0x3c ; &Frame::Fs_1_5, whose type is std::__n4861::suspend_never*.
-  4014c5:   mov    rdi,rax  ; Call suspend_never::await_resume with this = &Frame::Fs_1_5.
+  ; &Frame::Fs_1_5, whose type is std::__n4861::suspend_never*.
+  4014c1:   add    rax,0x3c
+  ; Call suspend_never::await_resume with this = &Frame::Fs_1_5.
+  4014c5:   mov    rdi,rax
   4014c8:   call   401718 <std::__n4861::suspend_never::await_resume() const>
-  4014cd:   jmp    4014d0   ; 1. Free coroutine frame if Frame::_Coro_frame_needs_free is true.
-                            ; 2. Return.
+  ; 1. Free coroutine frame if Frame::_Coro_frame_needs_free is true.
+  ; 2. Return.
+  4014cd:   jmp    4014d0
 
   4014cf:   nop
   4014d0:   mov    rax,QWORD PTR [rbp-0x28]
