@@ -249,6 +249,11 @@ struct counter(std::__n4861::coroutine_handle<void>*).Frame {
   4013dd:   mov    rax,QWORD PTR [rbp-0x28]
   ; Set Frame::i_2_3 to 0x0.
   4013e1:   mov    DWORD PTR [rax+0x38],0x0
+
+  ; What does the following code do?
+  ; 1. Set Frame::_Coro_resume_index to 0x4.
+  ; 2. Call Awaiter::await_suspend(coroutine_handle<void>).
+  ; 3. Return and don't free coroutine frame.
   4013e8:   mov    rax,QWORD PTR [rbp-0x28]
   ; &Frame::a_1_2, whose type is Awaiter.
   4013ec:   add    rax,0x30
@@ -299,7 +304,9 @@ struct counter(std::__n4861::coroutine_handle<void>*).Frame {
   40147d:   lea    edx,[rax+0x1]
   401480:   mov    rax,QWORD PTR [rbp-0x28]
   401484:   mov    DWORD PTR [rax+0x38],edx
-  ; Skip to the beginning of the for loop?
+  ; 1. Set Frame::_Coro_resume_index to 0x4.
+  ; 2. Call Awaiter::await_suspend(coroutine_handle<void>).
+  ; 3. Return and don't free coroutine frame.
   401487:   jmp    4013e8
 
   40148c:   mov    rax,QWORD PTR [rbp-0x28]
@@ -379,6 +386,7 @@ struct counter(std::__n4861::coroutine_handle<void>*).Frame {
   40156d:   test   al,al
   40156f:   jne    40148c <counter(counter(std::__n4861::coroutine_handle<void>*)::_Z7counterPNSt7__n486116coroutine_handleIvEE.Frame*) [clone .actor]+0x1e3>
   401575:   jmp    4014bd <counter(counter(std::__n4861::coroutine_handle<void>*)::_Z7counterPNSt7__n486116coroutine_handleIvEE.Frame*) [clone .actor]+0x214>
+
   40157a:   mov    rbx,rax
   40157d:   call   4010d0 <__cxa_end_catch@plt>
   401582:   mov    rax,rbx
