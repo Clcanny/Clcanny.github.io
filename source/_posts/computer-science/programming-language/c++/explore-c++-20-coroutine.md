@@ -8,6 +8,7 @@ categories:
 
 ```cpp
 // g++ -std=c++20 -fcoroutines -ggdb -O0 main.cc -o main.o
+// objdump -M intel,intel-mnemonic --demangle=auto --no-recurse-limit --no-show-raw-insn -d main.o
 #include <concepts>
 #include <coroutine>
 #include <exception>
@@ -49,80 +50,6 @@ int main() {
 }
 ```
 
-```bash
-objdump -M intel,intel-mnemonic --demangle=auto --no-recurse-limit --no-show-raw-insn -d main.o
-```
-
-```assembly
-00000000004011f6 <_Z7counterPNSt7__n486116coroutine_handleIvEE>:
-; counter(std::__n4861::coroutine_handle<void>*)
-  4011f6:  push   %rbp       ; Save address of previous stack frame.
-  4011f7:  mov    %rsp,%rbp  ; RBP/EBP is extended base pointer,
-                             ; it points to the bottom of current stack frame.
-  4011fa:  push   %rbx       ; RBX is a callee-saved register.
-  4011fb:  sub    $0x28,%rsp ; RSP/ESP is extended stack pointer,
-                             ; it points to the top of current stack frame.
-                             ; Notice stack frame grows from higher address to lower address.
-                             ; Reserve 40 bytes for local variables.
-  4011ff:  mov    %rdi,-0x28(%rbp) ; RDI is the first argument of func counter.
-  401203:  movq   $0x0,-0x18(%rbp)
-  40120b:  movb   $0x0,-0x19(%rbp)
-  40120f:  movb   $0x0,-0x1a(%rbp)
-
-                                      ; The co_await operator ensures the current state of a function
-                                      ; is bundled up somewhere on the heap and creates a callable object
-                                      ; whose invocation continues execution of the current function.
-                                      ; The current state is coroutine frame.
-                                      ; The callable object is of type std::coroutine_handle<>.
-                                      ; Init coroutine frame:
-  401213:  mov    $0x40,%eax          ; Allocate 64 bytes.
-  401218:  mov    %rax,%rdi           ; RDI is the first argument of operator new.
-  40121b:  callq  401080 <_Znwm@plt>  ; operator new(unsigned long)
-  401220:  mov    %rax,-0x18(%rbp)    ; RAX is the result of operator new.
-  401224:  mov    -0x18(%rbp),%rax    ;
-  401228:  movb   $0x1,0x2a(%rax)     ; Set Frame::_Coro_frame_needs_free to true.
-  40122c:  mov    -0x18(%rbp),%rax    ;
-  401230:  movq   $0x4012a9,(%rax)    ; Set Frame::_Coro_resume_fn to actor.
-  401237:  mov    -0x18(%rbp),%rax    ;
-  40123b:  movq   $0x401594,0x8(%rax) ; Set Frame::_Coro_destroy_fn to destory.
-  401243:  mov    -0x28(%rbp),%rdx    ;
-  401247:  mov    -0x18(%rbp),%rax    ; Set Frame::continuation_out,
-  40124b:  mov    %rdx,0x20(%rax)     ; which is the first parameter of func counter.
-
-  40124f:  mov    -0x18(%rbp),%rax ;
-  401253:  add    $0x10,%rax       ;
-  401257:  mov    %rax,%rdi        ; type(Frame::_Coro_promise)
-                                   ; = std::__n4861::__coroutine_traits_impl<ReturnObject, void>::promise_type
-                                   ; = ReturnObject::promise_type
-  40125a:  callq  401718 <_ZN12ReturnObject12promise_type17get_return_objectEv>
-                                   ; Call ReturnObject::promise_type::get_return_object()
-                                   ; with this = &Frame::_Coro_promise.
-
-  40125f:  mov    -0x18(%rbp),%rax ;
-  401263:  movw   $0x0,0x28(%rax)  ; Set Frame::_Coro_resume_index to 0.
-  401269:  mov    -0x18(%rbp),%rax ;
-  40126d:  mov    %rax,%rdi        ; Call actor(frame).
-  401270:  callq  4012a9 <_Z7counterPZ7counterPNSt7__n486116coroutine_handleIvEEE50_Z7counterPNSt7__n486116coroutine_handleIvEE.Frame.actor>
-  401275:  jmp    4012a3 <_Z7counterPNSt7__n486116coroutine_handleIvEE+0xad>
-                                   ; After actor function returns,
-                                   ; current function returns instead of continuing execution.
-
-  401277:  mov    %rax,%rdi
-  40127a:  callq  401030 <__cxa_begin_catch@plt>
-  40127f:  mov    -0x18(%rbp),%rax
-  401283:  mov    %rax,%rdi
-  401286:  callq  401060 <_ZdlPv@plt>
-  40128b:  callq  4010b0 <__cxa_rethrow@plt>
-  401290:  mov    %rax,%rbx
-  401293:  callq  4010d0 <__cxa_end_catch@plt>
-  401298:  mov    %rbx,%rax
-  40129b:  mov    %rax,%rdi
-  40129e:  callq  4010f0 <_Unwind_Resume@plt>
-  4012a3:  mov    -0x8(%rbp),%rbx
-  4012a7:  leaveq
-  4012a8:  retq
-```
-
 ```cpp
 // coroutine frame
 struct counter(std::__n4861::coroutine_handle<void>*).Frame {
@@ -139,6 +66,89 @@ struct counter(std::__n4861::coroutine_handle<void>*).Frame {
   unsigned int i_2_3;
   std::__n4861::suspend_never Fs_1_5;
 };
+```
+
+```assembly
+00000000004011f6 <counter(std::__n4861::coroutine_handle<void>*)>:
+  ; Save address of previous stack frame.
+  4011f6:   push   rbp
+  ; RBP/EBP is extended base pointer,
+  ; it points to the bottom of current stack frame.
+  4011f7:   mov    rbp,rsp
+  ; RBX is a callee-saved register.
+  4011fa:   push   rbx
+  ; RSP/ESP is extended stack pointer,
+  ; it points to the top of current stack frame.
+  ; Notice stack frame grows from higher address to lower address.
+  ; Reserve 40 bytes for local variables.
+  4011fb:   sub    rsp,0x28
+  ; RDI is the first argument of func counter.
+  4011ff:   mov    QWORD PTR [rbp-0x28],rdi
+  401203:   mov    QWORD PTR [rbp-0x18],0x0
+  40120b:   mov    BYTE PTR [rbp-0x19],0x0
+  40120f:   mov    BYTE PTR [rbp-0x1a],0x0
+
+  ; The co_await operator ensures the current state of a function
+  ; is bundled up somewhere on the heap and creates a callable object
+  ; whose invocation continues execution of the current function.
+  ; The current state is coroutine frame.
+  ; The callable object is of type std::coroutine_handle<>.
+  ; Init coroutine frame:
+  ; Allocate 64 bytes.
+  401213:   mov    eax,0x40
+  ; RDI is the first argument of operator new.
+  401218:   mov    rdi,rax
+  40121b:   call   401080 <operator new(unsigned long)@plt>
+  ; RAX is the result of operator new.
+  401220:   mov    QWORD PTR [rbp-0x18],rax
+  401224:   mov    rax,QWORD PTR [rbp-0x18]
+  ; Set Frame::_Coro_frame_needs_free to true.
+  401228:   mov    BYTE PTR [rax+0x2a],0x1
+  ; Set Frame::_Coro_resume_fn to actor.
+  40122c:   mov    rax,QWORD PTR [rbp-0x18]
+  401230:   mov    QWORD PTR [rax],0x4012a9
+  ; Set Frame::_Coro_destroy_fn to destory.
+  401237:   mov    rax,QWORD PTR [rbp-0x18]
+  40123b:   mov    QWORD PTR [rax+0x8],0x401594
+  ; Set Frame::continuation_out to the first parameter of func counter.
+  401243:   mov    rdx,QWORD PTR [rbp-0x28]
+  401247:   mov    rax,QWORD PTR [rbp-0x18]
+  40124b:   mov    QWORD PTR [rax+0x20],rdx
+
+  40124f:   mov    rax,QWORD PTR [rbp-0x18]
+  401253:   add    rax,0x10
+  ;   typeof(Frame::_Coro_promise)
+  ; = std::__n4861::__coroutine_traits_impl<ReturnObject, void>::promise_type
+  ; = ReturnObject::promise_type
+  401257:   mov    rdi,rax
+  ; Call ReturnObject::promise_type::get_return_object()
+  ; with this = &Frame::_Coro_promise.
+  40125a:   call   401724 <ReturnObject::promise_type::get_return_object()>
+  40125f:   mov    rax,QWORD PTR [rbp-0x18]
+  ; Set Frame::_Coro_resume_index to 0.
+  401263:   mov    WORD PTR [rax+0x28],0x0
+  401269:   mov    rax,QWORD PTR [rbp-0x18]
+  ; Call actor(frame).
+  40126d:   mov    rdi,rax
+  401270:   call   4012a9 <counter(counter(std::__n4861::coroutine_handle<void>*)::_Z7counterPNSt7__n486116coroutine_handleIvEE.Frame*) [clone .actor]>
+  ; After actor function returns,
+  ; current function returns instead of continuing execution.
+  401275:   jmp    4012a3
+
+  401277:   mov    rdi,rax
+  40127a:   call   401030 <__cxa_begin_catch@plt>
+  40127f:   mov    rax,QWORD PTR [rbp-0x18]
+  401283:   mov    rdi,rax
+  401286:   call   401060 <operator delete(void*)@plt>
+  40128b:   call   4010b0 <__cxa_rethrow@plt>
+  401290:   mov    rbx,rax
+  401293:   call   4010d0 <__cxa_end_catch@plt>
+  401298:   mov    rax,rbx
+  40129b:   mov    rdi,rax
+  40129e:   call   4010f0 <_Unwind_Resume@plt>
+  4012a3:   mov    rbx,QWORD PTR [rbp-0x8]
+  4012a7:   leave
+  4012a8:   ret
 ```
 
 ```assembly
