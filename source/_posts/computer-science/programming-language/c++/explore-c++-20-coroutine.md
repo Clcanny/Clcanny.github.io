@@ -180,41 +180,66 @@ struct counter(std::__n4861::coroutine_handle<void>*).Frame {
 
   401301:   mov    rax,QWORD PTR [rbp-0x28]
   401305:   movzx  eax,WORD PTR [rax+0x28]
-  401309:   movzx  eax,ax ; switch(Frame::_Coro_resume_index) { case 2,4,6 }
+  ; switch(Frame::_Coro_resume_index) { case 2,4,6 }
+  401309:   movzx  eax,ax
+  ; Jump to 0x4014bd if Frame::_Coro_resume_index == 0x6.
   40130c:   cmp    eax,0x6
   40130f:   je     4014bd
+  ; Throw exception if Frame::_Coro_resume_index > 0x6.
   401315:   cmp    eax,0x6
-  401318:   jg     40137c ; Throw exception if Frame::_Coro_resume_index > 0x6.
+  401318:   jg     40137c
+  ; Jump to 0x401436 if Frame::_Coro_resume_index == 0x4.
   40131a:   cmp    eax,0x4
   40131d:   je     401436
+  ; Throw exception if Frame::_Coro_resume_index > 0x4.
   401323:   cmp    eax,0x4
-  401326:   jg     40137c ; Throw exception if Frame::_Coro_resume_index > 0x4.
+  401326:   jg     40137c
+  ; Jump to 0x401337 if Frame::_Coro_resume_index == 0x0.
   401328:   test   eax,eax
   40132a:   je     401337
+  ; Jump to 0x4013b5 if Frame::_Coro_resume_index == 0x2.
   40132c:   cmp    eax,0x2
   40132f:   je     4013b5
-  401335:   jmp    40137c ; Throw exception if Frame::_Coro_resume_index == 0x0.
+  ; Otherwise, throw exception.
+  401335:   jmp    40137c
+
+  ; Execute the following code when Frame::_Coro_resume_index == 0x0.
   401337:   mov    rbx,QWORD PTR [rbp-0x28]
+  ; Call std::coroutine_handle<Promise>::from_address(void* addr)
+  ; with addr = &Frame.
+  ; frame_address creates a coroutine_handle from a null pointer value or
+  ; an underlying address of another coroutine_handle.
+  ; Return type of from_address is std::coroutine_handle<Promise>.
+  ; The underlying address of return value is addr.
   40133b:   mov    rax,QWORD PTR [rbp-0x28]
   40133f:   mov    rdi,rax
   401342:   call   4017b0 <std::__n4861::coroutine_handle<ReturnObject::promise_type>::from_address(void*)>
   401347:   mov    QWORD PTR [rbx+0x18],rax
+  ; Set Frame::_Coro_initial_await_resume_called to false.
   40134b:   mov    rax,QWORD PTR [rbp-0x28]
   40134f:   mov    BYTE PTR [rax+0x2b],0x0
+  ; Call ReturnObject::promise_type::initial_suspend() with
+  ; this = &Frame::_Coro_promise.
   401353:   mov    rax,QWORD PTR [rbp-0x28]
   401357:   add    rax,0x10
   40135b:   mov    rdi,rax
   40135e:   call   401730 <ReturnObject::promise_type::initial_suspend()>
+  ; Call std::__n4861::suspend_never::await_ready() with this = &Frame::Is_1_1.
   401363:   mov    rax,QWORD PTR [rbp-0x28]
   401367:   add    rax,0x2c
   40136b:   mov    rdi,rax
   40136e:   call   4016f8 <std::__n4861::suspend_never::await_ready() const>
+  ; Test if return value is true.
+  ; await_ready is an optimization.
+  ; If it returns true, then co_await does not suspend the function.
+  ; In this example, Awaiter::await_ready() will always return false.
   401373:   xor    eax,0x1
   401376:   test   al,al
+  ; Always execute this branch.
   401378:   jne    40137e
   40137a:   jmp    4013b5
-  40137c:   ud2           ; Raise invalid opcode exception.
-
+  ; Raise invalid opcode exception.
+  40137c:   ud2
   40137e:   mov    rax,QWORD PTR [rbp-0x28]
   401382:   mov    WORD PTR [rax+0x28],0x2
   401388:   mov    rax,QWORD PTR [rbp-0x28]
@@ -229,7 +254,7 @@ struct counter(std::__n4861::coroutine_handle<void>*).Frame {
   4013ab:   jmp    4014f4 ; Return and don't free coroutine frame.
   4013b0:   jmp    4014d0
 
-  ; Execute following code when Frame::_Coro_resume_index == 0x2.
+  ; Execute the following code when Frame::_Coro_resume_index == 0x2.
   4013b5:   mov    rax,QWORD PTR [rbp-0x28]
   ; Set Frame::_Coro_initial_await_resume_called to 1.
   4013b9:   mov    BYTE PTR [rax+0x2b],0x1
@@ -416,6 +441,7 @@ Coroutine frame:
 + [Clang 16.0.0: Debugging C++ Coroutines, coroutine frame](https://clang.llvm.org/docs/DebuggingCoroutines.html#coroutine-frame)
 + [gcc-mirror/gcc: C++ coroutines Initial implementation.](https://github.com/gcc-mirror/gcc/commit/49789fd08378e3ff7a6efd7c4f72b72654259b89)
 + [gcc-mirror/gcc: coroutines.cc]https://github.com/gcc-mirror/gcc/blob/2fa8c4a659a19ec971c80704f48f96c13aae9ac3/gcc/cp/coroutines.cc#L4336
++ [Microsoft, The Old New Thing: C++ coroutines: The initial and final suspend, and improving our return_value method](https://devblogs.microsoft.com/oldnewthing/20210331-00/?p=105028)
 
 https://jamespascoe.github.io/accu2022/#/Title-Slide
 https://itnext.io/c-20-coroutines-complete-guide-7c3fc08db89d
