@@ -180,7 +180,7 @@ struct counter(std::__n4861::coroutine_handle<void>*).Frame {
 
   401301:   mov    rax,QWORD PTR [rbp-0x28]
   401305:   movzx  eax,WORD PTR [rax+0x28]
-  ; switch(Frame::_Coro_resume_index) { case 2,4,6 }
+  ; switch(Frame::_Coro_resume_index) { case 0,2,4,6 }
   401309:   movzx  eax,ax
   ; Jump to 0x4014bd if Frame::_Coro_resume_index == 0x6.
   40130c:   cmp    eax,0x6
@@ -240,18 +240,25 @@ struct counter(std::__n4861::coroutine_handle<void>*).Frame {
   40137a:   jmp    4013b5
   ; Raise invalid opcode exception.
   40137c:   ud2
+  ; Set Frame::_Coro_resume_index to 0x2.
   40137e:   mov    rax,QWORD PTR [rbp-0x28]
   401382:   mov    WORD PTR [rax+0x28],0x2
   401388:   mov    rax,QWORD PTR [rbp-0x28]
   40138c:   lea    rbx,[rax+0x2c]
+  ; Call coroutine_handle::operator() with this = &Frame::_Coro_self_handle.
+  ; Resumes the execution of the coroutine to which *this refers.
   401390:   mov    rax,QWORD PTR [rbp-0x28]
   401394:   add    rax,0x18
   401398:   mov    rdi,rax
   40139b:   call   40178e <std::__n4861::coroutine_handle<ReturnObject::promise_type>::operator std::__n4861::coroutine_handle<void>() const>
+  ; Call suspend_never::await_suspend(std::coroutine_handle<>* h) with
+  ; this = &Frame::Is_1_1 and h = &Frame::_Coro_self_handle.
   4013a0:   mov    rsi,rax
   4013a3:   mov    rdi,rbx
   4013a6:   call   401708 <std::__n4861::suspend_never::await_suspend(std::__n4861::coroutine_handle<void>) const>
-  4013ab:   jmp    4014f4 ; Return and don't free coroutine frame.
+  ; Return and don't free coroutine frame.
+  4013ab:   jmp    4014f4
+
   4013b0:   jmp    4014d0
 
   ; Execute the following code when Frame::_Coro_resume_index == 0x2.
@@ -344,7 +351,8 @@ struct counter(std::__n4861::coroutine_handle<void>*).Frame {
   ; &Frame::_Coro_self_handle, whose type is std::__n4861::coroutine_handle<ReturnObject::promise_type>.
   4014a2:   add    rax,0x18
   4014a6:   mov    rdi,rax
-  ; Call std::__n4861::coroutine_handle<ReturnObject::promise_type>::operator() with this = &Frame::_Coro_self_handle.
+  ; Call std::__n4861::coroutine_handle<ReturnObject::promise_type>::operator()
+  ; with this = &Frame::_Coro_self_handle.
   4014a9:   call   40178e <std::__n4861::coroutine_handle<ReturnObject::promise_type>::operator std::__n4861::coroutine_handle<void>() const>
   ; Call std::__n4861::suspend_never::await_suspend(std::__n4861::coroutine_handle<void>)
   ; with this = &Frame::Fs_1_5 and
@@ -368,25 +376,35 @@ struct counter(std::__n4861::coroutine_handle<void>*).Frame {
   ; 2. Return.
   4014cd:   jmp    4014d0
 
+  ; Return and do cleanup jobs if needed.
   4014cf:   nop
   4014d0:   mov    rax,QWORD PTR [rbp-0x28]
-  4014d4:   movzx  eax,BYTE PTR [rax+0x2a]  ; Frame::_Coro_frame_needs_free
-  4014d8:   movzx  eax,al                   ; AL is a part of AX.
-  4014db:   test   eax,eax                  ; If Frame::_Coro_frame_needs_free is false,
-  4014dd:   je     40158d                   ; then just return and do nothing.
-  4014e3:   mov    rax,QWORD PTR [rbp-0x28] ; Else if Frame::_Coro_frame_needs_free is true,
-  4014e7:   mov    rdi,rax                  ; then free coroutine frame,
+  ; Frame::_Coro_frame_needs_free
+  4014d4:   movzx  eax,BYTE PTR [rax+0x2a]
+  ; AL is a part of AX.
+  4014d8:   movzx  eax,al
+  ; If Frame::_Coro_frame_needs_free is false,
+  ; then just return and do nothing.
+  4014db:   test   eax,eax
+  4014dd:   je     40158d
+  ; Else if Frame::_Coro_frame_needs_free is true,
+  ; then free coroutine frame,
+  ; and return.
+  4014e3:   mov    rax,QWORD PTR [rbp-0x28]
+  4014e7:   mov    rdi,rax
   4014ea:   call   401060 <operator delete(void*)@plt>
-  4014ef:   jmp    40158d                   ; and return.
+  4014ef:   jmp    40158d
+
   4014f4:   jmp    40158d
 
+  ; Catch and handle exception.
   4014f9:   mov    rdi,rax
   4014fc:   call   401030 <__cxa_begin_catch@plt>
   401501:   mov    rax,QWORD PTR [rbp-0x28]
   401505:   movzx  eax,BYTE PTR [rax+0x2b]
   401509:   xor    eax,0x1
   40150c:   test   al,al
-  40150e:   je     401515 <counter(counter(std::__n4861::coroutine_handle<void>*)::_Z7counterPNSt7__n486116coroutine_handleIvEE.Frame*) [clone .actor]+0x26c>
+  40150e:   je     401515
   401510:   call   4010b0 <__cxa_rethrow@plt>
   401515:   mov    rax,QWORD PTR [rbp-0x28]
   401519:   mov    QWORD PTR [rax],0x0
@@ -397,6 +415,8 @@ struct counter(std::__n4861::coroutine_handle<void>*).Frame {
   401532:   mov    rdi,rax
   401535:   call   401748 <ReturnObject::promise_type::unhandled_exception()>
   40153a:   call   4010d0 <__cxa_end_catch@plt>
+
+  ; Because we never use co_return operator, the following won't be executed forever?
   40153f:   mov    rax,QWORD PTR [rbp-0x28]
   401543:   mov    QWORD PTR [rax],0x0
   40154a:   mov    rax,QWORD PTR [rbp-0x28]
@@ -409,8 +429,8 @@ struct counter(std::__n4861::coroutine_handle<void>*).Frame {
   401565:   call   4016f8 <std::__n4861::suspend_never::await_ready() const>
   40156a:   xor    eax,0x1
   40156d:   test   al,al
-  40156f:   jne    40148c <counter(counter(std::__n4861::coroutine_handle<void>*)::_Z7counterPNSt7__n486116coroutine_handleIvEE.Frame*) [clone .actor]+0x1e3>
-  401575:   jmp    4014bd <counter(counter(std::__n4861::coroutine_handle<void>*)::_Z7counterPNSt7__n486116coroutine_handleIvEE.Frame*) [clone .actor]+0x214>
+  40156f:   jne    40148c
+  401575:   jmp    4014bd
 
   40157a:   mov    rbx,rax
   40157d:   call   4010d0 <__cxa_end_catch@plt>
