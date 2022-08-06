@@ -143,41 +143,63 @@ struct counter(std::__n4861::coroutine_handle<void>*).Frame {
 
 ```assembly
 00000000004012a9 <counter(counter(std::__n4861::coroutine_handle<void>*)::_Z7counterPNSt7__n486116coroutine_handleIvEE.Frame*) [clone .actor]>:
-  4012a9:   push   rbp      ; Save address of previous stack frame.
-  4012aa:   mov    rbp,rsp  ; RBP/EBP is extended base pointer,
-                            ; it points to the bottom of current stack frame.
-  4012ad:   push   rbx      ; RBX is a callee-saved register.
-  4012ae:   sub    rsp,0x28 ; RSP/ESP is extended stack pointer,
-                            ; it points to the top of current stack frame.
-                            ; Notice stack frame grows from higher address to lower address.
-                            ; Reserve 40 bytes for local variables.
+  ; Save address of previous stack frame.
+  4012a9:   push   rbp
+  ; RBP/EBP is extended base pointer,
+  ; it points to the bottom of current stack frame.
+  4012aa:   mov    rbp,rsp
+  ; RBX is a callee-saved register.
+  4012ad:   push   rbx
+  ; RSP/ESP is extended stack pointer,
+  ; it points to the top of current stack frame.
+  ; Notice stack frame grows from higher address to lower address.
+  ; Reserve 40 bytes for local variables.
+  4012ae:   sub    rsp,0x28
 
-  4012b2:   mov    QWORD PTR [rbp-0x28],rdi ; RDI is the first argument of function actor,
-                                            ; which is coroutine frame.
+  ; RDI is the first argument of function actor,
+  ; which is coroutine frame.
+  4012b2:   mov    QWORD PTR [rbp-0x28],rdi
 
   4012b6:   mov    rax,QWORD PTR [rbp-0x28]
-  4012ba:   movzx  eax,WORD PTR [rax+0x28] ; Test if Frame::_Coro_resume_index is an even number.
-  4012be:   and    eax,0x1                 ; If Frame::_Coro_resume_index is an even number,
-  4012c1:   test   ax,ax                   ; then jump to 0x401301.
+  ; Test if Frame::_Coro_resume_index is an even number.
+  4012ba:   movzx  eax,WORD PTR [rax+0x28]
+  ; If Frame::_Coro_resume_index is an even number,
+  ; then jump to 0x401301.
+  4012be:   and    eax,0x1
+  4012c1:   test   ax,ax
   4012c4:   je     401301 <[clone .actor]+0x58>
 
-  4012c6:   mov    rax,QWORD PTR [rbp-0x28]      ; Else if Frame::_Coro_resume_index is an odd number.
+  ; Else if Frame::_Coro_resume_index is an odd number.
+  4012c6:   mov    rax,QWORD PTR [rbp-0x28]
   4012ca:   movzx  eax,WORD PTR [rax+0x28]
-  4012ce:   movzx  eax,ax                        ; switch(Frame::_Coro_resume_index) { case 1,3,5,7 }
-  4012d1:   cmp    eax,0x7                       ; 1. Free coroutine frame if Frame::_Coro_frame_needs_free is true.
-  4012d4:   je     4014bb                        ; 2. Return.
+  ; switch(Frame::_Coro_resume_index) { case 1,3,5,7 }
+  4012ce:   movzx  eax,ax
+  ; Free coroutine frame if Frame::_Coro_frame_needs_free is true and return
+  ; if Frame::_Coro_resume_index == 0x7.
+  4012d1:   cmp    eax,0x7
+  4012d4:   je     4014bb
+  ; Throw exception if Frame::_Coro_resume_index > 0x7.
   4012da:   cmp    eax,0x7
-  4012dd:   jg     4012ff <[clone .actor]+0x56>  ; Throw exception if Frame::_Coro_resume_index > 0x7.
-  4012df:   cmp    eax,0x5                       ; 1. Free coroutine frame if Frame::_Coro_frame_needs_free is true.
-  4012e2:   je     401431 <[clone .actor]+0x188> ; 2. Return.
+  4012dd:   jg     4012ff
+  ; Free coroutine frame if Frame::_Coro_frame_needs_free is true and return
+  ; if Frame::_Coro_resume_index == 0x5.
+  4012df:   cmp    eax,0x5
+  4012e2:   je     401431 <[clone .actor]+0x188>
+  ; Throw exception if Frame::_Coro_resume_index > 0x5.
   4012e8:   cmp    eax,0x5
-  4012eb:   jg     4012ff <[clone .actor]+0x56>  ; Throw exception if Frame::_Coro_resume_index > 0x5.
-  4012ed:   cmp    eax,0x1                       ; 1. Free coroutine frame if Frame::_Coro_frame_needs_free is true.
-  4012f0:   je     4014cf                        ; 2. Return.
-  4012f6:   cmp    eax,0x3                       ; 1. Free coroutine frame if Frame::_Coro_frame_needs_free is true.
-  4012f9:   je     4013b0 <[clone .actor]+0x107> ; 2. Return.
-  4012ff:   ud2                                  ; Raise invalid opcode exception.
+  4012eb:   jg     4012ff <[clone .actor]+0x56>
+  ; Free coroutine frame if Frame::_Coro_frame_needs_free is true and return
+  ; if Frame::_Coro_resume_index == 0x1.
+  4012ed:   cmp    eax,0x1
+  4012f0:   je     4014cf
+  ; Free coroutine frame if Frame::_Coro_frame_needs_free is true and return
+  ; if Frame::_Coro_resume_index == 0x3.
+  4012f6:   cmp    eax,0x3
+  4012f9:   je     4013b0 <[clone .actor]+0x107>
+  ; Otherwise, raise invalid opcode exception.
+  4012ff:   ud2
 
+  ; If Frame::_Coro_resume_index is an even number.
   401301:   mov    rax,QWORD PTR [rbp-0x28]
   401305:   movzx  eax,WORD PTR [rax+0x28]
   ; switch(Frame::_Coro_resume_index) { case 0,2,4,6 }
