@@ -170,30 +170,27 @@ struct counter(std::__n4861::coroutine_handle<void>*).Frame {
   4012c4:   je     401301 <[clone .actor]+0x58>
 
   ; Else if Frame::_Coro_resume_index is an odd number.
+  ; Please notice Frame::_Coro_frame_needs_free is always true.
   4012c6:   mov    rax,QWORD PTR [rbp-0x28]
   4012ca:   movzx  eax,WORD PTR [rax+0x28]
   ; switch(Frame::_Coro_resume_index) { case 1,3,5,7 }
   4012ce:   movzx  eax,ax
-  ; Free coroutine frame if Frame::_Coro_frame_needs_free is true and return
-  ; if Frame::_Coro_resume_index == 0x7.
+  ; Free coroutine frame and return if Frame::_Coro_resume_index == 0x7.
   4012d1:   cmp    eax,0x7
   4012d4:   je     4014bb
   ; Throw exception if Frame::_Coro_resume_index > 0x7.
   4012da:   cmp    eax,0x7
   4012dd:   jg     4012ff
-  ; Free coroutine frame if Frame::_Coro_frame_needs_free is true and return
-  ; if Frame::_Coro_resume_index == 0x5.
+  ; Free coroutine frame and return if Frame::_Coro_resume_index == 0x5.
   4012df:   cmp    eax,0x5
   4012e2:   je     401431 <[clone .actor]+0x188>
   ; Throw exception if Frame::_Coro_resume_index > 0x5.
   4012e8:   cmp    eax,0x5
   4012eb:   jg     4012ff <[clone .actor]+0x56>
-  ; Free coroutine frame if Frame::_Coro_frame_needs_free is true and return
-  ; if Frame::_Coro_resume_index == 0x1.
+  ; Free coroutine frame and return if Frame::_Coro_resume_index == 0x1.
   4012ed:   cmp    eax,0x1
   4012f0:   je     4014cf
-  ; Free coroutine frame if Frame::_Coro_frame_needs_free is true and return
-  ; if Frame::_Coro_resume_index == 0x3.
+  ; Free coroutine frame and return if Frame::_Coro_resume_index == 0x3.
   4012f6:   cmp    eax,0x3
   4012f9:   je     4013b0 <[clone .actor]+0x107>
   ; Otherwise, raise invalid opcode exception.
@@ -394,14 +391,14 @@ struct counter(std::__n4861::coroutine_handle<void>*).Frame {
   ; Call suspend_never::await_resume with this = &Frame::Fs_1_5.
   4014c5:   mov    rdi,rax
   4014c8:   call   401718 <std::__n4861::suspend_never::await_resume() const>
-  ; 1. Free coroutine frame if Frame::_Coro_frame_needs_free is true.
+  ; 1. Free coroutine frame (Frame::_Coro_frame_needs_free is always true).
   ; 2. Return.
   4014cd:   jmp    4014d0
 
   ; Return and do cleanup jobs if needed.
   4014cf:   nop
   4014d0:   mov    rax,QWORD PTR [rbp-0x28]
-  ; Frame::_Coro_frame_needs_free
+  ; Frame::_Coro_frame_needs_free, whose type is bool.
   4014d4:   movzx  eax,BYTE PTR [rax+0x2a]
   ; AL is a part of AX.
   4014d8:   movzx  eax,al
