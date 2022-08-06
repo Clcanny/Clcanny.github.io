@@ -287,6 +287,7 @@ struct std::__n4861::coroutine_handle<ReturnObject::promise_type>
   401388:   mov    rax,QWORD PTR [rbp-0x28]
   40138c:   lea    rbx,[rax+0x2c]
   ; Call coroutine_handle::operator() with this = &Frame::_Coro_self_handle.
+  ; Actually, coroutine_handle::operator() just calls this function again.
   ; Resumes the execution of the coroutine to which *this refers.
   401390:   mov    rax,QWORD PTR [rbp-0x28]
   401394:   add    rax,0x18
@@ -482,6 +483,40 @@ struct std::__n4861::coroutine_handle<ReturnObject::promise_type>
   40158e:   mov    rbx,QWORD PTR [rbp-0x8]
   401592:   leave
   401593:   ret
+```
+
+```assembly
+0000000000401680 <std::__n4861::coroutine_handle<void>::from_address(void*)>:
+  401680:   push   rbp
+  401681:   mov    rbp,rsp
+  401684:   mov    QWORD PTR [rbp-0x18],rdi
+  401688:   mov    QWORD PTR [rbp-0x8],0x0
+  401690:   mov    rax,QWORD PTR [rbp-0x18]
+  401694:   mov    QWORD PTR [rbp-0x8],rax
+  401698:   mov    rax,QWORD PTR [rbp-0x8]
+  40169c:   pop    rbp
+  40169d:   ret
+
+;   std::coroutine_handle<Promise>::operator()
+; = std::coroutine_handle<Promise>::resume
+00000000004016ba <std::__n4861::coroutine_handle<void>::resume() const>:
+  4016ba:   push   rbp
+  4016bb:   mov    rbp,rsp
+  4016be:   sub    rsp,0x10
+  ; Caller calls this function with this = &Frame::_Coro_self_handle::_M_fr_ptr.
+  4016c2:   mov    QWORD PTR [rbp-0x8],rdi
+  ; RAX = Frame::_Coro_self_handle::_M_fr_ptr = &Frame.
+  4016c6:   mov    rax,QWORD PTR [rbp-0x8]
+  ; RAX = Frame::_Coro_resume_fn = &<counter(counter(std::__n4861::coroutine_handle<void>*)::_Z7counterPNSt7__n486116coroutine_handleIvEE.Frame*) [clone .actor]>.
+  4016ca:   mov    rax,QWORD PTR [rax]
+  ; RDX = <counter(counter(std::__n4861::coroutine_handle<void>*)::_Z7counterPNSt7__n486116coroutine_handleIvEE.Frame*) [clone .actor]>.
+  4016cd:   mov    rdx,QWORD PTR [rax]
+  4016d0:   mov    rdi,rax
+  ; Call actor with parameter_1 = &Frame.
+  4016d3:   call   rdx
+  4016d5:   nop
+  4016d6:   leave
+  4016d7:   ret
 ```
 
 # Reference
