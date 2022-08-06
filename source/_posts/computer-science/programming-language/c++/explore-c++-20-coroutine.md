@@ -68,6 +68,13 @@ struct counter(std::__n4861::coroutine_handle<void>*).Frame {
 };
 ```
 
+```cpp
+struct std::__n4861::coroutine_handle<ReturnObject::promise_type>
+[with _Promise = ReturnObject::promise_type] {
+  void *_M_fr_ptr;
+};
+```
+
 ```assembly
 00000000004011f6 <counter(std::__n4861::coroutine_handle<void>*)>:
   ; Save address of previous stack frame.
@@ -243,6 +250,11 @@ struct counter(std::__n4861::coroutine_handle<void>*).Frame {
   40133b:   mov    rax,QWORD PTR [rbp-0x28]
   40133f:   mov    rdi,rax
   401342:   call   4017b0 <std::__n4861::coroutine_handle<ReturnObject::promise_type>::from_address(void*)>
+  ; RAX is return value of func
+  ; std::coroutine_handle<Promise>::from_address(void* addr),
+  ; which is equal to addr, which is equal to &Frame.
+  ; RBX is set to &Frame at 0x401337.
+  ; Set Frame::_Coro_self_handle::_M_fr_ptr to &Frame.
   401347:   mov    QWORD PTR [rbx+0x18],rax
   ; Set Frame::_Coro_initial_await_resume_called to false.
   40134b:   mov    rax,QWORD PTR [rbp-0x28]
