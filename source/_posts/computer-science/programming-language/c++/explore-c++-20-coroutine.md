@@ -519,6 +519,95 @@ struct std::__n4861::coroutine_handle<ReturnObject::promise_type>
   4016d7:   ret
 ```
 
+```cpp
+// g++ -std=c++20 -fcoroutines -ggdb -O0 main.cc -o main.o
+// objdump -M intel,intel-mnemonic --demangle=auto --no-recurse-limit --no-show-raw-insn -d main.o
+#include <concepts>
+#include <coroutine>
+#include <exception>
+#include <iostream>
+
+struct ReturnObject {
+  struct promise_type {
+    ReturnObject get_return_object() {
+      return {
+        // Uses C++20 designated initializer syntax
+        .h_ = std::coroutine_handle<promise_type>::from_promise(*this)
+      };
+    }
+    std::suspend_never initial_suspend() { return {}; }
+    std::suspend_never final_suspend() noexcept { return {}; }
+    void unhandled_exception() {}
+  };
+
+  std::coroutine_handle<promise_type> h_;
+  operator std::coroutine_handle<promise_type>() const { return h_; }
+  // A coroutine_handle<promise_type> converts to coroutine_handle<>
+  operator std::coroutine_handle<>() const { return h_; }
+};
+
+ReturnObject counter() {
+  for (unsigned i = 0;; ++i) {
+    co_await std::suspend_always{};
+    std::cout << "counter2: " << i << std::endl;
+  }
+}
+
+int main() {
+  std::coroutine_handle<> h = counter();
+  for (int i = 0; i < 3; ++i) {
+    std::cout << "In main function" << std::endl;
+    h();
+  }
+  h.destroy();
+  return 0;
+}
+```
+
+```cpp
+struct _Z7counterv.Frame {
+  void (*_Coro_resume_fn)(_Z7counterv.Frame *);
+  void (*_Coro_destroy_fn)(_Z7counterv.Frame *);
+  std::__n4861::__coroutine_traits_impl<ReturnObject, void>::promise_type _Coro_promise;
+  std::__n4861::coroutine_handle<ReturnObject::promise_type> _Coro_self_handle;
+  unsigned short _Coro_resume_index;
+  bool _Coro_frame_needs_free;
+  bool _Coro_initial_await_resume_called;
+  std::__n4861::suspend_never Is_1_1;
+  unsigned int i_2_3;
+  std::__n4861::suspend_always Aw0_3_4;
+  std::__n4861::suspend_never Fs_1_5;
+}
+```
+
+```assembly
+000000000040173c <ReturnObject::promise_type::get_return_object()>:
+  40173c:   push   rbp
+  40173d:   mov    rbp,rsp
+  401740:   sub    rsp,0x10
+  401744:   mov    QWORD PTR [rbp-0x8],rdi
+  401748:   mov    rax,QWORD PTR [rbp-0x8]
+  40174c:   mov    rdi,rax
+  40174f:   call   401794 <std::__n4861::coroutine_handle<ReturnObject::promise_type>::from_promise(ReturnObject::promise_type&)>
+  401754:   leave
+  401755:   ret
+
+0000000000401794 <std::__n4861::coroutine_handle<ReturnObject::promise_type>::from_promise(ReturnObject::promise_type&)>:
+  401794:   push   rbp
+  401795:   mov    rbp,rsp
+  ; RDI = &Frame::_Coro_promise.
+  401798:   mov    QWORD PTR [rbp-0x18],rdi
+  40179c:   mov    QWORD PTR [rbp-0x8],0x0
+  4017a4:   mov    rax,QWORD PTR [rbp-0x18]
+  ; RAX = RDI - 0x10 = &Frame::_Coro_promise - 0x10 = &Frame.
+  4017a8:   sub    rax,0x10
+  4017ac:   mov    QWORD PTR [rbp-0x8],rax
+  4017b0:   mov    rax,QWORD PTR [rbp-0x8]
+  4017b4:   pop    rbp
+  ; Return value is &Frame.
+  4017b5:   ret
+```
+
 # Reference
 
 Assembly Language:
@@ -538,6 +627,7 @@ Coroutine Overview:
 + [Microsoft, The Old New Thing, C++ coroutines: The initial and final suspend, and improving our return_value method](https://devblogs.microsoft.com/oldnewthing/20210331-00/?p=105028)
 + [ACCU 2022, Jim Pascoe: How to Use C++20 Coroutines for Networking](https://www.youtube.com/watch?v=ZNttI_WswMU)
 + [ITNEXT, Šimon Tóth: C++20 Coroutines — Complete* Guide](https://itnext.io/c-20-coroutines-complete-guide-7c3fc08db89d)
++ [Stack Overflow: How coroutine_handle<Promise>::from_promise() works in C++](https://stackoverflow.com/questions/58632651/how-coroutine-handlepromisefrom-promise-works-in-c)
 
 Coroutine Frame:
 
