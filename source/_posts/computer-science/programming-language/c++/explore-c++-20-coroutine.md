@@ -6,6 +6,8 @@ categories:
   - [Computer Science, Programming Language, C++]
 ---
 
+# 用状态机实现 Coroutine
+
 ```cpp
 // g++ -std=c++20 -fcoroutines -ggdb -O0 main.cc -o main.o
 // objdump -M intel,intel-mnemonic --demangle=auto --no-recurse-limit --no-show-raw-insn -d main.o
@@ -518,6 +520,19 @@ struct std::__n4861::coroutine_handle<ReturnObject::promise_type>
   4016d6:   leave
   4016d7:   ret
 ```
+
+# 解密 std::coroutine_handle<Promise>::from_promise
+
+`std::coroutine_handle<Promise>::from_promise` 看上去很像“魔法”，从一个没有任何相关字段的对象（比如 `ReturnObject::promise_type` ）里凭空变出了 `coroutine_handle` 。[Stack Overflow: How coroutine_handle<Promise>::from_promise() works in C++](https://stackoverflow.com/questions/58632651/how-coroutine-handlepromisefrom-promise-works-in-c) 解释了这个魔发：
+
+> It works by fiat. That is, it works because the standard says that it works, and implementations must therefore find a way to implement coroutines in such a way that it is possible.
+>
+> When creating a coroutine, the implementation creates two things: the `coroutine_handle` and the `promise` object. The location of both of these things is controlled entirely by the compiler. So, the compiler could very easily allocate them contiguously with each other, such that a coroutine's stack would essentially start with a `struct {coroutine_handle<Promise> handle; Promise promise};`.
+>
+> Given that knowledge, you know that the handle for any promise type lives `sizeof(coroutine_handle<Promise>)` bytes before any `promise` object's address (alignment requirements of the `Promise` type can adjust this, but such things can be queried from the type). And since `from_promise` takes a promise object, you can just offset the pointer and cast it to a `coroutine_handle<Promise>`.
+>
+> Now, that is just one way of doing it; an implementation doesn't have to do it this way. What matters is that the implementation has control over where the promise object lives relative to the coroutine internal data. Or more specifically, the promise lives inside of that internal data. Regardless of how you look at it, the compiler knows everything it needs to in order to convert the address of a promise into the internal data needed to fill in a `coroutine_handle`.
+
 
 ```cpp
 // g++ -std=c++20 -fcoroutines -ggdb -O0 main.cc -o main.o
