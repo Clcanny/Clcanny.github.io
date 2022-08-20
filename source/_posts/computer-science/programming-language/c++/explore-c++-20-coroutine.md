@@ -25,6 +25,8 @@ BUG_REPORT_URL="https://bugs.debian.org/"
 
 # 用状态机实现 Coroutine
 
+## 概述
+
 ```cpp
 // g++ -std=c++20 -fcoroutines -ggdb -O0 main.cc -o main.o
 // objdump -M intel,intel-mnemonic --demangle=auto --no-recurse-limit --no-show-raw-insn -d main.o
@@ -107,6 +109,41 @@ struct std::__n4861::coroutine_handle<void>
   _Promise *_M_fr_ptr;
 };
 ```
+
+## `coroutine_handle` 是一个指向 coroutine frame 的指针
+
+`main` 函数的本地变量 `std::coroutine_handle<> h` 最终是通过 `Awaiter::await_suspend` 函数的语句 `*hp_ = h;` 被赋值的，而参数 `h` 又等于变量 `Frame::_Coro_self_handle` ，所以我们只需要观察 `Frame::_Coro_self_handle` 的类型和值就能确定 `coroutine_handle` 是什么了。
+
+```cpp
+// (gdb) ptype frame_ptr->_Coro_self_handle
+struct std::__n4861::coroutine_handle<ReturnObject::promise_type>
+[with _Promise = ReturnObject::promise_type] {
+  void *_M_fr_ptr;
+};
+```
+
+```text
+(gdb) c
+Continuing.
+
+Hardware watchpoint 6: *(uint64_t*)0x416ec8
+
+Old value = <unreadable>
+New value = 4288176
+counter(_Z7counterPNSt7__n486116coroutine_handleIvEE.Frame *) (frame_ptr=0x416eb0)
+    at /usr/local/include/c++/12.2.0/main.cc:24
+24  ReturnObject counter(std::coroutine_handle<>* continuation_out) {
+(gdb) print frame_ptr
+$12 = (_Z7counterPNSt7__n486116coroutine_handleIvEE.Frame *) 0x416eb0
+(gdb) print frame_ptr->_Coro_self_handle
+$13 = {_M_fr_ptr = 0x416eb0}
+(gdb) print &frame_ptr->_Coro_self_handle
+$14 = (std::__n4861::coroutine_handle<ReturnObject::promise_type> *) 0x416ec8
+```
+
+通过 GDB 跟踪 `frame_ptr->_Coro_self_handle` ，可以看到它是一个指向 coroutine frame 的指针，从而说明 `coroutine_handle` 是一个指向 coroutine frame 的指针。
+
+## 分析汇编代码
 
 ```assembly
 00000000004011f6 <counter(std::__n4861::coroutine_handle<void>*)>:
@@ -666,6 +703,11 @@ Assembly Language:
 + [Stack Overflow: What are the ESP and the EBP registers?](https://stackoverflow.com/questions/21718397/what-are-the-esp-and-the-ebp-registers)
 + [Stack Overflow: Why does the stack address grow towards decreasing memory addresses?](https://stackoverflow.com/questions/4560720/why-does-the-stack-address-grow-towards-decreasing-memory-addresses)
 + [Stack Overflow: Assembly language je jump function](https://stackoverflow.com/questions/1582960/assembly-language-je-jump-function)
+
+Coroutine proposals:
+
++ [Open Standards: Working Draft, C++ Extensions for Coroutines](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2018/n4775.pdf)
++ [Open Standards: Coroutines: Language and Implementation Impact](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2019/p1492r0.pdf)
 
 Coroutine Overview:
 
