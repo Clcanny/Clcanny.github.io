@@ -6,6 +6,23 @@ categories:
   - [Computer Science, Programming Language, C++]
 ---
 
+# 测试环境
+
+```bash
+# docker run -it gcc:12.2.0-bullseye g++ --version
+g++ (GCC) 12.2.0
+# docker run -it gcc:12.2.0-bullseye cat /etc/os-release
+PRETTY_NAME="Debian GNU/Linux 11 (bullseye)"
+NAME="Debian GNU/Linux"
+VERSION_ID="11"
+VERSION="11 (bullseye)"
+VERSION_CODENAME=bullseye
+ID=debian
+HOME_URL="https://www.debian.org/"
+SUPPORT_URL="https://www.debian.org/support"
+BUG_REPORT_URL="https://bugs.debian.org/"
+```
+
 # 用状态机实现 Coroutine
 
 ```cpp
@@ -52,7 +69,16 @@ int main() {
 }
 ```
 
+```bash
+# readelf --symbols --wide main.o | grep -E "coroutine_handle.*Frame" | awk '{print $NF}' | sort | uniq
+_Z7counterPZ7counterPNSt7__n486116coroutine_handleIvEEE50_Z7counterPNSt7__n486116coroutine_handleIvEE.Frame.actor
+_Z7counterPZ7counterPNSt7__n486116coroutine_handleIvEEE50_Z7counterPNSt7__n486116coroutine_handleIvEE.Frame.destroy
+# gdb main.o
+# (gdb) b _Z7counterPZ7counterPNSt7__n486116coroutine_handleIvEEE50_Z7counterPNSt7__n486116coroutine_handleIvEE.Frame.actor
+```
+
 ```cpp
+// (gdb) ptype *frame_ptr
 // coroutine frame
 struct counter(std::__n4861::coroutine_handle<void>*).Frame {
   void (*_Coro_resume_fn)(counter(std::__n4861::coroutine_handle<void>*).Frame *);
@@ -68,12 +94,17 @@ struct counter(std::__n4861::coroutine_handle<void>*).Frame {
   unsigned int i_2_3;
   std::__n4861::suspend_never Fs_1_5;
 };
-```
-
-```cpp
+// (gdb) ptype frame_ptr->_Coro_promise
+struct ReturnObject::promise_type {};
+// (gdb) ptype frame_ptr->_Coro_self_handle
 struct std::__n4861::coroutine_handle<ReturnObject::promise_type>
 [with _Promise = ReturnObject::promise_type] {
   void *_M_fr_ptr;
+};
+// (gdb) ptype frame_ptr->continuation_out
+struct std::__n4861::coroutine_handle<void>
+[with _Promise = void] {
+  _Promise *_M_fr_ptr;
 };
 ```
 
@@ -119,7 +150,8 @@ struct std::__n4861::coroutine_handle<ReturnObject::promise_type>
   ; Set Frame::_Coro_destroy_fn to destory.
   401237:   mov    rax,QWORD PTR [rbp-0x18]
   40123b:   mov    QWORD PTR [rax+0x8],0x401594
-  ; Set Frame::continuation_out to the first parameter of func counter.
+  ; Set Frame::continuation_out to the first parameter of func counter,
+  ; which is coroutine_handle.
   401243:   mov    rdx,QWORD PTR [rbp-0x28]
   401247:   mov    rax,QWORD PTR [rbp-0x18]
   40124b:   mov    QWORD PTR [rax+0x20],rdx
