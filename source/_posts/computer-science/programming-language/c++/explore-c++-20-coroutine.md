@@ -523,7 +523,7 @@ struct std::__n4861::coroutine_handle<ReturnObject::promise_type>
 
 # 解密 std::coroutine_handle<Promise>::from_promise
 
-`std::coroutine_handle<Promise>::from_promise` 看上去很像“魔法”，从一个没有任何相关字段的对象（比如 `ReturnObject::promise_type` ）里凭空变出了 `coroutine_handle` 。[Stack Overflow: How coroutine_handle<Promise>::from_promise() works in C++](https://stackoverflow.com/questions/58632651/how-coroutine-handlepromisefrom-promise-works-in-c) 解释了这个魔发：
+`std::coroutine_handle<Promise>::from_promise` 看上去很像“魔法”，从一个没有任何相关字段的对象（比如 `ReturnObject::promise_type` ）里凭空变出了 `coroutine_handle` 。[Stack Overflow: How coroutine_handle<Promise>::from_promise() works in C++](https://stackoverflow.com/questions/58632651/how-coroutine-handlepromisefrom-promise-works-in-c) 解释了这个魔法：
 
 > It works by fiat. That is, it works because the standard says that it works, and implementations must therefore find a way to implement coroutines in such a way that it is possible.
 >
