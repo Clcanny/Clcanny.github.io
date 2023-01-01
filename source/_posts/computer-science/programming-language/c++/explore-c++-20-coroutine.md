@@ -122,13 +122,16 @@ struct counter(std::__n4861::coroutine_handle<void>*).Frame {
   std::__n4861::coroutine_handle<ReturnObject::promise_type> _Coro_self_handle;
   // 对应 counter 函数的参数 continuation_out 。
   std::__n4861::coroutine_handle<void> *continuation_out;
+  // The index represents the progress of the coroutine through its function body.
   unsigned short _Coro_resume_index;
   bool _Coro_frame_needs_free;
   bool _Coro_initial_await_resume_called;
+  // Return value of ReturnObject::promise_type::initial_suspend.
   std::__n4861::suspend_never Is_1_1;
   Awaiter a_1_2;
   // 对应 counter 函数的局部变量 i ？
   unsigned int i_2_3;
+  // Return value of ReturnObject::promise_type::final_suspend.
   std::__n4861::suspend_never Fs_1_5;
 };
 ```
@@ -459,7 +462,6 @@ $14 = (std::__n4861::coroutine_handle<ReturnObject::promise_type> *) 0x416ec8
   4013dd:   mov    rax,QWORD PTR [rbp-0x28]
   ; Set Frame::i_2_3 to 0x0.
   4013e1:   mov    DWORD PTR [rax+0x38],0x0
-
   ; What does the following code do?
   ; 1. Set Frame::_Coro_resume_index to 0x4.
   ; 2. Call Awaiter::await_suspend(coroutine_handle<void>).
@@ -500,17 +502,24 @@ $14 = (std::__n4861::coroutine_handle<ReturnObject::promise_type> *) 0x416ec8
   401431:   jmp    4014d0
 
   ; Execute following code when Frame::_Coro_resume_index == 0x4.
+  ; while (true) {
+  ;   std::cout << "counter: " << i << std::endl;
+  ;   i++;
+  ;   co_await a;
+  ; }
   401436:   mov    rax,QWORD PTR [rbp-0x28]
   ; &Frame::a_1_2, whose type is Awaiter*.
   40143a:   add    rax,0x30
   ; Call Awaiter::await_resume() with this = &Frame::a_1_2.
+  ; Finally, await_resume() is called,
+  ; and its result is the result of the whole co_await expr expression.
   40143e:   mov    rdi,rax
   401441:   call   401782 <Awaiter::await_resume() const>
   ; The code equivalent to the following code has been omitted:
   ; std::cout << "counter: " << i << std::endl.
   ; Frame::i_2_3, whose type is unsigned int.
   40147a:   mov    eax,DWORD PTR [rax+0x38]
-  ; Frame:i_2_3 += 1
+  ; Frame::i_2_3 += 1
   40147d:   lea    edx,[rax+0x1]
   401480:   mov    rax,QWORD PTR [rbp-0x28]
   401484:   mov    DWORD PTR [rax+0x38],edx
@@ -593,8 +602,7 @@ $14 = (std::__n4861::coroutine_handle<ReturnObject::promise_type> *) 0x416ec8
   401532:   mov    rdi,rax
   401535:   call   401748 <ReturnObject::promise_type::unhandled_exception()>
   40153a:   call   4010d0 <__cxa_end_catch@plt>
-
-  ; Because we never use co_return operator, the following won't be executed forever?
+  ;
   40153f:   mov    rax,QWORD PTR [rbp-0x28]
   401543:   mov    QWORD PTR [rax],0x0
   40154a:   mov    rax,QWORD PTR [rbp-0x28]
@@ -773,12 +781,16 @@ Coroutine proposals:
 
 + [Open Standards: Working Draft, C++ Extensions for Coroutines](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2018/n4775.pdf)
 + [Open Standards: Coroutines: Language and Implementation Impact](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2019/p1492r0.pdf)
++ [Working Draft, Standard for Programming Language C++: Coroutine definitions](https://eel.is/c++draft/dcl.fct.def.coroutine)
 
 Coroutine Overview:
 
 + [David Mazières: My tutorial and take on C++20 coroutines](https://www.scs.stanford.edu/~dm/blog/c++-coroutines.html)
 + [Mircosoft, The Old New Thing, Debugging coroutine handles: The Microsoft Visual C++ compiler, clang, and gcc](https://devblogs.microsoft.com/oldnewthing/20211007-00/?p=105777)
++ [Mircosoft, The Old New Thing, C++ coroutines: The mental model for coroutine promises](https://devblogs.microsoft.com/oldnewthing/20210329-00/?p=105015)
++ [Mircosoft, The Old New Thing, C++ coroutines: Basic implementation of a promise type](https://devblogs.microsoft.com/oldnewthing/20210330-00/?p=105019)
 + [Microsoft, The Old New Thing, C++ coroutines: The initial and final suspend, and improving our return_value method](https://devblogs.microsoft.com/oldnewthing/20210331-00/?p=105028)
++ [Microsoft, The Old New Thing, C++ coroutines: What happens if an exception occurs in my return_value?](https://devblogs.microsoft.com/oldnewthing/20210401-00/?p=105043)
 + [ACCU 2022, Jim Pascoe: How to Use C++20 Coroutines for Networking](https://www.youtube.com/watch?v=ZNttI_WswMU)
 + [ITNEXT, Šimon Tóth: C++20 Coroutines — Complete* Guide](https://itnext.io/c-20-coroutines-complete-guide-7c3fc08db89d)
 + [Stack Overflow: How coroutine_handle\<Promise\>::from_promise() works in C++](https://stackoverflow.com/questions/58632651/how-coroutine-handlepromisefrom-promise-works-in-c)
