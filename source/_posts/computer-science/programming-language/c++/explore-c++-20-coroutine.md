@@ -660,94 +660,53 @@ $3 = {_M_fr_ptr = 0x1ab6eb0}
 >
 > Now, that is just one way of doing it; an implementation doesn't have to do it this way. What matters is that the implementation has control over where the promise object lives relative to the coroutine internal data. Or more specifically, the promise lives inside of that internal data. Regardless of how you look at it, the compiler knows everything it needs to in order to convert the address of a promise into the internal data needed to fill in a `coroutine_handle`.
 
-
 ```cpp
-// g++ -std=c++20 -fcoroutines -ggdb -O0 main.cc -o main.o
-// objdump -M intel,intel-mnemonic --demangle=auto --no-recurse-limit --no-show-raw-insn -d main.o
-#include <concepts>
-#include <coroutine>
-#include <exception>
-#include <iostream>
-
-struct ReturnObject {
-  struct promise_type {
-    ReturnObject get_return_object() {
-      return {
-        // Uses C++20 designated initializer syntax
-        .h_ = std::coroutine_handle<promise_type>::from_promise(*this)
-      };
-    }
-    std::suspend_never initial_suspend() { return {}; }
-    std::suspend_never final_suspend() noexcept { return {}; }
-    void unhandled_exception() {}
-  };
-
-  std::coroutine_handle<promise_type> h_;
-  operator std::coroutine_handle<promise_type>() const { return h_; }
-  // A coroutine_handle<promise_type> converts to coroutine_handle<>
-  operator std::coroutine_handle<>() const { return h_; }
-};
-
-ReturnObject counter() {
-  for (unsigned i = 0;; ++i) {
-    co_await std::suspend_always{};
-    std::cout << "counter2: " << i << std::endl;
-  }
-}
-
-int main() {
-  std::coroutine_handle<> h = counter();
-  for (int i = 0; i < 3; ++i) {
-    std::cout << "In main function" << std::endl;
-    h();
-  }
-  h.destroy();
-  return 0;
-}
-```
-
-```cpp
-struct _Z7counterv.Frame {
+type = struct _Z7counterv.Frame {
   void (*_Coro_resume_fn)(_Z7counterv.Frame *);
   void (*_Coro_destroy_fn)(_Z7counterv.Frame *);
   std::__n4861::__coroutine_traits_impl<ReturnObject, void>::promise_type _Coro_promise;
   std::__n4861::coroutine_handle<ReturnObject::promise_type> _Coro_self_handle;
   unsigned short _Coro_resume_index;
   bool _Coro_frame_needs_free;
-  bool _Coro_initial_await_resume_called;
-  std::__n4861::suspend_never Is_1_1;
-  unsigned int i_2_3;
-  std::__n4861::suspend_always Aw0_3_4;
-  std::__n4861::suspend_never Fs_1_5;
+  ReturnObject::InitialSuspendNever Is_1_1;
+  unsigned int value_a_1_2;
+  unsigned int value_b_1_2;
+  unsigned int value_c_1_2;
+  CoAwaitSuspendAlways Aw0_2_3;
+  ReturnObject::YieldSuspendAlways Yd1_2_4;
+  ReturnObject::YieldSuspendAlways Yd2_2_5;
+  ReturnObject::FinalSuspendAlways Fs_1_6;
 }
 ```
 
 ```assembly
-000000000040173c <ReturnObject::promise_type::get_return_object()>:
-  40173c:   push   rbp
-  40173d:   mov    rbp,rsp
-  401740:   sub    rsp,0x10
-  401744:   mov    QWORD PTR [rbp-0x8],rdi
-  401748:   mov    rax,QWORD PTR [rbp-0x8]
-  40174c:   mov    rdi,rax
-  40174f:   call   401794 <std::__n4861::coroutine_handle<ReturnObject::promise_type>::from_promise(ReturnObject::promise_type&)>
-  401754:   leave
-  401755:   ret
+0000000000401708 <ReturnObject::promise_type::get_return_object()>:
+  401708:       push   rbp
+  401709:       mov    rbp,rsp
+  40170c:       sub    rsp,0x10
+  ; RDI = this = &Frame::_Coro_promise;
+  401710:       mov    QWORD PTR [rbp-0x8],rdi
+  401714:       mov    rax,QWORD PTR [rbp-0x8]
+  401718:       mov    rdi,rax
+  40171b:       call   401775 <std::__n4861::coroutine_handle<ReturnObject::promise_type>::from_promise(ReturnObject::promise_type&)>
+  401720:       leave
+  401721:       ret
 
-0000000000401794 <std::__n4861::coroutine_handle<ReturnObject::promise_type>::from_promise(ReturnObject::promise_type&)>:
-  401794:   push   rbp
-  401795:   mov    rbp,rsp
+0000000000401775 <std::__n4861::coroutine_handle<ReturnObject::promise_type>::from_promise(ReturnObject::promise_type&)>:
+  401775:       push   rbp
+  401776:       mov    rbp,rsp
   ; RDI = &Frame::_Coro_promise.
-  401798:   mov    QWORD PTR [rbp-0x18],rdi
-  40179c:   mov    QWORD PTR [rbp-0x8],0x0
-  4017a4:   mov    rax,QWORD PTR [rbp-0x18]
+  401779:       mov    QWORD PTR [rbp-0x18],rdi
+  40177d:       mov    QWORD PTR [rbp-0x8],0x0
+  401785:       mov    rax,QWORD PTR [rbp-0x18]
   ; RAX = RDI - 0x10 = &Frame::_Coro_promise - 0x10 = &Frame.
-  4017a8:   sub    rax,0x10
-  4017ac:   mov    QWORD PTR [rbp-0x8],rax
-  4017b0:   mov    rax,QWORD PTR [rbp-0x8]
-  4017b4:   pop    rbp
-  ; Return value is &Frame.
-  4017b5:   ret
+  401789:       sub    rax,0x10
+  40178d:       mov    QWORD PTR [rbp-0x8],rax
+  401791:       mov    rax,QWORD PTR [rbp-0x8]
+  401795:       pop    rbp
+  ; Return value is &Frame, which is coroutine handle.
+  401796:       ret
+  401797:       nop
 ```
 
 # Reference
