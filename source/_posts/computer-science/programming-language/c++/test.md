@@ -220,14 +220,14 @@ type = struct _Z7counterv.Frame {
   4012b9:   mov    rax,QWORD PTR [rbp-0x28]
   ; Set rbx = &Frame::Is_1_1.
   4012bd:   lea    rbx,[rax+0x23]
-  ; Call coroutine_handle::operator() with this = &Frame::_Coro_self_handle.
+  ; Call coroutine_handle::operator()() with this = &Frame::_Coro_self_handle.
   4012c1:   mov    rax,QWORD PTR [rbp-0x28]
   4012c5:   add    rax,0x18
   4012c9:   mov    rdi,rax
   4012cc:   call   401798 <std::__n4861::coroutine_handle<ReturnObject::promise_type>::operator std::__n4861::coroutine_handle<void>() const>
   4012d1:   mov    rsi,rax
   ; Call suspend_never::await_suspend(handle) with this = &Frame::Is_1_1
-  ; and handle = return value of coroutine_handle::operator().
+  ; and handle = return value of coroutine_handle::operator()(&Frame::_Coro_self_handle).
   4012d4:   mov    rdi,rbx
   4012d7:   call   4016ec <std::__n4861::suspend_never::await_suspend(std::__n4861::coroutine_handle<void>) const>
   4012dc:   jmp    40152d <counter(counter()::_Z7counterv.Frame*) [clone .actor]+0x31b>
@@ -261,13 +261,13 @@ type = struct _Z7counterv.Frame {
   ; Set rbx to &Frame::Aw0_2_3.
   40131f:   mov    rax,QWORD PTR [rbp-0x28]
   401323:   lea    rbx,[rax+0x30]
-  ; Call coroutine_handle::operator() with this = &Frame::_Coro_self_handle.
+  ; Call coroutine_handle::operator()() with this = &Frame::_Coro_self_handle.
   401327:   mov    rax,QWORD PTR [rbp-0x28]
   40132b:   add    rax,0x18
   40132f:   mov    rdi,rax
   401332:   call   401798 <std::__n4861::coroutine_handle<ReturnObject::promise_type>::operator std::__n4861::coroutine_handle<void>() const>
   ; Call suspend_always::await_suspend(handle) with this = &Frame::Aw0_2_3
-  ; and handle = return value of coroutine_handle::operator().
+  ; and handle = return value of coroutine_handle::operator()(&Frame::_Coro_self_handle).
   401337:   mov    rsi,rax
   40133a:   mov    rdi,rbx
   40133d:   call   4016c0 <std::__n4861::suspend_always::await_suspend(std::__n4861::coroutine_handle<void>) const>
@@ -313,7 +313,7 @@ type = struct _Z7counterv.Frame {
   40139e:   mov    rax,QWORD PTR [rbp-0x28]
   4013a2:   mov    WORD PTR [rax+0x20],0x6
   ; Call suspend_always::await_suspend(handle) with this = &Frame::Yd1_2_4
-  ; and handle = return value of coroutine_handle::operator().
+  ; and handle = return value of coroutine_handle::operator()(&Frame::_Coro_self_handle).
   4013a8:   mov    rax,QWORD PTR [rbp-0x28]
   4013ac:   lea    rbx,[rax+0x31]
   4013b0:   mov    rax,QWORD PTR [rbp-0x28]
@@ -361,7 +361,7 @@ type = struct _Z7counterv.Frame {
   401425:   je     40145e <counter(counter()::_Z7counterv.Frame*) [clone .actor]+0x24c>
   ; Always execute this branch.
   ; Call suspend_always::await_suspend(handle) with this = &Frame::Yd2_2_5
-  ; and handle = return value of coroutine_handle::operator().
+  ; and handle = return value of coroutine_handle::operator()(&Frame::_Coro_self_handle).
   401427:   mov    rax,QWORD PTR [rbp-0x28]
   40142b:   mov    WORD PTR [rax+0x20],0x8
   401431:   mov    rax,QWORD PTR [rbp-0x28]
@@ -397,23 +397,34 @@ type = struct _Z7counterv.Frame {
   40148a:   mov    rdi,rdx
   40148d:   call   40174e <ReturnObject::promise_type::return_value(unsigned int)>
   401492:   nop
+  ; Set Frame::_Coro_resume_fn to nullptr.
   401493:   mov    rax,QWORD PTR [rbp-0x28]
   401497:   mov    QWORD PTR [rax],0x0
+  ; Call promise_type::final_suspend() with this = &Frame::_Coro_promise.
   40149e:   mov    rax,QWORD PTR [rbp-0x28]
   4014a2:   add    rax,0x10
   4014a6:   mov    rbx,QWORD PTR [rbp-0x28]
   4014aa:   mov    rdi,rax
   4014ad:   call   401766 <ReturnObject::promise_type::final_suspend()>
+  ; RBX is set to &Frame at 0x4014a6.
+  ; Set Frame::Fs_1_6 to return value of final_suspend().
   4014b2:   mov    BYTE PTR [rbx+0x33],al
+  ; Call suspend_always::await_ready() with this = &Frame::Fs_1_6.
   4014b5:   mov    rax,QWORD PTR [rbp-0x28]
   4014b9:   add    rax,0x33
   4014bd:   mov    rdi,rax
   4014c0:   call   4016b0 <std::__n4861::suspend_always::await_ready() const>
+  ; Test if return value is true.
   4014c5:   xor    eax,0x1
   4014c8:   test   al,al
+  ; Always skip this branch.
   4014ca:   je     4014fd <counter(counter()::_Z7counterv.Frame*) [clone .actor]+0x2eb>
+  ; Always execute this branch.
+  ; Set Frame::_Coro_resume_index to 0xa.
   4014cc:   mov    rax,QWORD PTR [rbp-0x28]
   4014d0:   mov    WORD PTR [rax+0x20],0xa
+  ; Call suspend_always::await_suspend(handle) with this = &Frame::Fs_1_6
+  ; and handle = return value of coroutine_handle::operator()(&Frame::_Coro_self_handle).
   4014d6:   mov    rax,QWORD PTR [rbp-0x28]
   4014da:   lea    rbx,[rax+0x33]
   4014de:   mov    rax,QWORD PTR [rbp-0x28]
@@ -429,6 +440,7 @@ type = struct _Z7counterv.Frame {
   4014fb:   jmp    401510 <counter(counter()::_Z7counterv.Frame*) [clone .actor]+0x2fe>
 
   ; Execute the following code when Frame::_Coro_resume_index == 0xa.
+  ; Call suspend_always::await_resume() with this = &Frame::Fs_1_6.
   4014fd:   mov    rax,QWORD PTR [rbp-0x28]
   401501:   add    rax,0x33
   401505:   mov    rdi,rax
@@ -438,11 +450,14 @@ type = struct _Z7counterv.Frame {
   ; Execute the following code when Frame::_Coro_resume_index == 0x1.
   40150f:   nop
   ; Execute the following code when Frame::_Coro_resume_index == 0x3/0x5/0x7/0x9/0xb.
+  ; Test if Frame::_Coro_frame_needs_free is true.
   401510:   mov    rax,QWORD PTR [rbp-0x28]
   401514:   movzx  eax,BYTE PTR [rax+0x22]
   401518:   movzx  eax,al
   40151b:   test   eax,eax
+  ; Jump to 0x40152d if Frame::_Coro_frame_needs_free is false.
   40151d:   je     40152d <counter(counter()::_Z7counterv.Frame*) [clone .actor]+0x31b>
+  ; Delete coroutine frame.
   40151f:   mov    rax,QWORD PTR [rbp-0x28]
   401523:   mov    rdi,rax
   401526:   call   401050 <operator delete(void*)@plt>
