@@ -562,6 +562,25 @@ type = struct _Z7counterv.Frame {
   401533:   ret
 ```
 
+等价上述汇编代码的伪代码如下：
+
+```cpp
+{
+  promise-type promise promise-constructor-arguments;
+  try {
+    co_await promise.initial_suspend();
+    function-body
+  } catch (...) {
+    if (!initial-await-resume-called) {
+      throw;
+    }
+    promise.unhandled_exception();
+  }
+final-suspend:
+  co_await promise.final_suspend();
+}
+```
+
 ## coroutine frame 是一个保存 coroutine 状态的栈
 
 C++20 的 coroutine 是无栈协程，相较于有栈协程，无栈协程不会在堆内存上开一块空间来伪装成调用栈，而是让编译器用一个结构体将参数和本地变量保存下来。[gcc-mirror/gcc: coroutines.cc](https://github.com/gcc-mirror/gcc/blob/2fa8c4a659a19ec971c80704f48f96c13aae9ac3/gcc/cp/coroutines.cc#L4336) 有一段注释描述了 coroutine frame 的大致结构：
