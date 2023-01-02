@@ -87,8 +87,6 @@ int main() {
 }
 ```
 
-## coroutine frame 是保存 coroutine 状态的“栈”
-
 ```bash
 # readelf --symbols --wide main.o | grep -E "Frame" | awk '{print $NF}' | sort | uniq
 _Z7counterPZ7countervE17_Z7counterv.Frame.actor
@@ -131,27 +129,6 @@ type = struct _Z7counterv.Frame {
   ReturnObject::FinalSuspendAlways Fs_1_6;
 }
 ```
-
-C++20 的 coroutine 是无栈协程，相较于有栈协程，无栈协程不会在堆内存上开一块空间来伪装成调用栈，而是让编译器用一个结构体将参数和本地变量保存下来。[gcc-mirror/gcc: coroutines.cc](https://github.com/gcc-mirror/gcc/blob/2fa8c4a659a19ec971c80704f48f96c13aae9ac3/gcc/cp/coroutines.cc#L4336) 有一段注释描述了 coroutine frame 的大致结构：
-
-```cpp
-// We do something like this:
-// declare a dummy coro frame.
-// struct _R_frame {
-//  using handle_type = coro::coroutine_handle<coro1::promise_type>;
-//  void (*_Coro_resume_fn)(_R_frame *);
-//  void (*_Coro_destroy_fn)(_R_frame *);
-//  coro1::promise_type _Coro_promise;
-//  bool _Coro_frame_needs_free; free the coro frame mem if set.
-//  bool _Coro_i_a_r_c; [dcl.fct.def.coroutine] / 5.3
-//  short _Coro_resume_index;
-//  handle_type _Coro_self_handle;
-//  parameter copies (were required).
-//  local variables saved (including awaitables)
-//  (maybe) trailing space.
-```
-
-## 分析汇编代码
 
 ```assembly
 0000000000401196 <counter()>:
@@ -584,6 +561,33 @@ C++20 的 coroutine 是无栈协程，相较于有栈协程，无栈协程不会
   401532:   leave
   401533:   ret
 ```
+
+## coroutine frame 是一个保存 coroutine 状态的栈
+
+C++20 的 coroutine 是无栈协程，相较于有栈协程，无栈协程不会在堆内存上开一块空间来伪装成调用栈，而是让编译器用一个结构体将参数和本地变量保存下来。[gcc-mirror/gcc: coroutines.cc](https://github.com/gcc-mirror/gcc/blob/2fa8c4a659a19ec971c80704f48f96c13aae9ac3/gcc/cp/coroutines.cc#L4336) 有一段注释描述了 coroutine frame 的大致结构：
+
+```cpp
+// We do something like this:
+// declare a dummy coro frame.
+// struct _R_frame {
+//  using handle_type = coro::coroutine_handle<coro1::promise_type>;
+//  void (*_Coro_resume_fn)(_R_frame *);
+//  void (*_Coro_destroy_fn)(_R_frame *);
+//  coro1::promise_type _Coro_promise;
+//  bool _Coro_frame_needs_free; free the coro frame mem if set.
+//  bool _Coro_i_a_r_c; [dcl.fct.def.coroutine] / 5.3
+//  short _Coro_resume_index;
+//  handle_type _Coro_self_handle;
+//  parameter copies (were required).
+//  local variables saved (including awaitables)
+//  (maybe) trailing space.
+```
+
+## promise 是一个 coroutine 向 caller 传递数据的结构
+
++ `co_yield` 使 coroutine 调用 `promise_type::yield_value` 。
++ `co_return` 使 coroutine 调用 `promise_type::return_value` 。
++ `initial_suspend` / `final_suspend` 分别控制 coroutine 开始和结束时是否额外暂停一次。
 
 ## `coroutine_handle` 是一个指向 coroutine frame 的指针
 
