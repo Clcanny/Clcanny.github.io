@@ -218,7 +218,7 @@ type = struct _Z7counterv.Frame {
   4012af:   mov    rax,QWORD PTR [rbp-0x28]
   4012b3:   mov    WORD PTR [rax+0x20],0x2
   4012b9:   mov    rax,QWORD PTR [rbp-0x28]
-  ; Set rbx = &Frame::Is_1_1.
+  ; Set RBX to &Frame::Is_1_1.
   4012bd:   lea    rbx,[rax+0x23]
   ; Call coroutine_handle::operator()() with this = &Frame::_Coro_self_handle.
   4012c1:   mov    rax,QWORD PTR [rbp-0x28]
@@ -241,7 +241,7 @@ type = struct _Z7counterv.Frame {
   4012ea:   add    rax,0x23
   4012ee:   mov    rdi,rax
   4012f1:   call   4016fc <std::__n4861::suspend_never::await_resume() const>
-  ; Set Frame::Aw0_2_3 to 0.
+  ; Set Frame::Aw0_2_3 to 0x0.
   4012f6:   mov    rax,QWORD PTR [rbp-0x28]
   4012fa:   mov    BYTE PTR [rax+0x30],0x0
   ; Call suspend_always::await_ready() with this = &Frame::Aw0_2_3.
@@ -255,10 +255,10 @@ type = struct _Z7counterv.Frame {
   ; Always skip this branch.
   401313:   je     40134c <counter(counter()::_Z7counterv.Frame*) [clone .actor]+0x13a>
   ; Always execute this branch.
-  ; Set Frame::_Coro_resume_index to 4.
+  ; Set Frame::_Coro_resume_index to 0x4.
   401315:   mov    rax,QWORD PTR [rbp-0x28]
   401319:   mov    WORD PTR [rax+0x20],0x4
-  ; Set rbx to &Frame::Aw0_2_3.
+  ; Set RBX to &Frame::Aw0_2_3.
   40131f:   mov    rax,QWORD PTR [rbp-0x28]
   401323:   lea    rbx,[rax+0x30]
   ; Call coroutine_handle::operator()() with this = &Frame::_Coro_self_handle.
