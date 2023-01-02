@@ -583,7 +583,7 @@ C++20 的 coroutine 是无栈协程，相较于有栈协程，无栈协程不会
 //  (maybe) trailing space.
 ```
 
-## promise 是一个 coroutine 向 caller 传递数据的结构
+## promise 是一个 coroutine 向 caller 传递数据的对象
 
 + `co_yield` 使 coroutine 调用 `promise_type::yield_value` 。
 + `co_return` 使 coroutine 调用 `promise_type::return_value` 。
@@ -622,7 +622,10 @@ $3 = {_M_fr_ptr = 0x1ab6eb0}
 
 通过 GDB 跟踪 `frame_ptr->_Coro_self_handle` ，可以看到它是一个指向 `Frame` / `Frame::_Coro_resume_fn` 的指针，从而说明 `coroutine_handle` 也是一个指向 `Frame` / `Frame::_Coro_resume_fn` 的指针。
 
-## `Awaiter`
+## `awaiter` 是一个控制 coroutine 切换行为的对象
+
++ `awaiter.await_ready()` 决定继续执行当前 coroutine 还是暂停执行当前 coroutine 。
++ `awaiter.await_suspend(handle)` 决定暂停执行当前 coroutine 之后应该干什么。
 
 [C++ reference: Coroutines](https://en.cppreference.com/w/cpp/language/coroutines) 提到了 `Awaiter` 的作用：
 
