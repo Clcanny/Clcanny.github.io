@@ -648,67 +648,6 @@ $3 = {_M_fr_ptr = 0x1ab6eb0}
 >
 > Finally, `awaiter.await_resume()` is called (whether the coroutine was suspended or not), and its result is the result of the whole `co_await expr` expression.
 
-# 解密 std::coroutine_handle<Promise>::from_promise
-
-`std::coroutine_handle<Promise>::from_promise` 看上去很像“魔法”，从一个没有任何相关字段的对象（比如 `ReturnObject::promise_type` ）里凭空变出了 `coroutine_handle` 。[Stack Overflow: How coroutine_handle<Promise>::from_promise() works in C++](https://stackoverflow.com/questions/58632651/how-coroutine-handlepromisefrom-promise-works-in-c) 解释了这个魔法：
-
-> It works by fiat. That is, it works because the standard says that it works, and implementations must therefore find a way to implement coroutines in such a way that it is possible.
->
-> When creating a coroutine, the implementation creates two things: the `coroutine_handle` and the `promise` object. The location of both of these things is controlled entirely by the compiler. So, the compiler could very easily allocate them contiguously with each other, such that a coroutine's stack would essentially start with a `struct {coroutine_handle<Promise> handle; Promise promise};`.
->
-> Given that knowledge, you know that the handle for any promise type lives `sizeof(coroutine_handle<Promise>)` bytes before any `promise` object's address (alignment requirements of the `Promise` type can adjust this, but such things can be queried from the type). And since `from_promise` takes a promise object, you can just offset the pointer and cast it to a `coroutine_handle<Promise>`.
->
-> Now, that is just one way of doing it; an implementation doesn't have to do it this way. What matters is that the implementation has control over where the promise object lives relative to the coroutine internal data. Or more specifically, the promise lives inside of that internal data. Regardless of how you look at it, the compiler knows everything it needs to in order to convert the address of a promise into the internal data needed to fill in a `coroutine_handle`.
-
-```cpp
-type = struct _Z7counterv.Frame {
-  void (*_Coro_resume_fn)(_Z7counterv.Frame *);
-  void (*_Coro_destroy_fn)(_Z7counterv.Frame *);
-  std::__n4861::__coroutine_traits_impl<ReturnObject, void>::promise_type _Coro_promise;
-  std::__n4861::coroutine_handle<ReturnObject::promise_type> _Coro_self_handle;
-  unsigned short _Coro_resume_index;
-  bool _Coro_frame_needs_free;
-  ReturnObject::InitialSuspendNever Is_1_1;
-  unsigned int value_a_1_2;
-  unsigned int value_b_1_2;
-  unsigned int value_c_1_2;
-  CoAwaitSuspendAlways Aw0_2_3;
-  ReturnObject::YieldSuspendAlways Yd1_2_4;
-  ReturnObject::YieldSuspendAlways Yd2_2_5;
-  ReturnObject::FinalSuspendAlways Fs_1_6;
-}
-```
-
-```assembly
-0000000000401708 <ReturnObject::promise_type::get_return_object()>:
-  401708:       push   rbp
-  401709:       mov    rbp,rsp
-  40170c:       sub    rsp,0x10
-  ; RDI = this = &Frame::_Coro_promise;
-  401710:       mov    QWORD PTR [rbp-0x8],rdi
-  401714:       mov    rax,QWORD PTR [rbp-0x8]
-  401718:       mov    rdi,rax
-  40171b:       call   401775 <std::__n4861::coroutine_handle<ReturnObject::promise_type>::from_promise(ReturnObject::promise_type&)>
-  401720:       leave
-  401721:       ret
-
-0000000000401775 <std::__n4861::coroutine_handle<ReturnObject::promise_type>::from_promise(ReturnObject::promise_type&)>:
-  401775:       push   rbp
-  401776:       mov    rbp,rsp
-  ; RDI = &Frame::_Coro_promise.
-  401779:       mov    QWORD PTR [rbp-0x18],rdi
-  40177d:       mov    QWORD PTR [rbp-0x8],0x0
-  401785:       mov    rax,QWORD PTR [rbp-0x18]
-  ; RAX = RDI - 0x10 = &Frame::_Coro_promise - 0x10 = &Frame.
-  401789:       sub    rax,0x10
-  40178d:       mov    QWORD PTR [rbp-0x8],rax
-  401791:       mov    rax,QWORD PTR [rbp-0x8]
-  401795:       pop    rbp
-  ; Return value is &Frame, which is coroutine handle.
-  401796:       ret
-  401797:       nop
-```
-
 # `co_yield` = `co_await promise.yield_value(value)`
 
 ```cpp
@@ -769,6 +708,67 @@ int main() {
   h.destroy();
   return 0;
 }
+```
+
+# 解密 std::coroutine_handle<Promise>::from_promise
+
+`std::coroutine_handle<Promise>::from_promise` 看上去很像“魔法”，从一个没有任何相关字段的对象（比如 `ReturnObject::promise_type` ）里凭空变出了 `coroutine_handle` 。[Stack Overflow: How coroutine_handle<Promise>::from_promise() works in C++](https://stackoverflow.com/questions/58632651/how-coroutine-handlepromisefrom-promise-works-in-c) 解释了这个魔法：
+
+> It works by fiat. That is, it works because the standard says that it works, and implementations must therefore find a way to implement coroutines in such a way that it is possible.
+>
+> When creating a coroutine, the implementation creates two things: the `coroutine_handle` and the `promise` object. The location of both of these things is controlled entirely by the compiler. So, the compiler could very easily allocate them contiguously with each other, such that a coroutine's stack would essentially start with a `struct {coroutine_handle<Promise> handle; Promise promise};`.
+>
+> Given that knowledge, you know that the handle for any promise type lives `sizeof(coroutine_handle<Promise>)` bytes before any `promise` object's address (alignment requirements of the `Promise` type can adjust this, but such things can be queried from the type). And since `from_promise` takes a promise object, you can just offset the pointer and cast it to a `coroutine_handle<Promise>`.
+>
+> Now, that is just one way of doing it; an implementation doesn't have to do it this way. What matters is that the implementation has control over where the promise object lives relative to the coroutine internal data. Or more specifically, the promise lives inside of that internal data. Regardless of how you look at it, the compiler knows everything it needs to in order to convert the address of a promise into the internal data needed to fill in a `coroutine_handle`.
+
+```cpp
+type = struct _Z7counterv.Frame {
+  void (*_Coro_resume_fn)(_Z7counterv.Frame *);
+  void (*_Coro_destroy_fn)(_Z7counterv.Frame *);
+  std::__n4861::__coroutine_traits_impl<ReturnObject, void>::promise_type _Coro_promise;
+  std::__n4861::coroutine_handle<ReturnObject::promise_type> _Coro_self_handle;
+  unsigned short _Coro_resume_index;
+  bool _Coro_frame_needs_free;
+  ReturnObject::InitialSuspendNever Is_1_1;
+  unsigned int value_a_1_2;
+  unsigned int value_b_1_2;
+  unsigned int value_c_1_2;
+  CoAwaitSuspendAlways Aw0_2_3;
+  ReturnObject::YieldSuspendAlways Yd1_2_4;
+  ReturnObject::YieldSuspendAlways Yd2_2_5;
+  ReturnObject::FinalSuspendAlways Fs_1_6;
+}
+```
+
+```assembly
+0000000000401708 <ReturnObject::promise_type::get_return_object()>:
+  401708:       push   rbp
+  401709:       mov    rbp,rsp
+  40170c:       sub    rsp,0x10
+  ; RDI = this = &Frame::_Coro_promise;
+  401710:       mov    QWORD PTR [rbp-0x8],rdi
+  401714:       mov    rax,QWORD PTR [rbp-0x8]
+  401718:       mov    rdi,rax
+  40171b:       call   401775 <std::__n4861::coroutine_handle<ReturnObject::promise_type>::from_promise(ReturnObject::promise_type&)>
+  401720:       leave
+  401721:       ret
+
+0000000000401775 <std::__n4861::coroutine_handle<ReturnObject::promise_type>::from_promise(ReturnObject::promise_type&)>:
+  401775:       push   rbp
+  401776:       mov    rbp,rsp
+  ; RDI = &Frame::_Coro_promise.
+  401779:       mov    QWORD PTR [rbp-0x18],rdi
+  40177d:       mov    QWORD PTR [rbp-0x8],0x0
+  401785:       mov    rax,QWORD PTR [rbp-0x18]
+  ; RAX = RDI - 0x10 = &Frame::_Coro_promise - 0x10 = &Frame.
+  401789:       sub    rax,0x10
+  40178d:       mov    QWORD PTR [rbp-0x8],rax
+  401791:       mov    rax,QWORD PTR [rbp-0x8]
+  401795:       pop    rbp
+  ; Return value is &Frame, which is coroutine handle.
+  401796:       ret
+  401797:       nop
 ```
 
 # Reference
