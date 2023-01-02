@@ -591,36 +591,36 @@ C++20 的 coroutine 是无栈协程，相较于有栈协程，无栈协程不会
 
 ## `coroutine_handle` 是一个指向 coroutine frame 的指针
 
-`main` 函数的本地变量 `std::coroutine_handle<> h` 最终是通过 `Awaiter::await_suspend` 函数的语句 `*hp_ = h;` 被赋值的，而参数 `h` 又等于变量 `Frame::_Coro_self_handle` ，所以我们只需要观察 `Frame::_Coro_self_handle` 的类型和值就能确定 `coroutine_handle` 是什么了。
-
-```cpp
-// (gdb) ptype frame_ptr->_Coro_self_handle
+```text
+(gdb) b _Z7counterPZ7countervE17_Z7counterv.Frame.actor
+(gdb) r
+(gdb) ptype frame_ptr->_Coro_self_handle
 struct std::__n4861::coroutine_handle<ReturnObject::promise_type>
 [with _Promise = ReturnObject::promise_type] {
   void *_M_fr_ptr;
 };
+(gdb) watch frame_ptr->_Coro_self_handle
+Hardware watchpoint 2: frame_ptr->_Coro_self_handle
+(gdb) c
+Hardware watchpoint 2: frame_ptr->_Coro_self_handle
+Old value = {_M_fr_ptr = 0x0}
+New value = {_M_fr_ptr = 0x1ab6eb0}
+(gdb) print frame_ptr
+$1 = (_Z7counterv.Frame *) 0x1ab6eb0
+(gdb) print &frame_ptr->_Coro_resume_fn
+$2 = (void (**)(_Z7counterv.Frame *)) 0x1ab6eb0
 ```
 
 ```text
+(gdb) b main.cc:47
 (gdb) c
-Continuing.
-
-Hardware watchpoint 6: *(uint64_t*)0x416ec8
-
-Old value = <unreadable>
-New value = 4288176
-counter(_Z7counterPNSt7__n486116coroutine_handleIvEE.Frame *) (frame_ptr=0x416eb0)
-    at /usr/local/include/c++/12.2.0/main.cc:24
-24  ReturnObject counter(std::coroutine_handle<>* continuation_out) {
-(gdb) print frame_ptr
-$12 = (_Z7counterPNSt7__n486116coroutine_handleIvEE.Frame *) 0x416eb0
-(gdb) print frame_ptr->_Coro_self_handle
-$13 = {_M_fr_ptr = 0x416eb0}
-(gdb) print &frame_ptr->_Coro_self_handle
-$14 = (std::__n4861::coroutine_handle<ReturnObject::promise_type> *) 0x416ec8
+Breakpoint 3, main () at /usr/local/include/c++/12.2.0/main.cc:47
+47    auto& promise = h.promise();
+(gdb) print h
+$3 = {_M_fr_ptr = 0x1ab6eb0}
 ```
 
-通过 GDB 跟踪 `frame_ptr->_Coro_self_handle` ，可以看到它是一个指向 coroutine frame 的指针，从而说明 `coroutine_handle` 也是一个指向 coroutine frame 的指针。
+通过 GDB 跟踪 `frame_ptr->_Coro_self_handle` ，可以看到它是一个指向 `Frame` / `Frame::_Coro_resume_fn` 的指针，从而说明 `coroutine_handle` 也是一个指向 `Frame` / `Frame::_Coro_resume_fn` 的指针。
 
 ## `Awaiter`
 
