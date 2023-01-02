@@ -709,6 +709,68 @@ type = struct _Z7counterv.Frame {
   401797:       nop
 ```
 
+# `co_yield` = `co_await promise.yield_value(value)`
+
+```cpp
+// g++ -std=c++20 -fcoroutines -fno-exceptions -fno-asynchronous-unwind-tables -ggdb -O0 main.cc -o main.o
+// objdump -M intel,intel-mnemonic --demangle=auto --no-recurse-limit --no-show-raw-insn -d main.o
+#include <concepts>
+#include <coroutine>
+#include <exception>
+#include <iostream>
+
+struct ReturnObject {
+  struct promise_type {
+    ReturnObject get_return_object() {
+      return {
+        .h_ = std::coroutine_handle<promise_type>::from_promise(*this)
+      };
+    }
+    std::suspend_never initial_suspend() { return {}; }
+    std::suspend_always yield_value(unsigned int value) {
+      value_ = value;
+      return {};
+    }
+    void return_value(unsigned int value) {
+      value_ = value;
+    }
+    std::suspend_always final_suspend() noexcept { return {}; }
+    void unhandled_exception() {}
+    unsigned int value_;
+  };
+  std::coroutine_handle<promise_type> h_;
+};
+
+ReturnObject counter() {
+  co_await std::suspend_always{};
+  unsigned int value_a = 0x12345678;
+  co_yield value_a;
+  unsigned int value_b = 0x90ABCDEF;
+  uint64_t rbp = 0;
+  asm("movq %%rbp, %0" : "=r" (rbp));
+  uint64_t* frame_ptr = *(reinterpret_cast<uint64_t**>(rbp - 0x28));
+  auto h = std::coroutine_handle<ReturnObject::promise_type>::from_address(frame_ptr);
+  auto& p = h.promise();
+  co_await p.yield_value(value_b);
+  unsigned int value_c = 0x98765432;
+  co_return value_c;
+}
+
+int main() {
+  auto h = counter().h_;
+  auto& promise = h.promise();
+  std::cout << promise.value_ << std::endl;
+  h();
+  std::cout << promise.value_ << std::endl;
+  h();
+  std::cout << promise.value_ << std::endl;
+  h();
+  std::cout << promise.value_ << std::endl;
+  h.destroy();
+  return 0;
+}
+```
+
 # Reference
 
 Assembly Language:
