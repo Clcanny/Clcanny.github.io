@@ -66,34 +66,34 @@ _Z7counterPZ7countervE17_Z7counterv.Frame.destroy
 (gdb) r
 (gdb) ptype *frame_ptr
 type = struct _Z7counterv.Frame {
-  // offset = 0
+  // offset = 0 = 0x0
   void (*_Coro_resume_fn)(_Z7counterv.Frame *);
-  // offset = 8
+  // offset = 8 = 0x8
   void (*_Coro_destroy_fn)(_Z7counterv.Frame *);
-  // offset = 16
+  // offset = 16 = 0x10
   // ReturnObject::promise_type
   std::__n4861::__coroutine_traits_impl<ReturnObject, void>::promise_type _Coro_promise;
-  // offset = 24
+  // offset = 24 = 0x18
   std::__n4861::coroutine_handle<ReturnObject::promise_type> _Coro_self_handle;
-  // offset = 32
+  // offset = 32 = 0x20
   unsigned short _Coro_resume_index;
-  // offset = 34
+  // offset = 34 = 0x22
   bool _Coro_frame_needs_free;
-  // offset = 35
+  // offset = 35 = 0x23
   ReturnObject::InitialSuspendNever Is_1_1;
-  // offset = 36
+  // offset = 36 = 0x24
   unsigned int value_a_1_2;
-  // offset = 40
+  // offset = 40 = 0x28
   unsigned int value_b_1_2;
-  // offset = 44
+  // offset = 44 = 0x2c
   unsigned int value_c_1_2;
-  // offset = 48
+  // offset = 48 = 0x30
   CoAwaitSuspendAlways Aw0_2_3;
-  // offset = 49
+  // offset = 49 = 0x31
   ReturnObject::YieldSuspendAlways Yd1_2_4;
-  // offset = 50
+  // offset = 50 = 0x32
   ReturnObject::YieldSuspendAlways Yd2_2_5;
-  // offset = 51
+  // offset = 51 = 0x33
   ReturnObject::FinalSuspendAlways Fs_1_6;
 }
 ```
@@ -169,34 +169,65 @@ type = struct _Z7counterv.Frame {
 
   ; Execute the following code when Frame::_Coro_resume_index == 0x0.
   401269:   mov    rbx,QWORD PTR [rbp-0x28]
+  ; Call std::coroutine_handle<Promise>::from_address(void* addr)
+  ; with addr = &Frame.
+  ; frame_address creates a coroutine_handle from a null pointer value or
+  ; an underlying address of another coroutine_handle.
+  ; Return type of from_address is std::coroutine_handle<Promise>.
+  ; The underlying address of return value is addr.
   40126d:   mov    rax,QWORD PTR [rbp-0x28]
   401271:   mov    rdi,rax
   401274:   call   4017ba <std::__n4861::coroutine_handle<ReturnObject::promise_type>::from_address(void*)>
+  ; RAX is return value of func
+  ; std::coroutine_handle<Promise>::from_address(void* addr),
+  ; which is equal to addr, which is equal to &Frame.
+  ; RBX is set to &Frame at 0x401269.
+  ; Set Frame::_Coro_self_handle::_M_fr_ptr to &Frame.
   401279:   mov    QWORD PTR [rbx+0x18],rax
+  ; Call ReturnObject::promise_type::initial_suspend() with
+  ; this = &Frame::_Coro_promise.
   40127d:   mov    rax,QWORD PTR [rbp-0x28]
   401281:   add    rax,0x10
   401285:   mov    rbx,QWORD PTR [rbp-0x28]
   401289:   mov    rdi,rax
   40128c:   call   401722 <ReturnObject::promise_type::initial_suspend()>
+  ; RBX is set to &Frame at 0x401285.
+  ; AL is RAX's 8 low bits, which is the return value of initial_suspend().
+  ; Set Frame::Is_1_1 to return value of initial_suspend().
   401291:   mov    BYTE PTR [rbx+0x23],al
+  ; Call std::__n4861::suspend_never::await_ready() with this = &Frame::Is_1_1.
   401294:   mov    rax,QWORD PTR [rbp-0x28]
   401298:   add    rax,0x23
   40129c:   mov    rdi,rax
   40129f:   call   4016dc <std::__n4861::suspend_never::await_ready() const>
+  ; Test if return value is true.
+  ; await_ready is an optimization.
+  ; If it returns true, then co_await does not suspend the function.
+  ; In this example, suspend_never::await_ready() will always return true.
   4012a4:   xor    eax,0x1
   4012a7:   test   al,al
+  ; Always skip this branch.
   4012a9:   jne    4012af <counter(counter()::_Z7counterv.Frame*) [clone .actor]+0x9d>
+  ; Always execute this branch.
   4012ab:   jmp    4012e6 <counter(counter()::_Z7counterv.Frame*) [clone .actor]+0xd4>
+  ; Raise invalid opcode exception.
   4012ad:   ud2
+
+  ; Always skip the following code.
+  ; Set Frame::_Coro_resume_index to 0x2.
   4012af:   mov    rax,QWORD PTR [rbp-0x28]
   4012b3:   mov    WORD PTR [rax+0x20],0x2
   4012b9:   mov    rax,QWORD PTR [rbp-0x28]
+  ; Set rbx = &Frame::Is_1_1.
   4012bd:   lea    rbx,[rax+0x23]
+  ; Call coroutine_handle::operator() with this = &Frame::_Coro_self_handle.
   4012c1:   mov    rax,QWORD PTR [rbp-0x28]
   4012c5:   add    rax,0x18
   4012c9:   mov    rdi,rax
   4012cc:   call   401798 <std::__n4861::coroutine_handle<ReturnObject::promise_type>::operator std::__n4861::coroutine_handle<void>() const>
   4012d1:   mov    rsi,rax
+  ; Call suspend_never::await_suspend(handle) with this = &Frame::Is_1_1
+  ; and handle = return value of coroutine_handle::operator().
   4012d4:   mov    rdi,rbx
   4012d7:   call   4016ec <std::__n4861::suspend_never::await_suspend(std::__n4861::coroutine_handle<void>) const>
   4012dc:   jmp    40152d <counter(counter()::_Z7counterv.Frame*) [clone .actor]+0x31b>
@@ -205,27 +236,38 @@ type = struct _Z7counterv.Frame {
   4012e1:   jmp    401510 <counter(counter()::_Z7counterv.Frame*) [clone .actor]+0x2fe>
 
   ; Execute the following code when Frame::_Coro_resume_index == 0x2.
+  ; Call suspend_never::await_resume() with this = &Frame::Is_1_1.
   4012e6:   mov    rax,QWORD PTR [rbp-0x28]
   4012ea:   add    rax,0x23
   4012ee:   mov    rdi,rax
   4012f1:   call   4016fc <std::__n4861::suspend_never::await_resume() const>
+  ; Set Frame::Aw0_2_3 to 0.
   4012f6:   mov    rax,QWORD PTR [rbp-0x28]
   4012fa:   mov    BYTE PTR [rax+0x30],0x0
+  ; Call suspend_always::await_ready() with this = &Frame::Aw0_2_3.
   4012fe:   mov    rax,QWORD PTR [rbp-0x28]
   401302:   add    rax,0x30
   401306:   mov    rdi,rax
   401309:   call   4016b0 <std::__n4861::suspend_always::await_ready() const>
+  ; Test if return value is true.
   40130e:   xor    eax,0x1
   401311:   test   al,al
+  ; Always skip this branch.
   401313:   je     40134c <counter(counter()::_Z7counterv.Frame*) [clone .actor]+0x13a>
+  ; Always execute this branch.
+  ; Set Frame::_Coro_resume_index to 4.
   401315:   mov    rax,QWORD PTR [rbp-0x28]
   401319:   mov    WORD PTR [rax+0x20],0x4
+  ; Set rbx to &Frame::Aw0_2_3.
   40131f:   mov    rax,QWORD PTR [rbp-0x28]
   401323:   lea    rbx,[rax+0x30]
+  ; Call coroutine_handle::operator() with this = &Frame::_Coro_self_handle.
   401327:   mov    rax,QWORD PTR [rbp-0x28]
   40132b:   add    rax,0x18
   40132f:   mov    rdi,rax
   401332:   call   401798 <std::__n4861::coroutine_handle<ReturnObject::promise_type>::operator std::__n4861::coroutine_handle<void>() const>
+  ; Call suspend_always::await_suspend(handle) with this = &Frame::Aw0_2_3
+  ; and handle = return value of coroutine_handle::operator().
   401337:   mov    rsi,rax
   40133a:   mov    rdi,rbx
   40133d:   call   4016c0 <std::__n4861::suspend_always::await_suspend(std::__n4861::coroutine_handle<void>) const>
@@ -235,12 +277,16 @@ type = struct _Z7counterv.Frame {
   401347:   jmp    401510 <counter(counter()::_Z7counterv.Frame*) [clone .actor]+0x2fe>
 
   ; Execute the following code when Frame::_Coro_resume_index == 0x4.
+  ; Call suspend_always::await_resume() with this = &Frame::Aw0_2_3.
   40134c:   mov    rax,QWORD PTR [rbp-0x28]
   401350:   add    rax,0x30
   401354:   mov    rdi,rax
   401357:   call   4016d0 <std::__n4861::suspend_always::await_resume() const>
+  ; Set value_a_1_2 to 0x12345678.
   40135c:   mov    rax,QWORD PTR [rbp-0x28]
   401360:   mov    DWORD PTR [rax+0x24],0x12345678
+  ; Call promise_type::yield_value(value) with this = &Frame::_Coro_promise
+  ; and value = value_a_1_2.
   401367:   mov    rax,QWORD PTR [rbp-0x28]
   40136b:   lea    rdx,[rax+0x10]
   40136f:   mov    rax,QWORD PTR [rbp-0x28]
@@ -249,16 +295,25 @@ type = struct _Z7counterv.Frame {
   40137a:   mov    esi,eax
   40137c:   mov    rdi,rdx
   40137f:   call   401732 <ReturnObject::promise_type::yield_value(unsigned int)>
+  ; RBX is set to &Frame at 0x401376.
+  ; Set Frame::Yd1_2_4 to return value of yield_value(unsigned int).
   401384:   mov    BYTE PTR [rbx+0x31],al
+  ; Call suspend_always::await_ready() with this = &Frame::Yd1_2_4.
   401387:   mov    rax,QWORD PTR [rbp-0x28]
   40138b:   add    rax,0x31
   40138f:   mov    rdi,rax
   401392:   call   4016b0 <std::__n4861::suspend_always::await_ready() const>
+  ; Test if return value is true.
   401397:   xor    eax,0x1
   40139a:   test   al,al
+  ; Always skip this branch.
   40139c:   je     4013d5 <counter(counter()::_Z7counterv.Frame*) [clone .actor]+0x1c3>
+  ; Always execute this branch.
+  ; Set Frame::_Coro_resume_index to 0x6.
   40139e:   mov    rax,QWORD PTR [rbp-0x28]
   4013a2:   mov    WORD PTR [rax+0x20],0x6
+  ; Call suspend_always::await_suspend(handle) with this = &Frame::Yd1_2_4
+  ; and handle = return value of coroutine_handle::operator().
   4013a8:   mov    rax,QWORD PTR [rbp-0x28]
   4013ac:   lea    rbx,[rax+0x31]
   4013b0:   mov    rax,QWORD PTR [rbp-0x28]
@@ -274,12 +329,16 @@ type = struct _Z7counterv.Frame {
   4013d0:   jmp    401510 <counter(counter()::_Z7counterv.Frame*) [clone .actor]+0x2fe>
 
   ; Execute the following code when Frame::_Coro_resume_index == 0x6.
+  ; Call suspend_always::await_resume() with this = &Frame::Yd1_2_4.
   4013d5:   mov    rax,QWORD PTR [rbp-0x28]
   4013d9:   add    rax,0x31
   4013dd:   mov    rdi,rax
   4013e0:   call   4016d0 <std::__n4861::suspend_always::await_resume() const>
+  ; Set value_b_1_2 to 0x90abcdef.
   4013e5:   mov    rax,QWORD PTR [rbp-0x28]
   4013e9:   mov    DWORD PTR [rax+0x28],0x90abcdef
+  ; Call promise_type::yield_value(value) with this = &Frame::_Coro_promise
+  ; and value_b_1_2.
   4013f0:   mov    rax,QWORD PTR [rbp-0x28]
   4013f4:   lea    rdx,[rax+0x10]
   4013f8:   mov    rax,QWORD PTR [rbp-0x28]
@@ -288,14 +347,21 @@ type = struct _Z7counterv.Frame {
   401403:   mov    esi,eax
   401405:   mov    rdi,rdx
   401408:   call   401732 <ReturnObject::promise_type::yield_value(unsigned int)>
+  ; Set Frame::Yd2_2_5 to return value of yield_value(unsigned int).
   40140d:   mov    BYTE PTR [rbx+0x32],al
+  ; Call suspend_always::await_ready() with this = &Frame::Yd2_2_5.
   401410:   mov    rax,QWORD PTR [rbp-0x28]
   401414:   add    rax,0x32
   401418:   mov    rdi,rax
   40141b:   call   4016b0 <std::__n4861::suspend_always::await_ready() const>
+  ; Test if return value is true.
   401420:   xor    eax,0x1
   401423:   test   al,al
+  ; Always skip this branch.
   401425:   je     40145e <counter(counter()::_Z7counterv.Frame*) [clone .actor]+0x24c>
+  ; Always execute this branch.
+  ; Call suspend_always::await_suspend(handle) with this = &Frame::Yd2_2_5
+  ; and handle = return value of coroutine_handle::operator().
   401427:   mov    rax,QWORD PTR [rbp-0x28]
   40142b:   mov    WORD PTR [rax+0x20],0x8
   401431:   mov    rax,QWORD PTR [rbp-0x28]
@@ -313,12 +379,16 @@ type = struct _Z7counterv.Frame {
   401459:   jmp    401510 <counter(counter()::_Z7counterv.Frame*) [clone .actor]+0x2fe>
 
   ; Execute the following code when Frame::_Coro_resume_index == 0x8.
+  ; Call suspend_always::await_resume() with this = &Frame::Yd2_2_5.
   40145e:   mov    rax,QWORD PTR [rbp-0x28]
   401462:   add    rax,0x32
   401466:   mov    rdi,rax
   401469:   call   4016d0 <std::__n4861::suspend_always::await_resume() const>
+  ; Set value_c_1_2 to 0x98765432.
   40146e:   mov    rax,QWORD PTR [rbp-0x28]
   401472:   mov    DWORD PTR [rax+0x2c],0x98765432
+  ; Call promise_type::return_value(value) with this = &Frame::_Coro_promise
+  ; and value = value_c_1_2.
   401479:   mov    rax,QWORD PTR [rbp-0x28]
   40147d:   lea    rdx,[rax+0x10]
   401481:   mov    rax,QWORD PTR [rbp-0x28]
