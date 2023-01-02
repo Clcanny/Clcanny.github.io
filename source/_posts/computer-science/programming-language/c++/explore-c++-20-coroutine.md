@@ -151,62 +151,6 @@ C++20 的 coroutine 是无栈协程，相较于有栈协程，无栈协程不会
 //  (maybe) trailing space.
 ```
 
-## `coroutine_handle` 是一个指向 coroutine frame 的指针
-
-`main` 函数的本地变量 `std::coroutine_handle<> h` 最终是通过 `Awaiter::await_suspend` 函数的语句 `*hp_ = h;` 被赋值的，而参数 `h` 又等于变量 `Frame::_Coro_self_handle` ，所以我们只需要观察 `Frame::_Coro_self_handle` 的类型和值就能确定 `coroutine_handle` 是什么了。
-
-```cpp
-// (gdb) ptype frame_ptr->_Coro_self_handle
-struct std::__n4861::coroutine_handle<ReturnObject::promise_type>
-[with _Promise = ReturnObject::promise_type] {
-  void *_M_fr_ptr;
-};
-```
-
-```text
-(gdb) c
-Continuing.
-
-Hardware watchpoint 6: *(uint64_t*)0x416ec8
-
-Old value = <unreadable>
-New value = 4288176
-counter(_Z7counterPNSt7__n486116coroutine_handleIvEE.Frame *) (frame_ptr=0x416eb0)
-    at /usr/local/include/c++/12.2.0/main.cc:24
-24  ReturnObject counter(std::coroutine_handle<>* continuation_out) {
-(gdb) print frame_ptr
-$12 = (_Z7counterPNSt7__n486116coroutine_handleIvEE.Frame *) 0x416eb0
-(gdb) print frame_ptr->_Coro_self_handle
-$13 = {_M_fr_ptr = 0x416eb0}
-(gdb) print &frame_ptr->_Coro_self_handle
-$14 = (std::__n4861::coroutine_handle<ReturnObject::promise_type> *) 0x416ec8
-```
-
-通过 GDB 跟踪 `frame_ptr->_Coro_self_handle` ，可以看到它是一个指向 coroutine frame 的指针，从而说明 `coroutine_handle` 也是一个指向 coroutine frame 的指针。
-
-## `Awaiter`
-
-[C++ reference: Coroutines](https://en.cppreference.com/w/cpp/language/coroutines) 提到了 `Awaiter` 的作用：
-
-> `co_await expr`:
->
-> First, expr is converted to an awaitable as follows...
->
-> Then, the awaiter object is obtained, as follows...
->
-> Then, `awaiter.await_ready()` is called (this is a short-cut to avoid the cost of suspension if it's known that the result is ready or can be completed synchronously). If its result, contextually-converted to bool is `false` then
->
-> + The coroutine is suspended (its coroutine state is populated with local variables and current suspension point).
-> + `awaiter.await_suspend(handle)` is called, where handle is the coroutine handle representing the current coroutine. Inside that function, the suspended coroutine state is observable via that handle, and it's this function's responsibility to schedule it to resume on some executor, or to be destroyed (returning `false` counts as scheduling)
->   + if `await_suspend` returns `void`, control is immediately returned to the caller/resumer of the current coroutine (this coroutine remains suspended).
->   + if `await_suspend` returns `bool`,
->     + the value `true` returns control to the caller/resumer of the current coroutine.
->     + the value `false` resumes the current coroutine.
->   + if `await_suspend` returns a coroutine handle for some other coroutine, that handle is resumed (by a call to `handle.resume()`) (note this may chain to eventually cause the current coroutine to resume).
->   + if `await_suspend` throws an exception, the exception is caught, the coroutine is resumed, and the exception is immediately re-thrown.
->
-> Finally, `awaiter.await_resume()` is called (whether the coroutine was suspended or not), and its result is the result of the whole `co_await expr` expression.
-
 ## 分析汇编代码
 
 ```assembly
@@ -640,6 +584,62 @@ $14 = (std::__n4861::coroutine_handle<ReturnObject::promise_type> *) 0x416ec8
   401532:   leave
   401533:   ret
 ```
+
+## `coroutine_handle` 是一个指向 coroutine frame 的指针
+
+`main` 函数的本地变量 `std::coroutine_handle<> h` 最终是通过 `Awaiter::await_suspend` 函数的语句 `*hp_ = h;` 被赋值的，而参数 `h` 又等于变量 `Frame::_Coro_self_handle` ，所以我们只需要观察 `Frame::_Coro_self_handle` 的类型和值就能确定 `coroutine_handle` 是什么了。
+
+```cpp
+// (gdb) ptype frame_ptr->_Coro_self_handle
+struct std::__n4861::coroutine_handle<ReturnObject::promise_type>
+[with _Promise = ReturnObject::promise_type] {
+  void *_M_fr_ptr;
+};
+```
+
+```text
+(gdb) c
+Continuing.
+
+Hardware watchpoint 6: *(uint64_t*)0x416ec8
+
+Old value = <unreadable>
+New value = 4288176
+counter(_Z7counterPNSt7__n486116coroutine_handleIvEE.Frame *) (frame_ptr=0x416eb0)
+    at /usr/local/include/c++/12.2.0/main.cc:24
+24  ReturnObject counter(std::coroutine_handle<>* continuation_out) {
+(gdb) print frame_ptr
+$12 = (_Z7counterPNSt7__n486116coroutine_handleIvEE.Frame *) 0x416eb0
+(gdb) print frame_ptr->_Coro_self_handle
+$13 = {_M_fr_ptr = 0x416eb0}
+(gdb) print &frame_ptr->_Coro_self_handle
+$14 = (std::__n4861::coroutine_handle<ReturnObject::promise_type> *) 0x416ec8
+```
+
+通过 GDB 跟踪 `frame_ptr->_Coro_self_handle` ，可以看到它是一个指向 coroutine frame 的指针，从而说明 `coroutine_handle` 也是一个指向 coroutine frame 的指针。
+
+## `Awaiter`
+
+[C++ reference: Coroutines](https://en.cppreference.com/w/cpp/language/coroutines) 提到了 `Awaiter` 的作用：
+
+> `co_await expr`:
+>
+> First, expr is converted to an awaitable as follows...
+>
+> Then, the awaiter object is obtained, as follows...
+>
+> Then, `awaiter.await_ready()` is called (this is a short-cut to avoid the cost of suspension if it's known that the result is ready or can be completed synchronously). If its result, contextually-converted to bool is `false` then
+>
+> + The coroutine is suspended (its coroutine state is populated with local variables and current suspension point).
+> + `awaiter.await_suspend(handle)` is called, where handle is the coroutine handle representing the current coroutine. Inside that function, the suspended coroutine state is observable via that handle, and it's this function's responsibility to schedule it to resume on some executor, or to be destroyed (returning `false` counts as scheduling)
+>   + if `await_suspend` returns `void`, control is immediately returned to the caller/resumer of the current coroutine (this coroutine remains suspended).
+>   + if `await_suspend` returns `bool`,
+>     + the value `true` returns control to the caller/resumer of the current coroutine.
+>     + the value `false` resumes the current coroutine.
+>   + if `await_suspend` returns a coroutine handle for some other coroutine, that handle is resumed (by a call to `handle.resume()`) (note this may chain to eventually cause the current coroutine to resume).
+>   + if `await_suspend` throws an exception, the exception is caught, the coroutine is resumed, and the exception is immediately re-thrown.
+>
+> Finally, `awaiter.await_resume()` is called (whether the coroutine was suspended or not), and its result is the result of the whole `co_await expr` expression.
 
 # 解密 std::coroutine_handle<Promise>::from_promise
 
