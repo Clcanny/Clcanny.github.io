@@ -62,8 +62,10 @@ markdown:
     langPrefix: 'language-'
     breaks: true
     linkify: true
-    typographer: true
-    quotes: '“”‘’'
+    typographer: false
+    # quotes: '“”‘’'
+    # https://github.com/hexojs/hexo/issues/3535
+    # smartypants: false
   anchors:
     # https://github.com/bubkoo/hexo-toc/issues/20
     # Minimum level for ID creation. (Ex. h2 to h6)
