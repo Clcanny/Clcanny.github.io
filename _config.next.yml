@@ -18,5 +18,9 @@ codeblock:
     enable: true
     show_result: true
 
+text_align:
+  desktop: start
+  mobile: start
+
 custom_file_path:
   style: styles.styl
