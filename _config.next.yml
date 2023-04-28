@@ -26,6 +26,7 @@ math:
 
 mermaid:
   enable: true
+  version: 10.1.0
 
 text_align:
   desktop: start
