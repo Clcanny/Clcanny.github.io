@@ -2,7 +2,7 @@
 layout: post
 title: "Hide Symbols Of Static Libraries"
 date: 2020-12-16 11:07:26
-tags:
+categories:
   - dynamic linking
 ---
 

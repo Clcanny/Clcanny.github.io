@@ -2,7 +2,7 @@
 layout: post
 title: midjourney-prompt
 date: 2023-04-21 22:14:25
-tags:
+categories:
 ---
 
 https://medium.com/mlearning-ai/an-advanced-guide-to-writing-prompts-for-midjourney-text-to-image-aa12a1e33b6

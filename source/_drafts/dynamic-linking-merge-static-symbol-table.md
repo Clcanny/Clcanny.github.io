@@ -2,7 +2,7 @@
 layout: post
 title: "Dynamic Linking: Merge Static Symbol Table"
 date: 2020-11-21 13:10:08
-tags:
+categories:
   - dynamic linking
 ---
 

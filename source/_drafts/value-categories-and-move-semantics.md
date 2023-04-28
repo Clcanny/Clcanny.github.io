@@ -2,7 +2,7 @@
 layout: post
 title: "Value Categories And Move Semantics"
 date: 2020-12-13 15:05:18
-tags:
+categories:
   - cplusplus
 ---
 

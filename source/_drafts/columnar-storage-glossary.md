@@ -2,7 +2,7 @@
 layout: draft
 title: columnar-storage-glossary
 date: 2021-03-16 16:48:02
-tags:
+categories:
   - columnar storage
 ---
 

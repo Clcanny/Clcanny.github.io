@@ -2,7 +2,7 @@
 layout: post
 title: Jenkins On K8S
 date: 2021-11-21 12:17:48
-tags:
+categories:
   - [Computer Science, Tools, CD]
 ---
 

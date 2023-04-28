@@ -3,7 +3,7 @@ layout: post
 title: Jemalloc Size Classes
 date: 2022-01-15 15:48:56
 id: b9e2959cb277be89f9db097133c00fe3
-tags:
+categories:
   - [Computer Science, Memory Analysis, Jemalloc]
 ---
 

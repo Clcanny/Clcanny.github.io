@@ -1,7 +1,7 @@
 ---
 title: Dynamic linking
 date: 2020-10-07 00:28:00
-tags:
+categories:
   - dynamic linking
 ---
 <!--more-->

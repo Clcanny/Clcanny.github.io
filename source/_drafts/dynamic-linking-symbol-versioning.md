@@ -2,7 +2,7 @@
 layout: post
 title: "Dynamic Linking Symbol Versioning"
 date: 2021-03-12 14:50:02
-tags:
+categories:
   - dynamic linking
 ---
 

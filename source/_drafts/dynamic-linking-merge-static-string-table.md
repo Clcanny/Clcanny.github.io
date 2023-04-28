@@ -2,7 +2,7 @@
 layout: post
 title: "Dynamic Linking: Merge Static String Table"
 date: 2020-11-24 12:46:23
-tags:
+categories:
   - dynamic linking
 ---
 
