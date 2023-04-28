@@ -1,7 +1,7 @@
 index:
   slogan:
     enable: true
-    text: Fail Fast, Fail Often
+    text: Fail Fast, Fail Often.
     api:
       enable: false
   auto_excerpt:
@@ -19,16 +19,6 @@ navbar:
       link: /categories/
       icon: iconfont icon-category-fill
 
-code:
-  copy_btn: true
-  highlight:
-    enable: true
-    line_number: true
-    lib: "highlightjs"
-    highlightjs:
-      style: "Github Gist"
-      bg_color: false
-
 post:
   math:
     enable: true
@@ -39,6 +29,16 @@ post:
   mermaid:
     enable: true
     specific: false
+
+code:
+  copy_btn: true
+  highlight:
+    enable: true
+    line_number: true
+    lib: "highlightjs"
+    highlightjs:
+      style: "Github Gist"
+      bg_color: false
 
 text_align:
   desktop: start
