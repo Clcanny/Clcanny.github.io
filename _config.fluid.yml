@@ -1,0 +1,48 @@
+index:
+  slogan:
+    enable: true
+    text: Fail Fast, Fail Often
+    api:
+      enable: false
+  auto_excerpt:
+    enable: false
+
+navbar:
+  menu:
+    - key: home
+      link: /
+      icon: iconfont icon-home-fill
+    - key: archive
+      link: /archives/
+      icon: iconfont icon-archive-fill
+    - key: category
+      link: /categories/
+      icon: iconfont icon-category-fill
+
+code:
+  copy_btn: true
+  highlight:
+    enable: true
+    line_number: true
+    lib: "highlightjs"
+    highlightjs:
+      style: "Github Gist"
+      bg_color: false
+
+post:
+  math:
+    enable: true
+    specific: true
+    engine: mathjax
+    # https://mhchem.github.io/MathJax-mhchem/
+    mhchem: true
+  mermaid:
+    enable: true
+    specific: false
+
+text_align:
+  desktop: start
+  mobile: start
+
+custom_file_path:
+  style: styles.styl

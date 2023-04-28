@@ -9,13 +9,13 @@
     "hexo": "7.0.0-rc1",
     "hexo-server": "3.0.0",
     "hexo-deployer-git": "4.0.0",
+    "hexo-theme-fluid": "1.9.4",
     "hexo-generator-index": "3.0.0",
     "hexo-generator-archive": "2.0.0",
     "hexo-generator-category": "2.0.0",
     "hexo-generator-sitemap": "3.0.1",
     "hexo-renderer-ejs": "2.0.0",
     "hexo-renderer-stylus": "2.1.0",
-    "hexo-renderer-pandoc": "0.3.1",
-    "hexo-filter-mermaid-diagrams": "1.0.5"
+    "hexo-renderer-pandoc": "0.3.1"
   }
 }
