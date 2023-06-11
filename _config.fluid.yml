@@ -26,6 +26,10 @@ post:
     engine: mathjax
     # https://mhchem.github.io/MathJax-mhchem/
     mhchem: true
+    # To enable the \eqref functionality in the Hexo Fluid theme, please modify
+    # node_modules/hexo-theme-fluid/layout/_partials/plugins/math.ejs.
+    # inlineMath: { '[+]': [['$', '$']] },
+    # tags: 'ams'
   mermaid:
     enable: true
     specific: false
