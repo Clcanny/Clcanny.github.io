@@ -294,81 +294,81 @@ We define PL-3 as an isolation level that proscribes G1 and G2. Thus, all cycles
 
 The author claims that PL-3 provides conflict-serializability, but there is no detailed verification provided:
 
-> The conditions given in [BHG87] provides view-serializability whereas our specification for PL-3 provides conflict-serializability (this can shown using theorems presented in [GR93, BHG87]).
->
-> $\operatorname{DSG}(H)$ is acyclic, and G1a, and G1b are satisfied for a history $H$ iff $H$ is conflict-serializable.
+The conditions given in [BHG87] provides view-serializability whereas our specification for PL-3 provides conflict-serializability (this can shown using theorems presented in [GR93, BHG87]).
+
+$\operatorname{DSG}(H)$ is acyclic, and G1a, and G1b are satisfied for a history $H$ iff $H$ is conflict-serializable.
 
 The Wormhole Theorem, as described in section 7.5.8.1 of "Transaction Processing: Concepts and Techniques" by J. N. Gray and A. Reuter (Morgan Kaufmann Publishers Inc., 1993), states:
 
-> A history achieves isolation if and only if it contains no wormhole transactions.
->
-> + Proof: (Isolated => no wormholes). This proof is by contradiction.
->   1. Suppose $H$ is an isolated history of the execution of the set of transactions $\left\{T_i \mid i=1, \ldots, n\right\}$. By definition, then, $H$ is equivalent to some serial execution history, $SH$, for that same set of transactions.
->   2. Without loss of generality, assume that the transactions are numbered so that $SH = T_1 \| T_2 \| \ldots \| T_n$.
->   3. Suppose, for the sake of contradiction, that $H$ has a wormhole; that is, there is some sequence of transactions $T, T^\prime, T^{\prime\prime}, \ldots, T^{\prime\prime\prime}$ such that each is BEFORE the other (i.e., $T \ll_H T^\prime$), and the last is BEFORE the first (i.e., $T^{\prime\prime\prime} \ll_H T$).
->   4. Let $i$ be the minimum transaction index such that $T_i$ is in this wormhole, and let $T_j$ be its predecessor in the wormhole (i.e., $T_j \ll_H T_i$).
->   5. By the minimality of $i$, $T_j$ comes completely AFTER $T_i$ in the execution history $SH$ (recall assumption of step 2), so that $T_j \ll_{SH} T_i$ is impossible (recall that $SH$ is a serial history). But since $H$ and $SH$ are equivalent, $\ll_{H} = \ll_{SH}$; therefore, $T_j \ll_H T_i$ is also impossible. This contradiction proves that if $H$ isisolated, it has no wormholes.
-> + Proof: (No wormholes => isolated). This proof is by induction on the number of transactions, $n$, that appear in the history, $H$. The induction hypothesis is that any $n$ transaction history $H$ having no wormholes is isolated (equivalent to some serial history, $SH$, for that set of transactions).
->   + If $n < 2$, then any history is a serial history, since only zero or one transaction appears in the history. In addition, any serial history is an isolated history. The basis of the induction, then, is trivially true.
->   + Suppose the induction hypothesis is true for $n-1$ transactions, and consider some history $H$ of $n$ transactions that has no wormholes.
->     1. Pick any transaction $T$, then pick any other transaction $T^\prime$, such that $T \ll T^\prime$, and continue this construction as long as possible, building the sequence $S = (T, T^\prime, \ldots)$. Either $S$ is infinite, or it is not. If $S$ is infinite, then some transaction $T^{\prime\prime}$ must appear in it twice. This, in turn, implies that $T^{\prime\prime} \ll T^{\prime\prime}$; thus, $T^{\prime\prime}$ is a wormhole of $H$. But since $H$ has no wormholes, $S$ cannot be infinite. The last transaction in $S$ - call it $T^*$ - has the property $\operatorname{AFTER}(T^*) = \varnothing$, since the sequence cannot be continued past $T^*$.
->     2. Consider the history, $H^\prime = \left\langle\left\langle t_i, a_i, o_i\right\rangle \in H \mid t_i \neq T^*\right\rangle$. $H^\prime$ is the history $H$ with all the actions of transaction $T^*$ removed. By the choice of $T^*$, $\operatorname{DEP}(H^\prime) = \left\{\langle T, \langle o, i\rangle, T^\prime\rangle \in \operatorname{DEP}(H) \mid T^\prime \neq T^*\right\}$.
->        1. $H^\prime$ has no wormholes (since $H$ has no wormholes, and $\operatorname{DEP}(H) \supseteq \operatorname{DEP}(H^\prime)$). The induction hypothesis, then, applies to $H^\prime$. Hence, $H^\prime$ is isolated and has an equivalent serial history ${SH}^\prime = T_1 \| T_2 \| \ldots \| T_{n-1}$ for some numbering of the other transactions.
->        2. The serial history $SH = {SH}^\prime \| T^* = T_1 \| T_2 \| \ldots \| T_{n-1} \| T^*$ is equivalent to $H$. To prove this, it must be shown that $\operatorname{DEP}(SH) = \operatorname{DEP}(H)$. By construction, $\eqref{the-wormhole-theorem:no-wormholes-infer-isolated:by-construction}$. By definition, $\operatorname{DEP}({SH}^\prime) = \operatorname{DEP}(H^\prime)$. Using Equation $\eqref{the-wormhole-theorem:no-wormholes-infer-isolated:h-prime-depend}$ to substitute into Equation $\eqref{the-wormhole-theorem:no-wormholes-infer-isolated:by-construction}$ gives: $\eqref{the-wormhole-theorem:no-wormholes-infer-isolated:final}$. Thus, the identity $DEP(SH)= DEP(H)$ is established, and the induction step is proven.
->   + The notion $\langle t_i, a_i, o_i\rangle$ represents that transaction $t_i$ performs action $a_i$ (e.g., read) on object $o_i$. The notion $\left\langle T, \langle o, i\rangle, T^\prime\right\rangle$ represents that $T^\prime$ depends on $T$, where $o$ is the object creating the dependency, and $i$ indicates the version of $o$ being read or written by $T^\prime$.
->
-> \begin{align}
->   \operatorname{DEP}(SH)
-> = \operatorname{DEP}({SH}^\prime \| T^*)
-> =   \operatorname{DEP}({SH}^\prime)
->   \cup
->     \left\{
->       \left\langle T^\prime, \langle o, i\rangle, T^*\right\rangle
->       \in \operatorname{DEP}(H)
->     \right\}
-> \label{the-wormhole-theorem:no-wormholes-infer-isolated:by-construction}
-> \end{align}
->
-> \begin{align}
->     \operatorname{DEP}({SH}^\prime)
->   = \operatorname{DEP}(H^\prime)
->   = \left\{
->         \left\langle T, \langle o, i\rangle, T^\prime\right\rangle
->         \in \operatorname{DEP}(H)
->       \mid
->         T^\prime \neq T^*
->     \right\}
-> \label{the-wormhole-theorem:no-wormholes-infer-isolated:h-prime-depend}
-> \end{align}
->
-> \begin{align}
->   \operatorname{DEP}(SH)
-> =   \left\{
->         \left\langle T, \langle o, i\rangle, T^\prime\right\rangle
->         \in \operatorname{DEP}(H)
->       \mid
->        T^\prime \neq T^*
->     \right\}
->   \cup
->     \left\{
->       \left\langle T^\prime, \langle o, i\rangle, T^*\right\rangle
->       \in \operatorname{DEP}(H)
->     \right\}
-> = \operatorname{DEP}(H)
-> \label{the-wormhole-theorem:no-wormholes-infer-isolated:final}
-> \end{align}
+A history achieves isolation if and only if it contains no wormhole transactions.
+
++ Proof: (Isolated => no wormholes). This proof is by contradiction.
+  1. Suppose $H$ is an isolated history of the execution of the set of transactions $\left\{T_i \mid i=1, \ldots, n\right\}$. By definition, then, $H$ is equivalent to some serial execution history, $SH$, for that same set of transactions.
+  2. Without loss of generality, assume that the transactions are numbered so that $SH = T_1 \| T_2 \| \ldots \| T_n$.
+  3. Suppose, for the sake of contradiction, that $H$ has a wormhole; that is, there is some sequence of transactions $T, T^\prime, T^{\prime\prime}, \ldots, T^{\prime\prime\prime}$ such that each is BEFORE the other (i.e., $T \ll_H T^\prime$), and the last is BEFORE the first (i.e., $T^{\prime\prime\prime} \ll_H T$).
+  4. Let $i$ be the minimum transaction index such that $T_i$ is in this wormhole, and let $T_j$ be its predecessor in the wormhole (i.e., $T_j \ll_H T_i$).
+  5. By the minimality of $i$, $T_j$ comes completely AFTER $T_i$ in the execution history $SH$ (recall assumption of step 2), so that $T_j \ll_{SH} T_i$ is impossible (recall that $SH$ is a serial history). But since $H$ and $SH$ are equivalent, $\ll_{H} = \ll_{SH}$; therefore, $T_j \ll_H T_i$ is also impossible. This contradiction proves that if $H$ isisolated, it has no wormholes.
++ Proof: (No wormholes => isolated). This proof is by induction on the number of transactions, $n$, that appear in the history, $H$. The induction hypothesis is that any $n$ transaction history $H$ having no wormholes is isolated (equivalent to some serial history, $SH$, for that set of transactions).
+  + If $n < 2$, then any history is a serial history, since only zero or one transaction appears in the history. In addition, any serial history is an isolated history. The basis of the induction, then, is trivially true.
+  + Suppose the induction hypothesis is true for $n-1$ transactions, and consider some history $H$ of $n$ transactions that has no wormholes.
+    1. Pick any transaction $T$, then pick any other transaction $T^\prime$, such that $T \ll T^\prime$, and continue this construction as long as possible, building the sequence $S = (T, T^\prime, \ldots)$. Either $S$ is infinite, or it is not. If $S$ is infinite, then some transaction $T^{\prime\prime}$ must appear in it twice. This, in turn, implies that $T^{\prime\prime} \ll T^{\prime\prime}$; thus, $T^{\prime\prime}$ is a wormhole of $H$. But since $H$ has no wormholes, $S$ cannot be infinite. The last transaction in $S$ - call it $T^*$ - has the property $\operatorname{AFTER}(T^*) = \varnothing$, since the sequence cannot be continued past $T^*$.
+    2. Consider the history, $H^\prime = \left\langle\left\langle t_i, a_i, o_i\right\rangle \in H \mid t_i \neq T^*\right\rangle$. $H^\prime$ is the history $H$ with all the actions of transaction $T^*$ removed. By the choice of $T^*$, $\operatorname{DEP}(H^\prime) = \left\{\langle T, \langle o, i\rangle, T^\prime\rangle \in \operatorname{DEP}(H) \mid T^\prime \neq T^*\right\}$.
+       1. $H^\prime$ has no wormholes (since $H$ has no wormholes, and $\operatorname{DEP}(H) \supseteq \operatorname{DEP}(H^\prime)$). The induction hypothesis, then, applies to $H^\prime$. Hence, $H^\prime$ is isolated and has an equivalent serial history ${SH}^\prime = T_1 \| T_2 \| \ldots \| T_{n-1}$ for some numbering of the other transactions.
+       2. The serial history $SH = {SH}^\prime \| T^* = T_1 \| T_2 \| \ldots \| T_{n-1} \| T^*$ is equivalent to $H$. To prove this, it must be shown that $\operatorname{DEP}(SH) = \operatorname{DEP}(H)$. By construction, $\eqref{the-wormhole-theorem:no-wormholes-infer-isolated:by-construction}$. By definition, $\operatorname{DEP}({SH}^\prime) = \operatorname{DEP}(H^\prime)$. Using Equation $\eqref{the-wormhole-theorem:no-wormholes-infer-isolated:h-prime-depend}$ to substitute into Equation $\eqref{the-wormhole-theorem:no-wormholes-infer-isolated:by-construction}$ gives: $\eqref{the-wormhole-theorem:no-wormholes-infer-isolated:final}$. Thus, the identity $DEP(SH)= DEP(H)$ is established, and the induction step is proven.
+  + The notion $\langle t_i, a_i, o_i\rangle$ represents that transaction $t_i$ performs action $a_i$ (e.g., read) on object $o_i$. The notion $\left\langle T, \langle o, i\rangle, T^\prime\right\rangle$ represents that $T^\prime$ depends on $T$, where $o$ is the object creating the dependency, and $i$ indicates the version of $o$ being read or written by $T^\prime$.
+
+\begin{align}
+  \operatorname{DEP}(SH)
+= \operatorname{DEP}({SH}^\prime \| T^*)
+=   \operatorname{DEP}({SH}^\prime)
+  \cup
+    \left\{
+      \left\langle T^\prime, \langle o, i\rangle, T^*\right\rangle
+      \in \operatorname{DEP}(H)
+    \right\}
+\label{the-wormhole-theorem:no-wormholes-infer-isolated:by-construction}
+\end{align}
+
+\begin{align}
+    \operatorname{DEP}({SH}^\prime)
+  = \operatorname{DEP}(H^\prime)
+  = \left\{
+        \left\langle T, \langle o, i\rangle, T^\prime\right\rangle
+        \in \operatorname{DEP}(H)
+      \mid
+        T^\prime \neq T^*
+    \right\}
+\label{the-wormhole-theorem:no-wormholes-infer-isolated:h-prime-depend}
+\end{align}
+
+\begin{align}
+  \operatorname{DEP}(SH)
+=   \left\{
+        \left\langle T, \langle o, i\rangle, T^\prime\right\rangle
+        \in \operatorname{DEP}(H)
+      \mid
+       T^\prime \neq T^*
+    \right\}
+  \cup
+    \left\{
+      \left\langle T^\prime, \langle o, i\rangle, T^*\right\rangle
+      \in \operatorname{DEP}(H)
+    \right\}
+= \operatorname{DEP}(H)
+\label{the-wormhole-theorem:no-wormholes-infer-isolated:final}
+\end{align}
 
 The Serializability Theorem, as described in Section 2.3 of "Concurrency Control and Recovery in Database Systems" by Philip A. Bernstein, Vassos Hadzilacos, and Nathan Goodman, states:
 
-> A history $H$ is serializable iff $\operatorname{SG}(H)$ is acyclic.
->
-> + Proof: (Acyclic => serializable).
->   1. Suppose $H$ is a history over $T = \left\{T_1, T_2, \ldots, T_n\right\}$. Without loss of generality, assume $\operatorname{C}(T) = \left\{T_1, T_2, \ldots, T_m \mid m \le n\right\}$ are all of the transactions in $T$ that are committed in $H$. Thus $T_1, T_2, \ldots, T_m$ are the nodes of $\operatorname{SG}(H)$.
->   2. Since $\operatorname{SG}(H)$ is acyclic it may be topologically sorted (See Section A.3 of the Appendix for a definition of "topological sort of a directed acyclic graph"). Let $i_1, i_2, \ldots, i_m$ be a permutation of $1, 2, \ldots, m$ such that $T_{i_1}, T_{i_2}, \ldots, T_{i_m}$ is a topological sort of $\operatorname{SG}(H)$. Let $H_s$ be the serial history $T_{i_1}, T_{i_2}, \ldots, T_{i_m}$.
->   3. We claim that $\operatorname{C}(H) \equiv H_s$. To see this, let $p_i \in T_i$ and $q_j \in T_j$, where $T_i$, $T_j$ are committed in $H$. Suppose $p_i$, $q_j$ conflict and $p_i \lt_H q_j$. By definition of $\operatorname{SG}(H)$, $T_i \rightarrow T_j$ is an edge in $\operatorname{SG}(H)$. Therefore in any topological sort of $\operatorname{SG}(H)$, $T_i$ must appear before $T_j$. Thus in $H_s$ all operations of $T_i$ appear before any operation of $T_j$, and in particular, $p_i \lt_H q_j$. We have proved that any two conflicting operations are ordered in $\operatorname{C}(H)$ in the same way as $H_s$. Thus $\operatorname{C}(H) \equiv H_s$ and, because $H_s$ is serial by construction, $H$ is serializable as was to be proved.
-> + Proof: (Serializable => acyclic).
->   1. Suppose history $H$ is serializable. Let $H_s$ be a serial history equivalent to $\operatorname{C}(H)$. Consider an edge $T_i \rightarrow T_j$ in $\operatorname{SG}(H)$. Thus there are two conflicting operations $p_i$, $q_j$ of $T_i$, $T_j$ (respectively), such that $p_i \lt_H q_j$. Because $\operatorname{C}(H) \equiv H$, $p_i \lt_{H_s} q_j$. Because $H_s$ is serial and $p_i$ in $T_i$ precedes $q_j$ in $T_j$, it follows that $T_i$ appears before $T_j$ in $H_s$. Thus, we've shown that if $T_i \rightarrow T_j$ is in $\operatorname{SG}(H)$ then $T_i$ appears before $T_j$ in $H_s$.
->   2. Now suppose there is a cycle in $\operatorname{SG}(H)$, and without loss of generality let that cycle be $T_1 \rightarrow T_2 \rightarrow \ldots \rightarrow T_k \rightarrow T_1$. These edges imply that in $H_s$, $T_1$ appears before $T_2$ which appears before $T_3$ appears before $\ldots$ before $T_k$ which appears before $T_1$. Thus, the existence of the cycle implies that each of $T_1, T_2, \ldots, T_k$ appears before itself in the serial history $H_s$, an absurdity. So no cycle can exist in $\operatorname{SG}(H)$. That is, $\operatorname{SG}(H)$ is an acyclic directed graph, as was to be proved.
+A history $H$ is serializable iff $\operatorname{SG}(H)$ is acyclic.
+
++ Proof: (Acyclic => serializable).
+  1. Suppose $H$ is a history over $T = \left\{T_1, T_2, \ldots, T_n\right\}$. Without loss of generality, assume $\operatorname{C}(T) = \left\{T_1, T_2, \ldots, T_m \mid m \le n\right\}$ are all of the transactions in $T$ that are committed in $H$. Thus $T_1, T_2, \ldots, T_m$ are the nodes of $\operatorname{SG}(H)$.
+  2. Since $\operatorname{SG}(H)$ is acyclic it may be topologically sorted (See Section A.3 of the Appendix for a definition of "topological sort of a directed acyclic graph"). Let $i_1, i_2, \ldots, i_m$ be a permutation of $1, 2, \ldots, m$ such that $T_{i_1}, T_{i_2}, \ldots, T_{i_m}$ is a topological sort of $\operatorname{SG}(H)$. Let $H_s$ be the serial history $T_{i_1}, T_{i_2}, \ldots, T_{i_m}$.
+  3. We claim that $\operatorname{C}(H) \equiv H_s$. To see this, let $p_i \in T_i$ and $q_j \in T_j$, where $T_i$, $T_j$ are committed in $H$. Suppose $p_i$, $q_j$ conflict and $p_i \lt_H q_j$. By definition of $\operatorname{SG}(H)$, $T_i \rightarrow T_j$ is an edge in $\operatorname{SG}(H)$. Therefore in any topological sort of $\operatorname{SG}(H)$, $T_i$ must appear before $T_j$. Thus in $H_s$ all operations of $T_i$ appear before any operation of $T_j$, and in particular, $p_i \lt_H q_j$. We have proved that any two conflicting operations are ordered in $\operatorname{C}(H)$ in the same way as $H_s$. Thus $\operatorname{C}(H) \equiv H_s$ and, because $H_s$ is serial by construction, $H$ is serializable as was to be proved.
++ Proof: (Serializable => acyclic).
+  1. Suppose history $H$ is serializable. Let $H_s$ be a serial history equivalent to $\operatorname{C}(H)$. Consider an edge $T_i \rightarrow T_j$ in $\operatorname{SG}(H)$. Thus there are two conflicting operations $p_i$, $q_j$ of $T_i$, $T_j$ (respectively), such that $p_i \lt_H q_j$. Because $\operatorname{C}(H) \equiv H$, $p_i \lt_{H_s} q_j$. Because $H_s$ is serial and $p_i$ in $T_i$ precedes $q_j$ in $T_j$, it follows that $T_i$ appears before $T_j$ in $H_s$. Thus, we've shown that if $T_i \rightarrow T_j$ is in $\operatorname{SG}(H)$ then $T_i$ appears before $T_j$ in $H_s$.
+  2. Now suppose there is a cycle in $\operatorname{SG}(H)$, and without loss of generality let that cycle be $T_1 \rightarrow T_2 \rightarrow \ldots \rightarrow T_k \rightarrow T_1$. These edges imply that in $H_s$, $T_1$ appears before $T_2$ which appears before $T_3$ appears before $\ldots$ before $T_k$ which appears before $T_1$. Thus, the existence of the cycle implies that each of $T_1, T_2, \ldots, T_k$ appears before itself in the serial history $H_s$, an absurdity. So no cycle can exist in $\operatorname{SG}(H)$. That is, $\operatorname{SG}(H)$ is an acyclic directed graph, as was to be proved.
 
 #### Isolation Level PL-2.99
 
@@ -1256,9 +1256,9 @@ Unlock(VQ-lock)
 
 Suppose $S_j$ has a timestamp later than $T$. If $T$ has read an object that $S_j$ has modified, $T$ can still be serialized. However, as discussed in [A. Adya, R. Gruber, B. Liskov, and U. Maheshwari. Efficient Optimistic Concurrency Control using Loosely Synchronized Clocks](https://users.cs.utah.edu/~stutsman/cs6963/public/papers/thor.pdf), we abort $T$ in this case also to provide external consistency (so that transaction commit order as observed by clients is the same as the real time order).
 
-> External consistency: The serialization order is such that, if transaction $S$ committed before $T$ began (in real time), $S$ is ordered before $T$.
->
-> Since different transactions may be timestamped at different coordinators, and clocks are only loosely synchronized, a transaction $T$ that begins after some other transaction $S_j$ committed may actually receive a timestamp that is earlier than that of $S_j$ (although this situation is very unlikely). In this case, $T$ must not be committed if it read any object that $S_j$ modified, since that would violate external consistency.
+External consistency: The serialization order is such that, if transaction $S$ committed before $T$ began (in real time), $S$ is ordered before $T$.
+
+Since different transactions may be timestamped at different coordinators, and clocks are only loosely synchronized, a transaction $T$ that begins after some other transaction $S_j$ committed may actually receive a timestamp that is earlier than that of $S_j$ (although this situation is very unlikely). In this case, $T$ must not be committed if it read any object that $S_j$ modified, since that would violate external consistency.
 
 The reader may wonder why transaction $T$ could commit if it did not read any object modified by transaction $S_j$ or modify any object read by $S_j$, even though $S_j$ has a later timestamp than $T$. In my understanding, this is because even if the server internally ordered $T$ before $S_j$ by timestamp order, contrary to the real-time order ($S_j$ before $T$), the clients could not conclusively prove this was the case. However, if $T$ read an older version of an object and $S_j$ modified a newer version of that same object, the clients could irrefutably prove the mistake. Since $T$ read the older version rather than the newer version written by $S_j$, the clients could conclusively prove the server ordered $T$ before $S_j$ incorrectly, despite $S_j$ executing earlier in real time.
 
@@ -1433,7 +1433,7 @@ If a read-only transaction $T_q$ requests level PL-3U and accesses objects from 
 
 As stated in the "Fetch Processing" section:
 
-> When a server receives a fetch request for object $x$ on page $P$, if there is a prepared transaction $T_i$ that modified $x$, the server **waits for $T_i$ to complete** before responding. It then sends the fetch reply containing $P$ and PSTAMP(P). Waiting for $T_i$ to complete ensures that the client receives $T_i$'s **final multistamp** rather than an intermediate value.
+When a server receives a fetch request for object $x$ on page $P$, if there is a prepared transaction $T_i$ that modified $x$, the server **waits for $T_i$ to complete** before responding. It then sends the fetch reply containing $P$ and PSTAMP(P). Waiting for $T_i$ to complete ensures that the client receives $T_i$'s **final multistamp** rather than an intermediate value.
 
 The author also states that if a **preparing** transaction $T_i$ anti-depends on a prepared transaction $T_j$, $T_i$'s prepare is delayed until $T_j$ commits or aborts. This ensures that the server merges $T_j$'s final multistamp into $T_i$'s multistamp.
 
