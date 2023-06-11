@@ -342,19 +342,20 @@ A history achieves isolation if and only if it contains no wormhole transactions
 \end{align}
 
 \begin{align}
-  \operatorname{DEP}(SH)
-=   \left\{
-        \left\langle T, \langle o, i\rangle, T^\prime\right\rangle
-        \in \operatorname{DEP}(H)
-      \mid
-       T^\prime \neq T^*
-    \right\}
-  \cup
-    \left\{
-      \left\langle T^\prime, \langle o, i\rangle, T^*\right\rangle
-      \in \operatorname{DEP}(H)
-    \right\}
-= \operatorname{DEP}(H)
+&\phantom{=} \operatorname{DEP}(SH)           \\
+          &= \phantom{\cup}&
+               \left\{
+                   \left\langle T, \langle o, i\rangle, T^\prime\right\rangle
+                   \in \operatorname{DEP}(H)
+                 \mid
+                  T^\prime \neq T^*
+               \right\}             \nonumber \\
+             &\phantom{=} &\cup
+               \left\{
+                 \left\langle T^\prime, \langle o, i\rangle, T^*\right\rangle
+                 \in \operatorname{DEP}(H)
+               \right\}             \nonumber \\
+          &= \operatorname{DEP}(H)  \nonumber
 \label{the-wormhole-theorem:no-wormholes-infer-isolated:final}
 \end{align}
 
