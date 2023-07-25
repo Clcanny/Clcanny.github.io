@@ -1,6 +1,6 @@
 ---
 layout: post
-title: The Part-Time Parliament
+title: Paper Interpretation - The Part-Time Parliament
 date: 2022-10-05 12:00:00
 categories:
   - [Computer Science, Consensus]
