@@ -1,0 +1,2 @@
+tlatex -shade FastPaxos.tla && dvipdfm FastPaxos.dvi
+yum install texlive
