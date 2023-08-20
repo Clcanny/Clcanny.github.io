@@ -1,209 +1,138 @@
 \* FastPaxosTransitionedFromEPaxos.tla
-------------------------- MODULE FastPaxos ----------------------------------
-(***************************************************************************)
-(*`^The module imports two standard modules. Module $Naturals$ defines the *)
-(* set $Nat$ of naturals and the ordinary arithmetic operators; module     *)
-(* $FiniteSets$ defines $IsFiniteSet(S)$ to be true iff $S$ is a finite    *)
-(* set and defines $Cardinality(S)$ to be the number of elements in $S$,   *)
-(* if $S$ is finite.^'                                                     *)
-(***************************************************************************)
+------------------- MODULE FastPaxosTransitionedFromEPaxos ------------------
 EXTENDS Naturals, FiniteSets
------------------------------------------------------------------------------
-(***************************************************************************)
-(*`^\centering \large\bf Constants^'                                       *)
-(***************************************************************************)
 
-(***************************************************************************)
-(*`^$Max(S)$ is defined to be the maximum of a nonempty finite set $S$ of  *)
-(* numbers.^'                                                              *)
-(***************************************************************************)
 Max(S) == CHOOSE i \in S : \A j \in S : j \leq i
 
-(***************************************************************************)
-(*`^The next statement declares the specification's constant parameters.^' *)
-(***************************************************************************)
-CONSTANTS Val,          \* the set of values that may be proposed.
-          Replica,      \* the set of replicas.
-                        \* Replica = Coordinator
-                        \*         + Acceptor
-                        \*         + Proposer
-                        \*         + Learner
-          FastNum,      \* the set of fast round numbers.
-          Quorum(_),    \*`^the set of $i$-quorums.^'
-          Coord,        \* the set of coordinators.
-          CoordOf(_)    \*`^the coordinator of round $i$.^'
+CONSTANTS Val,             \* The set of values that may be proposed.
+          Delta,           \* The set of values that each acceptor decided
+                           \* on itself.
+          None,            \*
+          Rep,             \* The set of replicas.
+                           \* Rep = Coordinator
+                           \*     + Acc
+                           \*     + Proposer
+                           \*     + Learner
+          FastQuorum,      \* The set of fast quorums.
+          SlowQuorum,      \* The set of slow quorums.
+          CoordOf(_),      \* The coordinator of round $i$.
+          NotSeen,         \* Status.
+          PreAccepted,     \*
+          Accepted,        \*
+          Committed,       \*
+          PreAccept,       \* Message.
+          PreAcceptOK,     \*
+          Accept,          \*
+          AcceptOK,        \*
+          Prepare,         \*
+          PrepareOK        \*
 
-(***************************************************************************)
-(*`^$RNum$ is defined to be the set of positive integers, which is the set *)
-(* of round numbers.^'                                                     *)
-(***************************************************************************)
-RNum == Nat \ {0}
+ASSUME None \notin (Val \cup Delta)
 
-(***************************************************************************)
-(*`^The following statement asserts the assumption that $FastNum$ is a set *)
-(* of round numbers.^'                                                     *)
-(***************************************************************************)
-ASSUME FastNum \subseteq RNum
+ASSUME IsFiniteSet(Rep)
+\* In EPaxos, each replica serves dual roles: an acceptor and a coordinator.
+Acc   == Rep    \* the set of acceptors.
+Coord == Rep    \* the set of coordinators.
 
-(***************************************************************************)
-(*`^$ClassicNum$ is defined to be the set of classic round numbers.^'      *)
-(***************************************************************************)
-ClassicNum == RNum \ FastNum
+ASSUME /\ FastQuorum \subseteq SUBSET Acc
+       /\ SlowQuorum \subseteq SUBSET Acc
+       /\ \A Q, R \in (SlowQuorum \cup FastQuorum) : Q \cap R # {}
+       /\ \A Q \in SlowQuorum :
+            \A R1, R2 \in FastQuorum :
+              Q \cap R1 \cap R2 # {}
 
-(***************************************************************************)
-(*`^The following assumption asserts that the set of replicas is finite.   *)
-(* It is needed to ensure progress.^'                                      *)
-(***************************************************************************)
-ASSUME IsFiniteSet(Replica)
-
-(***************************************************************************)
-(*`^The following asserts the assumptions that $Quorum(i)$ is a set of     *)
-(* sets of replicas, for every round number $i$, and                       *)
-(* that the Quorum Requirement (Fast Paxos, Section 3.1, page 19) holds.   *)
-(***************************************************************************)
-ASSUME \A i \in RNum :
-  /\ Quorum(i) \subseteq SUBSET Replica
-  /\ \A j \in RNum :
-      /\ \A Q \in Quorum(i), R \in Quorum(j): Q \cap R # {}
-      /\ (j \in FastNum) =>
-          \A Q \in Quorum(i) : \A R1, R2 \in Quorum(j) :
-             Q \cap R1 \cap R2 # {}
-
-(***************************************************************************)
-(*`^The following asserts the assumptions that $CoordOf(i)$ is a           *)
-(* coordinator, for every round number $i$, and that every coordinator is  *)
-(* the coordinator of infinitely many classic rounds.^'                    *)
-(***************************************************************************)
+RNum       == Nat \ {0}
+FastNum    == CHOOSE n \in RNum : \A i \in RNum : n <= i
+ClassicNum == RNum \ {FastNum}
 ASSUME /\ \A i \in RNum : CoordOf(i) \in Coord
-       \* /\ \A c \in Coord, i \in Nat :
-       \*  \E j \in ClassicNum : (j > i) /\ (c = CoordOf(j))
 
-(***************************************************************************)
-(*`^$any$ and $none$ are defined to be arbitrary, distinct values that are *)
-(* not elements of $Val$.^'                                                *)
-(***************************************************************************)
-any  == CHOOSE v : v \notin Val
-none == CHOOSE n : n \notin Val \cup {any}
+Status == {NotSeen, PreAccepted, Accepted, Committed}
+ASSUME Cardinality(Status) = 4
 
-(***************************************************************************)
-(*`^$Message$ is defined to be the set of all possible messages.           *)
-(* A message is a record having a $type$ field indicating                  *)
-(* what phase message it is,                                               *)
-(* a $rnd$ field indicating the round number.                              *)
-(* What other fields, if any, a message has depends on its type.^'         *)
-(***************************************************************************)
+CmdLog == [rnd : Nat, status : Status, val : Val, delta : Delta]
+
 Message ==
-       [type : {"phase1a"}, rnd : RNum]
-  \cup [type : {"phase1b"}, rnd : RNum, vrnd : RNum \cup {0},
-        vval : Val \cup {any}, rep : Replica]
-  \cup [type : {"phase2a"}, rnd : RNum, val : Val \cup {any}]
-  \cup [type : {"phase2b"}, rnd : RNum, val : Val, rep : Replica]
+  \* Establish ordering constraints.
+       [type : {PreAccept},   rnd : RNum, val : Val, delta : Delta]
+  \cup [type : {PreAcceptOK}, rnd : RNum, val : Val, delta : Delta, acc : Acc]
+  \* Paxos-Accept.
+  \cup [type : {Accept},      rnd : RNum, val : Val, delta : Delta]
+  \cup [type : {AcceptOK},    rnd : RNum, val : Val, delta : Delta, acc : Acc]
+  \* Explicit Prepare.
+  \cup [type : {Prepare},     rnd : RNum]
+  \cup [type : {PrepareOK},   rnd : RNum, cmdLog : CmdLog, acc : Acc]
+ASSUME Cardinality({m.type : m \in Message}) == 6
 -----------------------------------------------------------------------------
-(***************************************************************************)
-(*`^\centering\large\bf Variables and State Predicates^'                   *)
-(***************************************************************************)
 
-(***************************************************************************)
-(*`^The following statement declares the specification's variables, which  *)
-(* have all been described above---either in Fast Paxos, Section 2.2.1     *)
-(* on page 4 or in this appendix.^'                                        *)
-(***************************************************************************)
-VARIABLES cmdLog,      (****************************************************)
-                       (* \underline{In EPaxos, the $cmdLog$ variable      *)
-                       (* is employed as a replacement for                 *)
-                       (* $rnd$, $vrnd$, $vval$, $crnd$, and $cval$        *)
-                       (* from Fast Paxos.}                                *)
-                       (****************************************************)
-          amLeader,    (****************************************************)
-                       (*`^The leader-selection algorithm                  *)
-                       (* is represented by a variable $amLeader$,         *)
-                       (* where $amLeader[c]$ is a Boolean that is true    *)
-                       (* iff coordinator $c$ believes itself              *)
-                       (* to be the current leader.^'                      *)
-                       (****************************************************)
+VARIABLES cmdLog,      \* In EPaxos, the $cmdLog$ variable is employed as
+                       \* a replacement for
+                       \* $rnd$, $vrnd$, $vval$, $crnd$, and $cval$
+                       \* from Fast Paxos.
+          amLeader,    \* The leader-selection algorithm
+                       \* is represented by a variable $amLeader$,
+                       \* where $amLeader[c]$ is a Boolean that is true
+                       \* iff coordinator $c$ believes itself
+                       \* to be the current leader.
           sentMsg,
-          proposed,    (****************************************************)
-                       (*`^For simplicity, the specification does not      *)
-                       (* describe proposers.                              *)
-                       (* Instead, it contains a variable $proposed$       *)
-                       (* whose value represents the set of                *)
-                       (* proposed values.^'                               *)
-                       (****************************************************)
-          learned,     (****************************************************)
-                       (*`^For simplicity, the specification does not      *)
-                       (* describe learners.                               *)
-                       (* Instead, it contains a variable $learned$        *)
-                       (* whose value represents the set of                *)
-                       (* learned values.^'                                *)
-                       (****************************************************)
+          proposed,    \* For simplicity, the specification does not
+                       \* describe proposers.
+                       \* Instead, it contains a variable $proposed$
+                       \* whose value represents the set of
+                       \* proposed values.
+          learned,     \* For simplicity, the specification does not
+                       \* describe learners.
+                       \* Instead, it contains a variable $learned$
+                       \* whose value represents the set of
+                       \* learned values.
           goodSet
 
-(***************************************************************************)
-(*`^Defining the following tuples of variables makes it more convenient    *)
-(* to state which variables are left unchanged by the actions.^'           *)
-(***************************************************************************)
 oVars == <<amLeader, proposed, learned, goodSet>>  \* Most other variables.
 vars  == <<cmdLog, oVars, sentMsg>>                \* All variables.
+-----------------------------------------------------------------------------
 
-(***************************************************************************)
-(*`^$TypeOK$ is the type-correctness invariant, asserting that the value   *)
-(* of each variable is an element of the proper set (its ``type'').  Type  *)
-(* correctness of the specification means that $TypeOK$ is an              *)
-(* invariant---that is, it is true in every state of every behavior        *)
-(* allowed by the specification.^'                                         *)
-(***************************************************************************)
 TypeOK ==
-  /\ rnd  \in [Acceptor -> Nat]
-  /\ vrnd \in [Acceptor -> Nat]
-  /\ vval \in [Acceptor -> Val \cup {any}]
-  /\ crnd \in [Coord -> Nat]
-  /\ cval \in [Coord -> Val \cup {any, none}]
+  /\ cmdLog \in [Rep -> CmdLog]
   /\ amLeader \in [Coord -> BOOLEAN]
   /\ sentMsg  \in SUBSET Message
   /\ proposed \in SUBSET Val
   /\ learned  \in SUBSET Val
-  /\ goodSet \subseteq Acceptor \cup Coord
+  /\ goodSet \subseteq Rep
 
-(***************************************************************************)
-(*`^$Init$ is the initial predicate that describes the initial values of   *)
-(* all the variables.^'                                                    *)
-(***************************************************************************)
 Init ==
-  /\ rnd  = [a \in Acceptor |-> 0]
-  /\ vrnd = [a \in Acceptor |-> 0]
-  /\ vval = [a \in Acceptor |-> any]
-  /\ crnd = [c \in Coord |-> 0]
-  /\ cval = [c \in Coord |-> none]
+  /\ cmdLog = [r \in Rep |-> rnd : 0, status : NotSeen, val : none, delta: none]
   /\ amLeader \in [Coord -> BOOLEAN]
   /\ sentMsg  = {}
   /\ proposed = {}
   /\ learned  = {}
-  /\ goodSet \in SUBSET (Acceptor \cup Coord)
+  /\ goodSet \in SUBSET Rep
 -----------------------------------------------------------------------------
-(***************************************************************************)
-(*`^\centering\large\bf Action Definitions^'                               *)
-(***************************************************************************)
 
-(***************************************************************************)
-(*`^$Send(m)$ describes the state change that represents the sending of    *)
-(* message $m$.  It is used as a conjunct in defining the algorithm        *)
-(* actions.^'                                                              *)
-(***************************************************************************)
-Send(m)  ==  sentMsg' = sentMsg \cup {m}
+Send(m) == sentMsg' = sentMsg \cup {m}
+-----------------------------------------------------------------------------
 
-(***************************************************************************)
-(*`^\centering \large\bf Coordinator Actions^'                             *)
-(***************************************************************************)
+EstablishOrderingConstraintsA(c, i, v, d) ==
+  /\ amLeader[c]
+  /\ c = CoordOf(i)
+  /\ i = FastNum
+  /\ cmdLog[c].rnd = 0
+  /\ cmdLog[c].status = NotSeen
+  /\ cmdLog' = [cmdLog EXCEPT ![c].rnd = i,
+                              ![c].status = PreAccepted,
+                              ![c].val = v,
+                              ![c].delta = d]
+  /\ Send([type |-> PreAccept, rnd |-> i, value |-> v, delta |-> d])
+  /\ UNCHANGED <<oVars>>
 
-(***************************************************************************)
-(*`^Action $Phase1a(c,i)$ specifies the execution of phase 1a of round $i$ *)
-(* by coordinator $c$, described in Section 2.2.1 (on page 5) and          *)
-(* refined by CA2' (Fast Paxos, Section 3.3, page 22).^'                   *)
-(***************************************************************************)
 Phase1a(c, i) ==
   /\ amLeader[c]
   /\ c = CoordOf(i)
-  /\ crnd[c] < i
+  (*************************************************************************)
+  (*`^The explicit prepare process is initiated by another replica,        *)
+  (* denoted as $Q$, only when there is suspicion that                     *)
+  (* the designated leader, labelled as $L$, has potentially failed.^'     *)
+  (*************************************************************************)
+  /\ c # CoordOf(FastNum)
+  /\ cmdLog[c].rnd < i
   (*************************************************************************)
   (*`^CA2. A coordinator $c$ performs an action only if                    *)
   (* it believes itself to be the current leader.                          *)
@@ -211,11 +140,15 @@ Phase1a(c, i) ==
   (* it has learned that a round $j$ has been started,                     *)
   (* for some j with $crnd[c] < j < i$.^'                                  *)
   (*************************************************************************)
-  /\ \/ crnd[c] = 0
+  /\ \/ /\ cmdLog[c].rnd = 0
+        /\ cmdLog[c].status = NotSeen
+        /\ cmdLog[c].majval = none
+        /\ cmdLog[c].minval = none
      \/ \E m \in sentMsg : /\ crnd[c] < m.rnd
                            /\ m.rnd < i
      \/ /\ crnd[c] \in FastNum
         /\ i \in ClassicNum
+  /\ cmd =
   /\ crnd' = [crnd EXCEPT ![c] = i]
   /\ cval' = [cval EXCEPT ![c] = none]
   /\ Send([type |-> "phase1a", rnd |-> i])
@@ -255,7 +188,7 @@ IsPickableVal(Q, i, M, v) ==
 (*`^Action $Phase2a(c,v)$ specifies the execution of phase 2a by           *)
 (* coordinator $c$ with value $v$, as described in Section 2.2.1           *)
 (* (on page 5) and Section 2.2.2 (page 6),                                 *)
-(* and refined by CA2' (Section 3.3, page 22).                             *)
+(* and refined by CA2' (Section 3.3, page 22).^'                           *)
 (***************************************************************************)
 Phase2a(c, v) ==
   LET i == crnd[c]
@@ -263,44 +196,11 @@ Phase2a(c, v) ==
       /\ cval[c] = none
       /\ amLeader[c]
       /\ \E Q \in Quorum(i) :
-          /\ \A a \in Q : \E m \in MsgsFrom(Q, i, "phase1b") : m.acc = a
+          /\ \A r \in Q : \E m \in MsgsFrom(Q, i, "phase1b") : m.acc = r
           /\ IsPickableVal(Q, i, MsgsFrom(Q, i, "phase1b"), v)
       /\ cval' = [cval EXCEPT ![c] = v]
       /\ Send([type |-> "phase2a", rnd |-> i, val |-> v])
       /\ UNCHANGED <<crnd, aVars, oVars>>
-
-(***************************************************************************)
-(*`^$P2bToP1b(Q, i)$ is defined to be the set of round $i+1$ phase~1b      *)
-(* messages implied by the round $i$ phase~2b messages sent by the         *)
-(* acceptors in the set $Q$, as explained in Section 3.2.^'                *)
-(***************************************************************************)
-P2bToP1b(Q, i) ==
-  {[type |-> "phase1b", rnd |-> i+1, vrnd |-> i,
-    vval |-> m.val, acc |-> m.acc] : m \in MsgsFrom(Q, i, "phase2b")}
-
-(***************************************************************************)
-(*`^Action $CoordinatedRecovery(c, v)$ specifies the coordinated recovery  *)
-(* described in Section 3.2, page 20.  With this action, coordinator $c$   *)
-(* attempts to recover from a collision in round $crnd[c]$ by sending      *)
-(* round $crnd[c]+1$ phase 2a messages for the value $v$.  Although CA2'   *)
-(* (Section 3.3, page 22) implies that this                                *)
-(* action should be performed only if $crnd[c]+1$ is a classic round, that *)
-(* restriction is not required for correctness and is omitted from the     *)
-(* specification.                                                          *)
-(***************************************************************************)
-CoordinatedRecovery(c, v) ==
-  LET i == crnd[c]
-  IN  /\ amLeader[c]
-      /\ cval[c] = any
-      /\ i+1 \in RNum
-      /\ c = CoordOf(i+1)
-      /\ \E Q \in Quorum(i+1) :
-          /\ \A a \in Q : \E m \in P2bToP1b(Q, i) : m.acc = a
-          /\ IsPickableVal(Q, i+1, P2bToP1b(Q, i), v)
-      /\ cval' = [cval EXCEPT ![c] = v]
-      /\ crnd' = [crnd EXCEPT ![c] = i+1]
-      /\ Send([type |-> "phase2a", rnd |-> i+1, val |-> v])
-      /\ UNCHANGED <<aVars, oVars>>
 
 (***************************************************************************)
 (*`^$coordLastMsg(c)$ is defined to be the last message that coordinator   *)
@@ -310,7 +210,6 @@ coordLastMsg(c) ==
  IF cval[c] = none
    THEN [type |-> "phase1a", rnd |-> crnd[c]]
    ELSE [type |-> "phase2a", rnd |-> crnd[c], val |-> cval[c]]
-
 
 (***************************************************************************)
 (*`^In action $CoordRetransmit(c)$, coordinator $c$ retransmits the last   *)
@@ -334,12 +233,10 @@ CoordRetransmit(c) ==
 CoordNext(c) ==
   \/ \E i \in RNum : Phase1a(c, i)
   \/ \E v \in Val \cup {any} : Phase2a(c, v)
-  \/ \E v \in Val : CoordinatedRecovery(c, v)
   \/ CoordRetransmit(c)
 -----------------------------------------------------------------------------
-(***************************************************************************)
-(*`^\centering \large\bf Acceptor Actions^'                                *)
-(***************************************************************************)
+
+EstablishOrderingConstraintsB(a, i) ==
 
 (***************************************************************************)
 (*`^Action $Phase1b(i, a)$ specifies the execution of phase 1b for round   *)
@@ -375,25 +272,6 @@ Phase2b(i, a, v) ==
   /\ UNCHANGED <<cVars, oVars>>
 
 (***************************************************************************)
-(*`^Action $UncoordinatedRecovery(i, a, v)$ specifies uncoordinated        *)
-(* recovery, described in Section 3.2 on page 21.                          *)
-(* With this action, acceptor $a$                                          *)
-(* attempts to recover from a collision in round $i$ by sending a round    *)
-(* $i+1$ phase~2b message with value $v$.                                  *)
-(***************************************************************************)
-UncoordinatedRecovery(i, a, v) ==
-  /\ i+1 \in FastNum
-  /\ rnd[a] \leq i
-  /\ \E Q \in Quorum(i+1) :
-      /\ \A b \in Q : \E m \in P2bToP1b(Q, i) : m.acc = b
-      /\ IsPickableVal(Q, i+1, P2bToP1b(Q, i), v)
-  /\ rnd'  = [rnd  EXCEPT ![a] = i+1]
-  /\ vrnd' = [vrnd EXCEPT ![a] = i+1]
-  /\ vval' = [vval EXCEPT ![a] = v]
-  /\ Send([type |-> "phase2b", rnd |-> i+1, val |-> v, acc |-> a])
-  /\ UNCHANGED <<cVars, oVars>>
-
-(***************************************************************************)
 (*`^$accLastMsg(a)$ is defined to be the last message sent by acceptor     *)
 (* $a$, if $rnd[a]>0$.^'                                                   *)
 (***************************************************************************)
@@ -420,7 +298,6 @@ AcceptorRetransmit(a) ==
 AcceptorNext(a) ==
   \/ \E i \in RNum : \/ Phase1b(i, a)
                      \/ \E v \in Val : Phase2b(i, a, v)
-  \/ \E i \in FastNum, v \in Val : UncoordinatedRecovery(i, a, v)
   \/ AcceptorRetransmit(a)
 -----------------------------------------------------------------------------
 (***************************************************************************)
@@ -470,7 +347,7 @@ LeaderSelection ==
 (* guaranteed only under an assumption about the value of $goodSet$.)^'    *)
 (***************************************************************************)
 FailOrRepair ==
-  /\ goodSet' \in SUBSET (Coord \cup Acceptor)
+  /\ goodSet' \in SUBSET (Coord \cup Acc)
   /\ UNCHANGED <<aVars, cVars, amLeader, sentMsg, proposed, learned>>
 
 (***************************************************************************)
@@ -511,7 +388,7 @@ OtherAction ==
 (***************************************************************************)
 Next ==
   \/ \E c \in Coord : CoordNext(c)
-  \/ \E a \in Acceptor : AcceptorNext(a)
+  \/ \E a \in Acc : AcceptorNext(a)
   \/ OtherAction
 -----------------------------------------------------------------------------
 (***************************************************************************)
@@ -544,7 +421,7 @@ Fairness ==
   /\ \A c \in Coord :
       /\ WF_vars((c \in goodSet) /\ CoordNext(c))
       /\ WF_vars((c \in goodSet) /\ (\E i \in ClassicNum : Phase1a(c, i)))
-  /\ \A a \in Acceptor : WF_vars((a \in goodSet) /\ AcceptorNext(a))
+  /\ \A a \in Acc : WF_vars((a \in goodSet) /\ AcceptorNext(a))
   /\ \A v \in Val : WF_vars(Learn(v))
 
 (***************************************************************************)
@@ -594,7 +471,7 @@ LA(c, Q) ==
 (* asserts that some value is eventually learned.                          *)
 (***************************************************************************)
 THEOREM /\ Spec
-        /\ \E Q \in SUBSET Acceptor :
+        /\ \E Q \in SUBSET Acc :
             /\ \A i \in ClassicNum : Q \subseteq Quorum(i)
             /\ \E c \in Coord : <>[]LA(c, Q)
         => <>(learned # {})

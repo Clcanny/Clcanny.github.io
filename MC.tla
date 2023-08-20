@@ -14,7 +14,7 @@ a1, a2, a3, a4
 const_Nat == 0..2
 const_Val == {v1, v2}
 const_Acceptor == {a1, a2, a3, a4}
-const_FastNum == {1}
+const_FastNum == 1
 const_Quorum(i) == {{a2, a3, a4},
                     {a1, a3, a4},
                     {a1, a2, a4},
