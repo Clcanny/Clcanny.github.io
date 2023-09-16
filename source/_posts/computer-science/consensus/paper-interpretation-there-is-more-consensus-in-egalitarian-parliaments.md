@@ -7,7 +7,9 @@ categories:
 math: true
 ---
 
-## Transitioning from Fast Paxos to Egalitarian Paxos: A Conceptual Overview
+This post is the first in a series on EPaxos, focusing specifically on Simplified Egalitarian Paxos. In subsequent posts, I'll delve into Optimized Egalitarian Paxos along with its safety and liveness properties, and explore how Linearizability and Serializability are achieved in Egalitarian Paxos. Additionally, I plan to demonstrate how to transition from Fast Paxos to EPaxos using TLA+ in future posts.
+
+## The Commit Protocol: Transitioning from Fast Paxos to Egalitarian Paxos
 
 The commentary by [drdr.xp](http://drmingdrmer.github.io/) on [xiangguangyan](https://www.zhihu.com/people/xiangguangyan)'s article [EPaxos Trilogy II: EPaxos Core Protocol Process](https://zhuanlan.zhihu.com/p/387468959) provides valuable insight into the transition from Fast Paxos to Egalitarian Paxos:
 
@@ -15,7 +17,7 @@ The commentary by [drdr.xp](http://drmingdrmer.github.io/) on [xiangguangyan](ht
 
 We should do the following minor changes to Fast Paxos:
 
-+ In fast round, the acceptors will do some minor changes to value, make it w.
++ In fast round, the acceptors will do some minor changes to value, make it $w$.
 + Unify all states to cmds.
 + Change message path.
 
@@ -34,7 +36,7 @@ I have gained a comprehensive understanding of the classic Paxos algorithm throu
 | $\operatorname{lastTried}(p)$        | $\operatorname{crnd}(c)$ | $\operatorname{cmds}_L[L][i_L]$                                             |
 |                                      | $\operatorname{cval}(c)$ | $\operatorname{cmds}_L[L][i_L]$                                             |
 | Step 1 of the Basic Protocol         | phase 1a                 | Explicit Prepare                                                            |
-| $\operatorname{NextBallot}(b)$       | phase 1a message         | $\operatorname{Prepare}(epoch.(b+1).Q, L.i$                                 |
+| $\operatorname{NextBallot}(b)$       | phase 1a message         | $\operatorname{Prepare}(epoch.(b+1).Q, L.i)$                                |
 | Step 2 of the Basic Protocol         | phase 1b                 | Explicit Prepare                                                            |
 | $\operatorname{LastVote}(b, v)$      | phase 1b message         | $\operatorname{PrepareOK}(\operatorname{cmds}_R[L][i], epoch.x.Y, L.i)$     |
 | Step 3 of the Basic Protocol         | phase 2a                 | Paxos-Accept                                                                |
@@ -48,7 +50,7 @@ In Fast Paxos, during a fast round $i$, if the coordinator can pick any proposed
 
 Moving on to Egalitarian Paxos, each instance is associated with a predefined instance sub-space. Only specific instances can propose the minimum ballot of each instance. With this knowledge, the coordinator understands that it can select any proposed value in the minimum ballot, even if it **bypasses phase1a and phase1b**. Similarly, the acceptors realize they can treat any proposer's message proposing a value as if it were a ordinary phase 2a message, **without the explicit requirement of receiving an "any" message**.
 
-### Coordinated Collision Recovery
+### Unoptimized Coordinated Collision Recovery
 
 In Fast Paxos, the obvious way to recover from a collision is for $c$ to begin a new round, sending phase 1a messages to all acceptors, if it learns that round $i$ may not have chosen a value. Suppose the coordinator $c$ of round $i$ is also coordinator of round $i + 1$, and that round $i + 1$ is the new one it starts. The phase 1b message that an acceptor a sends in response to $c$'s round $i + 1$ phase 1a message does two things: it reports the current values of $\operatorname{vrnd}(a)$ and $\operatorname{vval}(a)$, and it **transmits $a$'s promise not to cast any further vote in any round numbered less than $i + 1$**. (This promise is implicit in $a$'s setting $\operatorname{rnd}(a)$ to $i + 1$.)
 
@@ -147,7 +149,7 @@ Phase1Reply(replica) ==
       \* pre-accepting ballots if it has already prepared, pre-accepted,
       \* or accepted other ballots possessing a larger ID.
       /\ (\A rec \in oldRec :
-          (rec.ballot = msg.ballot \/rec.ballot[1] < msg.ballot[1]))
+          (rec.ballot = msg.ballot \/ rec.ballot[1] < msg.ballot[1]))
       /\ LET newDeps == ...
              newSeq == ...
              instCom == ... IN
@@ -201,7 +203,7 @@ While the strategy of removing processed messages from sentMsg serves its purpos
 
 #### Selecting Values Based on Observation 4
 
-In EPaxos, it is assumed that every fast quorum includes $2F = N - 1$ replicas and every slow quorum contains $F + 1 = \lfloor N / 2\rfloor + 1$ replicas. This quorum configuration satisfies **the Quorum Requirement**: If $i$ is a fast round number, then any $i$-quorum intersects with any two $j$-quorums, as evidenced by the equation $(2F + 2F - (2F + 1)) + (F + 1) - (2F + 1) = F - 1$.
+In EPaxos, it is assumed that every fast quorum includes $2F = N - 1$ replicas and every slow quorum contains $F + 1 = \lfloor N / 2\rfloor + 1$ replicas. This quorum configuration satisfies **the Quorum Requirement**: If $j$ is a fast round number, then any $i$-quorum intersects with any two $j$-quorums, as evidenced by the equation $(2F + 2F - (2F + 1)) + (F + 1) - (2F + 1) = F - 1$.
 
 Assuming a fast quorum with $2F$ acceptors and a slow quorum with $F + 1 = \lfloor N / 2\rfloor + 1$ acceptors, the fast quorum is required to intersect with the slow quorum, containing at least $2F + (F + 1) - (2F + 1) = F = \lfloor N / 2\rfloor$ acceptors. This can also be expressed as: if there are $2F + (F + 1) - (2F + 1) = F = \lfloor N / 2\rfloor$ acceptors' replies, each containing identical values in response to $Prepare$ messages and accepted by the coordinator, then there must be at least one fast quorum and one slow quorum, the intersection of which exactly comprises these acceptors. The statements on Lines 32 and 33 of Figure 3, which describes the EPaxos simplified recovery procedure, mirrors a basic and unoptimized approach for Coordinated Collision Recovery in Fast Paxos.
 
@@ -239,52 +241,49 @@ The key part of this optimization is enabling the acceptor to distinguish whethe
 
 In [The Part-Time Parliament](https://www.microsoft.com/en-us/research/uploads/prod/2016/12/The-Part-Time-Parliament.pdf), Theorem 1 establishes that any two successful ballots are for the same decree. Upon encountering a "Committed" reply message, we can deduce that the value $v$ is committed. Given the assurance of Theorem 1, no other value has been, or will be, committed. Thus, it's safe to commit the value $v$ once more.
 
-## Others
+### Optimized Coordinated Collision Recovery
 
-```tla
-PrepareFinalize(replica, i, Q) ==
-  /\ i \in preparing[replica]
-  /\ \E rec \in cmdLog[replica] :
-    /\ rec.inst = i
-    /\ rec.status \notin {"committed", "executed"}
-    /\ LET replies == {msg \in sentMsg :
-                        /\ msg.inst = i
-                        /\ msg.type = "prepare-reply"
-                        /\ msg.dst = replica
-                        /\ msg.ballot = rec.ballot} IN
-      \* Q \in SlowQuorums(replica)
-      /\ (\A rep \in Q : \E msg \in replies : msg.src = rep)
-      /\
-        \/ ...
-        \/ ...
-        \/
-          /\ ~(\E msg \in replies : msg.status \in {"accepted", "committed", "executed"})
-          /\ LET preaccepts == {msg \in replies : msg.status = "pre-accepted"} IN
-            (
-              \/ ...
-              \/
-                /\ \A p1, p2 \in preaccepts :
-                  p1.cmd = p2.cmd /\ p1.deps = p2.deps /\ p1.seq = p2.seq
-                \* Instances == Replicas \X (1..Cardinality(Commands))
-                \* i[1] is the coordinator for this instance.
-                /\ ~(\E pl \in preaccepts : pl.src = i[1])
-                /\ Cardinality(preaccepts) < Cardinality(Q) - 1
-                /\ Cardinality(preaccepts) >= Cardinality(Q) \div 2
-                /\ LET pac == CHOOSE pac \in preaccepts : TRUE IN
-                  /\ sentMsg' = (sentMsg \ replies) \cup
-                      [type   : {"try-pre-accept"},
-                       src    : {replica},
-                       dst    : Q,
-                       inst   : {i},
-                       ballot : {rec.ballot},
-                       cmd    : {pac.cmd},
-                       deps   : {pac.deps},
-                       seq    : {pac.seq}]
-                  /\ ...
-              \/ ...
-            )
-        \/ ...
-```
+![Figure 2: The basic Egalitarian Paxos protocol for choosing commands.](http://junbin-hexo-img.oss-cn-beijing.aliyuncs.com/paper-interpretation-there-is-more-consensus-in-egalitarian-parliaments/the-basic-egalitarian-paxos-protocol-for-choosing-commands.png)
+
+In Fast Paxos, the author introduces an observation: In other words, $a$'s round $i$ phase 2b message **carries exactly the same information as** its round $i + 1$ phase 1b message. Specifically, both messages accomplish two key tasks: they report the current values of $\operatorname{vrnd}(a)$ and $\operatorname{vval}(a)$, and they **transmit $a$'s promise not to cast any further vote in any round numbered less than $i + 1$**. This observation leads to the optimized coordinated collision recovery. EPaxos also employs the same optimized coordinated collision recovery approach, which corresponds to the segment between the two yellow-highlighted sections in the above figure, labeled as "Figure 2: The Basic Egalitarian Paxos Protocol for Choosing Commands".
+
+It's important to note that in the Paxos-Accept phase, the command leader $L$ always sends an $\operatorname{AcceptOK}(\gamma, L.i)$ "reply" to itself, as demonstrated in line 16. Consequently, the command leader $L$ can proceed to the commit phase after receiving only $\lfloor N / 2\rfloor$ $\operatorname{AcceptOK}$ messages, rather than needing to wait for $\lfloor N / 2\rfloor + 1$.
+
+### Overlooked Details
+
+#### A Closer Look at Ballot Numbers and Instance Numbers
+
+For correctness, ballot numbers used by different replicas must be distinct, so they include a replica ID. Actually, the uniqueness of ballot numbers originates from the $\operatorname{B1}(\mathcal{B})$ condition in [The Part-Time Parliament](https://www.microsoft.com/en-us/research/uploads/prod/2016/12/The-Part-Time-Parliament.pdf). Furthermore, a newer configuration of the replica set must have strict precedence over an older one, so we also prepend an epoch number. The resulting ballot number format is $epoch.b.R$, where a replica $R$ increments only the natural number $b$ when trying to initiate a new ballot in Explicit Prepare. Each replica is the default (i.e., initial) leader of its own instances, so the ballot $epoch.0.R$ is implicit at the beginning of every instance $R.i$.
+
+For every replica $R$ there is an unbounded sequence of numbered instances $R.1$, $R.2$, $R.3$, ... that that replica is said to **own**.
+
+#### Understanding the Lack of Transitivity in Interference Relations
+
+Two commands $\gamma$ and $\delta$ interfere if there exists a sequence of commands $\Sigma$ such that the serial execution $\Sigma, \gamma, \delta$ is not compatible (i.e., it produces different results than) the serial execution $\Sigma, \delta, \gamma$.
+
+EPaxos guarantees that any two interfering commands will be executed in the same order with respect to each other on every replica. This is enough to guarantee that the executions on all replicas are compatible: the serial ordering of commands on a replica can be obtained from that on any other replica by commuting **commutative** commands.
+
+Note that the interference relation is symmetric, but **not necessarily transitive**.
+
+While the authors of EPaxos propose that the interference relation need not be transitive, I argue that this assumption lacks practical utility in real-world systems and is, in fact, counter-intuitive. It appears the authors intended to simplify the process of demonstrating execution consistency, defined as the principle where two interfering commands, $\gamma$ and $\delta$, when successfully committed (not necessarily by the same replica), are executed in the same order by every replica. The partial proof for execution consistency, specifically within the realm of the commit protocol, is laid out as follows:
+
++ The attributes with which a command $c$ is committed are the union of at least $\lfloor N / 2\rfloor + 1$ sets of attributes computed by as many replicas. This ensures that there is at least one replica $R$ that contributes to both the final attributes of $\gamma$ and $\delta$.
++ Because $R$ records every command that it sees in its command log, and because $\gamma \sim \delta$, $R$ will include the command it sees first in the dependency list of the command it sees second. In other words, if $\gamma$ and $\delta$ are successfully committed and $\gamma \sim \delta$, then either $\gamma$ has $\delta$ in its dependency list when $\gamma$ is committed, or $\delta$ has $\gamma$ in its dependency list when $\delta$ is committed.
+
+#### Calculation of Fast Quorum and Slow Quorum Sizes
+
+Let's denote the fast quorum size as $F$, the slow quorum size as $S$, and the replicas size as $N$. In accordance with the Quorum Requirement, we must ensure that $((F + F) - N) + S - N \ge 1$. Additionally, the $\operatorname{B2}(\mathcal{B})$ condition dictates that $S + S - N \ge 1$. From these conditions, we can easily compute the minimum value for $S$ as $S = \lfloor N / 2\rfloor + 1$. Similarly, the minimum value for $F$ can be determined as $F = \lceil 3 N / 4\rceil$.
+
+## The Execution Algorithm
+
+To execute command $\gamma$ committed in instance $R.i$, a replica will follow these steps:
+
++ Wait for $R.i$ to be committed (or run Explicit Prepare to force it);
++ Build $\gamma$'s dependency graph by adding $\gamma$ and all commands in instances from $\gamma$'s dependency list as nodes, with directed edges from $\gamma$ to these nodes, repeating this process recursively for all of $\gamma$'s dependencies (starting with step 1);
++ Find the strongly connected components, sort them topologically;
++ In inverse topological order, for each strongly connected component, do:
+  + Sort all commands in the strongly connected component by their sequence number;
+  + Execute every un-executed command in increasing sequence number order, marking them executed.
 
 ## Reference
 
