@@ -87,6 +87,7 @@ i - k 投了 v 不能说明 i - 1 要么没投，要么投了 v （因为 i 只�
 highest ballot 还说明之后的 ballot 都被 fence 了，不可以投票了
 
 fast paxos 的另一种推导 quorum 的方式：slow quorum 到底要问多少个 server ，才可以推导出唯一的 maybe v ，而不是 maybe v + maybe w ？(S 与 F1的交集）∩（s 与 F2 的交集）不是空集，所以不会给出冲突的答案。
+如果 fast quorum 是半数的话，slow quorum 需要多少个？如果 slow quorum 是半数，需要多少个 priests 构成 fast quorum ？
 
 flexible paxos ？
 
