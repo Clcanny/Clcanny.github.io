@@ -72,9 +72,9 @@ The algorithm adheres to the following four rules, which in turn ensures the sat
 
 Implementing rule 1 and rule 2 is straightforward. We will not delve into their details in the later sections. Instead, our focus will be on providing guidance on the correct implementation of rule 3 and rule 4.
 
-### How the Multi-Decree Parliament Implements the Correctness Rules
+### How the Single-Decree Synod Implements the Correctness Rules
 
-[The Multi-Decree Parliament](https://www.microsoft.com/en-us/research/uploads/prod/2016/12/The-Part-Time-Parliament.pdf) employs **disjoint quorums** to implement Rule 3, whereby all values written to a particular register set must be identical. This can be achieved by assigning register sets to clients and requiring that **clients write only to their own register sets, with at most one value**. In practice, this could be implemented by using an allocation such as that in Figure 4 and by requiring clients to keep a persistent record of which register sets they have written too. We refer to these as client **restricted configurations**.
+[The Single-Decree Synod](https://www.microsoft.com/en-us/research/uploads/prod/2016/12/The-Part-Time-Parliament.pdf) employs **disjoint quorums** to implement Rule 3, whereby all values written to a particular register set must be identical. This can be achieved by assigning register sets to clients and requiring that **clients write only to their own register sets, with at most one value**. In practice, this could be implemented by using an allocation such as that in Figure 4 and by requiring clients to keep a persistent record of which register sets they have written too. We refer to these as client **restricted configurations**.
 
 ![Figure 4: Sample round robin allocation of register sets to clients.](http://junbin-hexo-img.oss-cn-beijing.aliyuncs.com/paper-interpretation-a-generalised-solution-to-distributed-consensus/figure-4-sample-round-robin-allocation-of-register-sets-to-clients.png)
 
