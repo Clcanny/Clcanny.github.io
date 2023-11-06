@@ -67,6 +67,16 @@ The algorithm adheres to the following four rules, which in turn ensures the sat
 + Rule 2: **New value**. A client may only write a (non-nil) value $v $provided that either $v$ is the client's input value or that the client has read $v$ from a register. This rule ensures the fulfillment of the **non-triviality** requirement.
 + Before a client writes a value to a register $R_i$ in register set $i$, it needs to ensure that no other values could be decided in register sets $0$ through $i$ (inclusive). The client plans to write into register $R_i$; however, it's the client's responsibility to verify that none of the previous registers could decide on a different value prior to doing so. This is a crucial step for maintaining safety. All clients must perform this check to prevent conflicting decisions.
   + Interestingly, if writing to a register $R_i$ wouldn't lead to a value being decided, then the client has the freedom to write any value of their preference. This implies that a more relaxed condition could be proposed. However, this relaxed aspect is not significant in the current context, so it is omitted.
+  + Rule 3: **Current decision**. A client may only write a (non-nil) value $v$ to register $r$ on server $s$ provided that if $v$ is decided in register set $r$ by a quorum $Q \in \mathcal{Q}_r$ where $s \in Q$ then no value $v^\prime$ where $v \neq v^\prime$ can also be decided in register set $r$.
+  + Rule 4: **Previous decisions**. A client may only write a (non-nil) value $v$ to register $r$ provided no value $v^\prime$ where $v \neq v^\prime$ can be decided by the quorums in register sets $0$ to $r − 1$.
+
+Implementing rule 1 and rule 2 is straightforward. We will not delve into their details in the later sections. Instead, our focus will be on providing guidance on the correct implementation of rule 3 and rule 4.
+
+### How the Multi-Decree Parliament Implements the Correctness Rules
+
+[The Multi-Decree Parliament](https://www.microsoft.com/en-us/research/uploads/prod/2016/12/The-Part-Time-Parliament.pdf) employs **disjoint quorums** to implement Rule 3, whereby all values written to a particular register set must be identical. This can be achieved by assigning register sets to clients and requiring that **clients write only to their own register sets, with at most one value**. In practice, this could be implemented by using an allocation such as that in Figure 4 and by requiring clients to keep a persistent record of which register sets they have written too. We refer to these as client **restricted configurations**.
+
+For those familiar with [The Part-Time Parliament](https://www.microsoft.com/en-us/research/uploads/prod/2016/12/The-Part-Time-Parliament.pdf), a useful correspondence can be drawn between register sets in the current paper and the concept of ballots in Paxos.
 
 那为什么 paxos 要用 highest ballot 作为 phase 2 投票的值呢？任何一个 ballot 的可以吗？
 不可以
