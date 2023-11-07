@@ -74,11 +74,26 @@ Implementing rule 1 and rule 2 is straightforward. We will not delve into their 
 
 ### How the Single-Decree Synod Implements the Correctness Rules
 
-[The Single-Decree Synod](https://www.microsoft.com/en-us/research/uploads/prod/2016/12/The-Part-Time-Parliament.pdf) employs **disjoint quorums** to implement Rule 3, whereby all values written to a particular register set must be identical. This can be achieved by assigning register sets to clients and requiring that **clients write only to their own register sets, with at most one value**. In practice, this could be implemented by using an allocation such as that in Figure 4 and by requiring clients to keep a persistent record of which register sets they have written too. We refer to these as client **restricted configurations**.
+[The Single-Decree Synod](https://www.microsoft.com/en-us/research/uploads/prod/2016/12/The-Part-Time-Parliament.pdf) employs **disjoint quorums** to implement rule 3, whereby all values written to a particular register set must be identical. This can be achieved by assigning register sets to clients and requiring that **clients write only to their own register sets, with at most one value**. In practice, this could be implemented by using an allocation such as that in Figure 4 and by requiring clients to keep a persistent record of which register sets they have written too. We refer to these as client **restricted configurations**.
 
 ![Figure 4: Sample round robin allocation of register sets to clients.](http://junbin-hexo-img.oss-cn-beijing.aliyuncs.com/paper-interpretation-a-generalised-solution-to-distributed-consensus/figure-4-sample-round-robin-allocation-of-register-sets-to-clients.png)
 
 For those familiar with [The Part-Time Parliament](https://www.microsoft.com/en-us/research/uploads/prod/2016/12/The-Part-Time-Parliament.pdf), a useful correspondence can be drawn between register sets in the current paper and the concept of ballots in Paxos.
+
+Upholding rule 4 presents a more formidable challenge. A tool we can utilize to address this difficulty is the **decision table**. Each client's state table consistently contains a subset of the values from the global state table, which is a consequence of the registers being write-once. Consequently, each client possesses the capability to generate a decision table drawing from their individual local state table. At any given time, each **quorum** is in one of four decision states:
+
++ $Any$: Any value could be decided by this quorum.
++ $Maybe $v$: If this quorum reaches a decision, then value $v$ will be decided.
++ $Decided v$: The value $v$ has been decided by this quorum; a final state.
++ $None$: This quorum will not decide a value; a final state.
+
+Here are the rules that govern the update of the decision table for client-restricted register sets:
+
++ Initially, the decision state of all quorums is $Any$.
++ If there is a quorum where all registers contain the same value $v$ then its decision state is $Decided v$.
++ When a client reads a non-nil value $v$, then for all quorums over register sets $0$ to $r$,
+  + The decision state $Any$ becomes $Maybe v$,
+  + And the decision state $Maybe v^\prime$ where $v \neq v^\prime$ becomes $None$.
 
 那为什么 paxos 要用 highest ballot 作为 phase 2 投票的值呢？任何一个 ballot 的可以吗？
 不可以
@@ -87,6 +102,7 @@ i - k 投了 v 不能说明 i - 1 要么没投，要么投了 v （因为 i 只�
 highest ballot 还说明之后的 ballot 都被 fence 了，不可以投票了
 
 fast paxos 的另一种推导 quorum 的方式：slow quorum 到底要问多少个 server ，才可以推导出唯一的 maybe v ，而不是 maybe v + maybe w ？(S 与 F1的交集）∩（s 与 F2 的交集）不是空集，所以不会给出冲突的答案。
+Pleae notice "each quorum is in one of four decision states", but each register set have multiple quorums, each quorum can in state "Maybe $v$" or "Maybe $v^\prime$", causing the decision table of correpsoning register set is "Maybe $v, v^\prime$". The Single-Decree Synod will not meet this due to it use restricted configurations to meet rule 3, however, fast paxos may meet this.
 如果 fast quorum 是半数的话，slow quorum 需要多少个？如果 slow quorum 是半数，需要多少个 priests 构成 fast quorum ？
 
 flexible paxos ？
