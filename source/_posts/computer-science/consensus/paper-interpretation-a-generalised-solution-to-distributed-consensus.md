@@ -110,7 +110,7 @@ A minor optimization is available in this procedure. Instead of calculating all 
 
 You might question whether the client can use the decision state of any register set instead of the highest register set. However, this is incorrect. Let's consider a scenario where a client writes $v_n$ to register set $r$ **solely based on** its observation that the decision state of register $n$ ($n < m < r$) is $\text{Maybe}(v_n)$. In this situation, the client could potentially write a value that violates Rule 4. This violation can occur because another client may perceive the decision state of register $n$ as $\text{None}$ (due to getting register values from a different quorum, resulting in a different decision state) and write a value $v_m \neq v_n$ to register set $m$ ($n < m < r$). Consequently, $v_m$ gets decided in register set $m$, leading to a conflict.
 
-### How the Single-Decree Synod Implements the Correctness Rules
+### How Fast Paxos Implements the Correctness Rules
 
 fast paxos 的另一种推导 quorum 的方式：slow quorum 到底要问多少个 server ，才可以推导出唯一的 maybe v ，而不是 maybe v + maybe w ？(S 与 F1的交集）∩（s 与 F2 的交集）不是空集，所以不会给出冲突的答案。
 Pleae notice "each quorum is in one of four decision states", but each register set have multiple quorums, each quorum can in state "Maybe $v$" or "Maybe $v^\prime$", causing the decision table of correpsoning register set is "Maybe $v, v^\prime$". The Single-Decree Synod will not meet this due to it use restricted configurations to meet rule 3, however, fast paxos may meet this.
