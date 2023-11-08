@@ -96,7 +96,7 @@ Here are the rules that govern the update of the decision table for client-restr
   + According to Rule 4, prior to the client writing the value $v$ to register sets $r$, it must have already ensured that no other value $v^\prime \neq v$ can be decided by the register sets ranging from $0$ to $r - 1$.
   + Consequently, we can update the decision state as follows. For all quorums over register sets $0$ to $r$,
     + The decision state $\text{Any}$ becomes $\text{Maybe}(v)$,
-    + And the decision state $\text{Maybe}(v^\prime)$ where $v \neq v^\prime$ becomes $\text{None}$.
+    + And the decision state $\text{Maybe}(v^\prime)$ where $v^\prime \neq v$ becomes $\text{None}$. The client restricted configurations ensure that only one value can be written to this register set. If the current state is $\text{Maybe}(v^\prime)$, then the final state can either be $\text{Decided}(v^\prime)$ or $\text{None}$. However, when a client writes a value $v$ to register $R_r$, it must adhere to Rule 4. This rule stipulates that the client must ensure no other value $v^\prime \neq v$ can be decided for this register set. This requirement implies that the final state cannot be $\text{Decided}(v^\prime)$. Therefore, the only possible final state is $\text{None}$.
 
 那为什么 paxos 要用 highest ballot 作为 phase 2 投票的值呢？任何一个 ballot 的可以吗？
 不可以
