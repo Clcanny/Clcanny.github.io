@@ -74,7 +74,7 @@ Implementing rule 1 and rule 2 is straightforward. We will not delve into their 
 
 ### How the Single-Decree Synod Implements the Correctness Rules
 
-[The Single-Decree Synod](https://www.microsoft.com/en-us/research/uploads/prod/2016/12/The-Part-Time-Parliament.pdf) employs **disjoint quorums** to implement rule 3, whereby all values written to a particular register set must be identical. This can be achieved by assigning register sets to clients and requiring that **clients write only to their own register sets, with at most one value**. In practice, this could be implemented by using an allocation such as that in Figure 4 and by requiring clients to keep a persistent record of which register sets they have written too. We refer to these as client **restricted configurations**.
+[The Single-Decree Synod](https://www.microsoft.com/en-us/research/uploads/prod/2016/12/The-Part-Time-Parliament.pdf) employs **disjoint quorums** to implement rule 3, whereby all values written to a particular register set must be identical. This can be achieved by assigning register sets to clients and requiring that **clients write only to their own register sets, with at most one value**. In practice, this could be implemented by using an allocation such as that in Figure 4 and by requiring clients to keep a persistent record of which register sets they have written too. We refer to these as **client restricted configurations**.
 
 ![Figure 4: Sample round robin allocation of register sets to clients.](http://junbin-hexo-img.oss-cn-beijing.aliyuncs.com/paper-interpretation-a-generalised-solution-to-distributed-consensus/figure-4-sample-round-robin-allocation-of-register-sets-to-clients.png)
 
@@ -82,18 +82,21 @@ For those familiar with [The Part-Time Parliament](https://www.microsoft.com/en-
 
 Upholding rule 4 presents a more formidable challenge. A tool we can utilize to address this difficulty is the **decision table**. Each client's state table consistently contains a subset of the values from the global state table, which is a consequence of the registers being write-once. Consequently, each client possesses the capability to generate a decision table drawing from their individual local state table. At any given time, each **quorum** is in one of four decision states:
 
-+ $Any$: Any value could be decided by this quorum.
-+ $Maybe $v$: If this quorum reaches a decision, then value $v$ will be decided.
-+ $Decided v$: The value $v$ has been decided by this quorum; a final state.
-+ $None$: This quorum will not decide a value; a final state.
++ $\text{Any}$: Any value could be decided by this quorum.
++ $\text{Maybe}(v)$: If this quorum reaches a decision, then value $v$ will be decided.
++ $\text{Decided}(v)$: The value $v$ has been decided by this quorum; a final state.
++ $\text{None}$: This quorum will not decide a value; a final state.
 
 Here are the rules that govern the update of the decision table for client-restricted register sets:
 
-+ Initially, the decision state of all quorums is $Any$.
-+ If there is a quorum where all registers contain the same value $v$ then its decision state is $Decided v$.
-+ When a client reads a non-nil value $v$, then for all quorums over register sets $0$ to $r$,
-  + The decision state $Any$ becomes $Maybe v$,
-  + And the decision state $Maybe v^\prime$ where $v \neq v^\prime$ becomes $None$.
++ Initially, the decision state of all quorums is $\text{Any}$.
++ If there is a quorum where all registers contain the same value $v$ then its decision state is $\text{Decided}(v)$.
++ When a client reads a non-nil value $v$ at a specific register $R_r$ (which is one register in the register set $r$),
+  + According to client restricted configurations, only one client can write a singular value, $v$, to register set $i$.
+  + According to Rule 4, prior to the client writing the value $v$ to register sets $r$, it must have already ensured that no other value $v^\prime \neq v$ can be decided by the register sets ranging from $0$ to $r - 1$.
+  + Consequently, we can update the decision state as follows. For all quorums over register sets $0$ to $r$,
+    + The decision state $\text{Any}$ becomes $\text{Maybe}(v)$,
+    + And the decision state $\text{Maybe}(v^\prime)$ where $v \neq v^\prime$ becomes $\text{None}$.
 
 那为什么 paxos 要用 highest ballot 作为 phase 2 投票的值呢？任何一个 ballot 的可以吗？
 不可以
