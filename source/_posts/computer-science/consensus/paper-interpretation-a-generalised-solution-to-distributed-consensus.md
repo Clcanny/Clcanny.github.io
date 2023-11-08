@@ -104,7 +104,7 @@ There are numerous ways to finalize every decision state of preceding register s
 
 A minor optimization is available in this procedure. Instead of calculating all decision states from $0$ to $r - 1$, the client only needs to identify the highest register set $k$ containing the non-nil value $v$ and then calculate the decision state of register set $k$. Here, "highest" means that no other registers of register sets from $k + 1$ to $r - 1$ in the response have non-nil values. The client then calculates the decision state of register set $k$.
 
-+ Following Rule 4, before the client writes $v$, it must have already ensured that no other value $v^\prime \neq v$ can be decided in register sets from $0$ to $k - 1$. This means it's safe for the client to write $v$ to register set $r$ without violating Rule 4 on register sets from $0$ to $k - 1$.
++ Following Rule 4, before the client (which may not necessarily be the same client that writes the value to register set $r$) writes $v$ to register set $k$, it must have already ensured that no other value $v^\prime \neq v$ can be decided in register sets from $0$ to $k - 1$. This means it's safe for the client to write $v$ to register set $r$ without violating Rule 4 on register sets from $0$ to $k - 1$.
 + According to client-restricted configurations, it's also safe for the client to write $v$ to register set $r$ without violating Rule 4 on register set $k$.
 + Since $k$ is the highest register set and the majority of registers in register sets from $k + 1$ to $r - 1$ have been fenced (written to nil), no value can be decided in these register sets. Therefore, it's safe for the client to write $v$ to register set $r$ without violating Rule 4 on register sets from $k + 1$ to $r - 1$.
 
