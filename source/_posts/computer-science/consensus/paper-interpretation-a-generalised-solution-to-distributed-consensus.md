@@ -120,7 +120,9 @@ This introduces a complexity for clients that are preparing to write to register
 
 This issue is addressed through the **Quorum Requirement**. For any round numbers $i$ and $j$, if $j$ is designated as a fast round number, then any $i$-quorum and any two $j$-quorums will have a non-empty intersection. Let $N$ be the number of servers, and let us choose $F$ and $E$ such that any set of at least $N - F$ servers is a classic quorum and any set of at least $N - E$ servers is a fast quorum. In any given round, any two fast quorums, $R_1$ and $R_2$, will intersect at least $2 * (N - E) - N$ servers, represented by $R_1 \cap R_2$. If we consider $Q$ to be any classic quorum, there will be at least $(2 * (N - E) - N) + (N - F) - N$ servers in the intersection $Q \cap R_1 \cap R_2$. Therefore, if we ensure that $N > 2E + F$, it guarantees that the intersection $Q \cap R_1 \cap R_2$ is not empty.
 
-flexible paxos ？
+### How Flexible Paxos Implements the Correctness Rules
+
+We observe that quorum intersection is required only between **the phase one quorum** for register set $r$ and **the phase two quorums** of register sets $0$ to $r − 1$. This is the case because a client can always proceed to phase two after intersecting with all previous phase two quorums since Rule 4 will be satisfied.
 
 ## Reference
 
