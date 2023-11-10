@@ -64,7 +64,7 @@ We define a value as being decided when we can identify at least one register se
 The algorithm adheres to the following four rules, which in turn ensures the satisfaction of the non-triviality, agreement, and progress requirements. Fulfilling these requirements ultimately leads to the successful resolution of consensus.
 
 + Rule 1: **Quorum agreement**. A client may only output a (non-nil) value $v$ if it has read $v$ from a quorum of servers in the same register set. This rule ensures that clients only output values that have been decided. When combined with rules 3 and 4 (which guarantee that at most only one value can be decided), this rule ensures the fulfillment of the **agreement** requirement.
-+ Rule 2: **New value**. A client may only write a (non-nil) value $v $provided that either $v$ is the client's input value or that the client has read $v$ from a register. This rule ensures the fulfillment of the **non-triviality** requirement.
++ Rule 2: **New value**. A client may only write a (non-nil) value $v$ provided that either $v$ is the client's input value or that the client has read $v$ from a register. This rule ensures the fulfillment of the **non-triviality** requirement.
 + Before a client writes a value to a register $R_i$ in register set $i$, it needs to ensure that no other values could be decided in register sets $0$ through $i$ (inclusive). The client plans to write into register $R_i$; however, it's the client's responsibility to verify that none of the previous registers could decide on a different value prior to doing so. This is a crucial step for maintaining safety. All clients must perform this check to prevent conflicting decisions.
   + Interestingly, if writing to a register $R_i$ wouldn't lead to a value being decided, then the client has the freedom to write any value of their preference. This implies that a more relaxed condition could be proposed. However, this relaxed aspect is not significant in the current context, so it is omitted.
   + Rule 3: **Current decision**. A client may only write a (non-nil) value $v$ to register $r$ on server $s$ provided that if $v$ is decided in register set $r$ by a quorum $Q \in \mathcal{Q}_r$ where $s \in Q$ then no value $v^\prime$ where $v \neq v^\prime$ can also be decided in register set $r$.
@@ -123,6 +123,16 @@ This issue is addressed through the **Quorum Requirement**. For any round number
 ### How Flexible Paxos Implements the Correctness Rules
 
 We observe that quorum intersection is required only between **the phase one quorum** for register set $r$ and **the phase two quorums** of register sets $0$ to $r − 1$. This is the case because a client can always proceed to phase two after intersecting with all previous phase two quorums since Rule 4 will be satisfied.
+
+## Revisiting the Proofs
+
+### Revisiting the Proof of the Single-Decree Synod
+
+Based on the sketch provided in the current paper, it's clear that a client (denoted as $C_n$) writing a different value (such as $v^\prime$ where $v^\prime \neq v$) to a register set (like $n$) violates Rule 4 if a value (like $v$) has already been decided on a smaller register set (like $m$ where $m < n$). Without loss of generality, we can assume that register set $n$ is the register set with the lowest index greater than $m$ that been written with a different value. Our goal is to prove that obeying Rule 4 and adhering to $\operatorname{B3}(\mathcal{B})$ as proposed by The Part-Time Parliament are equivalent under client-restricted configurations. We will demonstrate this by contradiction, starting with the assumption that client $C_n$ complies with $\operatorname{B3}(\mathcal{B})$. This suggests that there should be another register set, referred to as $k$, where $m < k < n$. Additionally, the decision state observed by client $C_n$ for register set $k$ must be either $\text{Maybe}(v^\prime)$ or $\text{Decided}(v^\prime)$. If this isn't the case, and the observed decision states of all register sets from $m + 1$ to $n - 1$ by client $C_n$ are either $\text{Any}$, $\text{None}$, $\text{Maybe}(v)$, or $\text{Decided}(v)$, it would imply that $C_n$ is breaching $\operatorname{B3}(\mathcal{B})$ when writing $v^\prime$ to register set $n$. However, this results in a contradiction as register set $k$ is the register set with the lowest index greater than $m$ that been written with a different value. This contradiction solidifies our proof.
+
+### Revisiting the Proof of Fast Paxos
+
+Fast Paxos demonstrates the correctness of classical Paxos through a method of classification and induction, a process analogous to the section titled "How the Single-Decree Synod Implements the Correctness Rules" in the current blog.
 
 ## Reference
 
