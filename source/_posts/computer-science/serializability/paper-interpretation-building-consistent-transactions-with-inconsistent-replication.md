@@ -20,8 +20,8 @@ The paper [Building Consistent Transactions with Inconsistent Replication](https
 
 > To support IR’s weak consistency model, TAPIR integrates several novel techniques:
 >
-> + Loosely synchronized clocks for optimistic transac- tion ordering at clients.
-> + New use of optimistic concurrency control to de- tect conflicts with only a **partial transaction history**.
+> + Loosely synchronized clocks for optimistic transaction ordering at clients.
+> + New use of optimistic concurrency control to detect conflicts with only a **partial transaction history**.
 > + Multi-versioning for executing transactions out-of-order.
 
 ![*Figure 2: Example read-write transaction using two-phase commit, Viewstamped Replication and strict two-phase locking.* Each zone represents an availablity region, which could be a cluster, datacenter or geographic region. Each shard holds a partition of the data stored in the system and is replicated across zones for fault-tolerance. For each read-write transaction, there is a large amount of distributed coordination. The transaction protocol must coordinate reads with the designated leader in each shard to acquire locks. To commit a transaciton, the transaction protocol coordinates across shards and then the replication protocol must coordinate within each shard.](https://junbin-hexo-img.oss-cn-beijing.aliyuncs.com/paper-interpretation-building-consistent-transactions-with-inconsistent-replication/figure-2-example-read-write-transaction-using-two-phase-commit-viewstamped-replication-and-strict-two-phase-locking.png)
