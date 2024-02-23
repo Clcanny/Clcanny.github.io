@@ -72,6 +72,16 @@ Due to this deviation, Raft no longer conforms to Rule 4. To illustrate this, co
 
 In summary, due to a minor divergence, Raft does not align with the previous decisions rule outlined in [A Generalised Solution to Distributed Consensus](https://arxiv.org/pdf/1902.06776.pdf). To address this problem, Raft reinterprets the criteria for commitment or decision: a value $v$ is considered decided or committed if a quorum of servers contains the same non-nil value $v$ in their registers of the **initial** register set, as opposed to having it in corresponding registers across any same register sets as required by [A Generalised Solution to Distributed Consensus](https://arxiv.org/pdf/1902.06776.pdf).
 
+### Unpacking Raft's Deviation from Rule 4: An Insightful Analysis
+
+Before delving into the reasons behind Raft's deviation from Rule 4, it is crucial to comprehend why Paxos adheres to this rule. This analysis draws upon insights from my previous blog, {% post_link 'Paper Interpretation - A Generalised Solution to Distributed Consensus' %}, where I provide extensive context. Below, I highlight the most critical components:
+
+> A minor optimization is available in this procedure. Instead of calculating all decision states from $0$ to $r - 1$, the client only needs to identify the highest register set $k$ containing the non-nil value $v$ and then calculate the decision state of register set $k$. Here, "highest" means that no other registers of register sets from $k + 1$ to $r - 1$ in the response have non-nil values. The client then calculates the decision state of register set $k$.
+>
+> + Following Rule 4, before the client (which may not necessarily be the same client that writes the value to register set $r$) writes $v$ to register set $k$, it must have already ensured that no other value $v^\prime \neq v$ can be decided in register sets from $0$ to $k - 1$. This means it's safe for the client to write $v$ to register set $r$ without violating Rule 4 on register sets from $0$ to $k - 1$.
+> + According to client-restricted configurations, it's also safe for the client to write $v$ to register set $r$ without violating Rule 4 on register set $k$.
+> + Since $k$ is the highest register set and the majority of registers in register sets from $k + 1$ to $r - 1$ have been fenced (written to nil), no value can be decided in these register sets. Therefore, it's safe for the client to write $v$ to register set $r$ without violating Rule 4 on register sets from $k + 1$ to $r - 1$.
+
 ## Reference
 
 + [A Generalised Solution to Distributed Consensus](https://arxiv.org/pdf/1902.06776.pdf)
