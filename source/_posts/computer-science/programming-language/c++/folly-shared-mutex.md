@@ -153,6 +153,28 @@ slot = bestSlot ^ i; -> slot = bestSlot * i;?
 kDeferredSearchDistance = 2 所以 i 只有可能是 0 或者 1 ，所以两者区别不大
 或者说，正因为 i 只有可能是 0 或者 1 ，这里用 ^ 才显得正确？
 bestSlot * (i + 1) 看上去正常一点，bestSlot ^ i 相当于每个人都会去尝试一下 1 ，有点奇怪
+c++ ^ 是 Bitwise XOR
+https://en.wikipedia.org/wiki/Operators_in_C_and_C%2B%2B
+0 ^ 0 = 0, 0 ^ 1 = 1
+1 ^ 0 = 1, 1 ^ 1 = 0
+https://zh.wikipedia.org/zh-cn/%E4%BA%8C%E8%A3%9C%E6%95%B8#:~:text=%E8%A1%A5%E7%A0%81%EF%BC%88%E8%8B%B1%E8%AF%AD%EF%BC%9A2's%20complement,%E5%9C%A8%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%A7%91%E5%AD%A6%E4%B8%AD%E4%BD%BF%E7%94%A8%E3%80%82
+2's complement
+x ^ 1 类似于等到了补码
+// does x xor 0x1 get the 2's complement of x?
+No, x ^ 0x1 does not get the 2's complement of x. Instead, it toggles the least significant bit of x. To compute the 2's complement of x, you need to invert all the bits of x and then add 1.
+这个计算很奇怪，既不是 bestSlot + 1 ，又不是 bestSlot - 1 ，是有的时候 +1 ，有的时候又 -1
+  // If AccessSpreader assigns indexes from 0..k*n-1 on a system where some
+  // level of the memory hierarchy is symmetrically divided into k pieces
+  // (NUMA nodes, last-level caches, L1 caches, ...), then slot indexes
+  // that are the same after integer division by k share that resource.
+上面这段话的意思是说，如果我们有 k 个资源（供给），n 个 cpu （需求），假设分配给某个 cpu 分配的资源 id 是 0..((k*n)-1)
+那么这个 cpu 会去使用 id % k 对应的资源
+那么所有 id % k 相同的 cpu 实际上都在使用同一份资源，我想，这是在解释 bestSlot （也就是 current ）的算法
+We can use AccessSpreader::current(n)
+  // without managing our own spreader if kMaxDeferredReaders <=
+  // AccessSpreader::kMaxCpus, which is currently 128.
+这里是说，AccessSpreader 提供了已有的算法，最多可以支持 128 个需求者，如果我们的需求者数量（ kMaxDeferredReaders ）小于 128
+我们干脆就复用 AccessSpreader 好了
 
 1. folly 需要表达 request/requirement 的语法
 2. 编译 warning
