@@ -199,6 +199,56 @@ kMaxDeferredReaders * （kDeferredSeparationFactor * 8） >= 64 * #L1 caches == 
 btw. bestSlot ^ i 就是在找同一条 cacheline 上的 n 个 deferred readers
 folly 可能还是在假设，一个 cpu 一个 deferred reader 就足够了，这个假设在协程上是站不住脚的？
 
+lockSharedImpl
+        // keep going if CAS failed because somebody else set the bit
+        // for us
+        if ((state & (kHasE | kMayDefer)) != kMayDefer) {
+          continue;
+        }
+这段代码并不容易懂，转换成
+if (((state & kHasE) != 0) || ((state & kMayDefer) == 0)) { continue; }
+再转换成
+// 如果上一个人是写锁，一定要亲自设上 kMayDefer 。为什么？
+if ((state & kHasE) != 0) { continue; }
+// 原来的 state 没有 kMayDefer ，本次 CAS 又失败了，说明 kMayDefer 有可能没设到 state_ 上
+// 需要再设置一次
+if ((state & kMayDefer) == 0) { continue; }
+
+如果 wakeRegisteredWaitersImpl 只叫醒一个人，它不会立刻清理 wait bit ，为什么？
+这个 wait bit 不是绑定到内核的 wait bit ，只是在 state 上标记了有哪些类型的线程是在等的
+那当然不能清除 wait bit
+因为假设我们唤醒了一个等待 E 的线程，不代表没有其它线程在等，当然不能清除 wait bit
+只有我们确定所有线程都被唤醒，或者没有线程在等的时候这个类型的 wait bit 时，我们才可以清除 wait bit
+if ((state & wakeMask) != 0) { 的意思是：有些线程正在等（state）准备要唤醒的类型（wakeMask）
+auto prev = state_.fetch_and(~wakeMask); 这里是 fetch_add 不是 fetch_add
+      auto prev = state_.fetch_and(~wakeMask);
+      if ((prev & wakeMask) != 0) {
+        futexWakeAll(wakeMask);
+      }
+这段话的意思是：不需要所有 unlock 线程都去做 wakeup 的事情，只有一个线程做就足够了
+
+要梳理一下一种写锁和两种读锁设置 state bit 的先后顺序（happens before）
+来证明正确性
+
+搞懂 kPrevDefer 是用来干啥的
+
+最 basic 的读写锁看懂了，可以看以下几点：
+1. read priority
+2. annotation
+3. try lock
+4. tokenful & tokenless
+because
+  // the purpose of the token it so that unlock_shared doesn't have to
+  // look in other slots for its deferred lock.
+Token-less unlock_shared
+  // might place a deferred lock in one place and then release a different
+  // slot that was originally used by the token-ful version.  If this was
+  // important we could solve the problem by differentiating the deferred
+  // locks so that cross-variety release wouldn't occur.  The best way
+  // is probably to steal a bit from the pointer, making deferredLocks[]
+  // an array of Atom<uintptr_t>.
+这段话解释了为什么 tokenful 的高位是 1
+
 1. folly 需要表达 request/requirement 的语法
 2. 编译 warning
 ```text
