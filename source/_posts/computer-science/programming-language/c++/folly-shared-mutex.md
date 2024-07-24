@@ -175,6 +175,29 @@ We can use AccessSpreader::current(n)
   // AccessSpreader::kMaxCpus, which is currently 128.
 这里是说，AccessSpreader 提供了已有的算法，最多可以支持 128 个需求者，如果我们的需求者数量（ kMaxDeferredReaders ）小于 128
 我们干脆就复用 AccessSpreader 好了
+  // In order to give each L1 cache its own playground, we need
+  // kMaxDeferredReaders >= #L1 caches. 
+如果 deferred readers 数量比 L1 cache 多，那么是多个 deferred readers 对应一个 L1 cache
+如果 deferred readers 数量比 L1 cache 少，那么是多个 L1 cache 都有可能缓存相同的 deferreed readers ，导致 contention
+  // On x86_64 each DeferredReaderSlot is 8 bytes, so we need
+  // kMaxDeferredReaders
+  // * kDeferredSeparationFactor >= 64 * #L1 caches / 8 == 128.  If
+  // kDeferredSearchDistance * kDeferredSeparationFactor <=
+  // 64 / 8 then we will search only within a single cache line, which
+  // guarantees we won't have inter-L1 contention.
+避免 L1 cache 竞争的最简单思路是 padding 64 - 8 bytes ，但这样有点浪费
+有没有可能 L1 cache 上存 64 / 8 = 8 个 deferred readers ，但这 8 个 deferred readers 我们只让同一个 cpu 用，这样就不会有 cacheline 冲突了，同时也最大化利用空间
+但是 folly 在这里没有使用这种效率最大化的方案，而是选择了每条 cacheline 使用其中的 2 个 deferred readers ，剩余的 6 个 readers 当作 paddings
+为什么？
+kDeferredSearchDistance * kDeferredSeparationFactor <= 64 / 8 说的就是尽量只使用同一条 cacheline 上的 deferred readers
+kMaxDeferredReaders * （kDeferredSeparationFactor * 8） >= 64 * #L1 caches == 128.
+说的是另一个约束，即如果加上 padding （ （kDeferredSeparationFactor -1）*8 就是 padding），deferred readers 占用的空间要超过 L1 cacheline 的总量；
+不然，无论如何分配，也都是多个 cacheline 对应同一个 deferred readers ，导致竞争？（notice L1 cachline 的数量只有 cpu 数量的一半）
+因为 L1 cacheline 只有 cpu 数量的一半，所以这里并不是给每个 cpu 一个 deferred reader ，而是给每个 cacheline 一个 deferred reader
+当 kMaxDeferredReaders 一定的时候，kDeferredSeparationFactor 基本也定了，那么 kDeferredSearchDistance 也决定了
+下一个问题就是，kMaxDeferredReaders 完全可以更大，大到是原来的 8 倍？
+btw. bestSlot ^ i 就是在找同一条 cacheline 上的 n 个 deferred readers
+folly 可能还是在假设，一个 cpu 一个 deferred reader 就足够了，这个假设在协程上是站不住脚的？
 
 1. folly 需要表达 request/requirement 的语法
 2. 编译 warning
