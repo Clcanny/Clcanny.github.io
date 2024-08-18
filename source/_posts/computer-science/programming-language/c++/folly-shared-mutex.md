@@ -410,8 +410,8 @@ click yieldWaitForZeroBits "https://github.com/facebook/folly/blob/b59f99e724af7
 
 // https://microsoft.github.io/genaiscript/case-studies/tla-ai-linter/
 ```tla+
----------------------------- MODULE LockModel ----------------------------
-EXTENDS Naturals, Sequences, FiniteSets
+---- MODULE Lock ----
+EXTENDS Naturals, Sequences, FiniteSets, TLC
 
 \* Constants
 CONSTANTS NumExclusiveLockCallers, NumInlineSharedLockCallers, NumDeferredSharedLockCallers, MaxDeferredReadersAllocated
@@ -421,111 +421,193 @@ CONSTANTS Initialized, ExclusiveCountSet, DeferredSharedSlotsChecked, ZeroInline
 CONSTANTS SharedLockAcquired, SharedLockReleased, DeferredSharedSlotSet
 
 \* Variables
+\* Global variables for the lock system
 VARIABLES exclusiveCount, inlineSharedCount, deferredSharedSlots
+\* Variables specific to exclusive lock callers
 VARIABLES exclusiveLockState, exclusiveLockCheckDeferredSharedSlotIndex
-VARIABLES inlineSharedLockState, deferredSharedLockState
+\* Variables specific to inline shared lock callers
+VARIABLES inlineSharedLockState
+\* Variables specific to deferred shared lock holders
+VARIABLES deferredSharedLockState, tokenfulSlotIndices
+
+vars == <<
+  exclusiveCount, inlineSharedCount, deferredSharedSlots,
+  exclusiveLockState, exclusiveLockCheckDeferredSharedSlotIndex,
+  inlineSharedLockState,
+  deferredSharedLockState, tokenfulSlotIndices
+>>
 
 \* TypeOK ensures the variables are of correct types
-TypeOK == /\ exclusiveCount \in 0..1
-          /\ inlineSharedCount \in Nat
-          /\ deferredSharedSlots \in [1..MaxDeferredReadersAllocated -> BOOLEAN]
-          /\ exclusiveLockState \in [1..NumExclusiveLockCallers -> {Initialized, ExclusiveCountSet, DeferredSharedSlotsChecked, ZeroInlineSharedCountWaited, ExclusiveLockAcquired, ExclusiveLockReleased}]
-          /\ exclusiveLockCheckDeferredSharedSlotIndex \in [1..NumExclusiveLockCallers -> 0..MaxDeferredReadersAllocated]
-          /\ inlineSharedLockState \in [1..NumInlineSharedLockCallers -> {Initialized, SharedLockAcquired, SharedLockReleased}]
-          /\ deferredSharedLockState \in [1..NumDeferredSharedLockCallers -> {Initialized, DeferredSharedSlotSet, SharedLockAcquired, SharedLockReleased}]
+TypeOK ==
+  /\ exclusiveCount \in 0..1
+  /\ inlineSharedCount \in Nat
+  /\ deferredSharedSlots \in [1..MaxDeferredReadersAllocated -> BOOLEAN]
+  /\ exclusiveLockState \in [1..NumExclusiveLockCallers -> {Initialized, ExclusiveCountSet, DeferredSharedSlotsChecked, ZeroInlineSharedCountWaited, ExclusiveLockAcquired, ExclusiveLockReleased}]
+  /\ exclusiveLockCheckDeferredSharedSlotIndex \in [1..NumExclusiveLockCallers -> 1..MaxDeferredReadersAllocated]
+  /\ inlineSharedLockState \in [1..NumInlineSharedLockCallers -> {Initialized, SharedLockAcquired, SharedLockReleased}]
+  /\ deferredSharedLockState \in [1..NumDeferredSharedLockCallers -> {Initialized, DeferredSharedSlotSet, SharedLockAcquired, SharedLockReleased}]
+  /\ tokenfulSlotIndices \in [1..NumDeferredSharedLockCallers -> 0..MaxDeferredReadersAllocated]
 
 \* Initial state
-Init == /\ exclusiveCount = 0
-        /\ inlineSharedCount = 0
-        /\ deferredSharedSlots = [i \in 1..MaxDeferredReadersAllocated |-> FALSE]
-        /\ exclusiveLockState = [i \in 1..NumExclusiveLockCallers |-> Initialized]
-        /\ exclusiveLockCheckDeferredSharedSlotIndex = [i \in 1..NumExclusiveLockCallers |-> 0]
-        /\ inlineSharedLockState = [i \in 1..NumInlineSharedLockCallers |-> Initialized]
-        /\ deferredSharedLockState = [i \in 1..NumDeferredSharedLockCallers |-> Initialized]
+Init ==
+  /\ exclusiveCount = 0
+  /\ inlineSharedCount = 0
+  /\ deferredSharedSlots = [i \in 1..MaxDeferredReadersAllocated |-> FALSE]
+  /\ exclusiveLockState = [i \in 1..NumExclusiveLockCallers |-> Initialized]
+  /\ exclusiveLockCheckDeferredSharedSlotIndex = [i \in 1..NumExclusiveLockCallers |-> 1]
+  /\ inlineSharedLockState = [i \in 1..NumInlineSharedLockCallers |-> Initialized]
+  /\ deferredSharedLockState = [i \in 1..NumDeferredSharedLockCallers |-> Initialized]
+  /\ tokenfulSlotIndices = [i \in 1..NumDeferredSharedLockCallers |-> 0]
 
 \* Exclusive Lock Operations
 SetExclusiveCount(caller) ==
-    /\ exclusiveLockState[caller] = Initialized
-    /\ exclusiveCount = 0
-    /\ exclusiveCount' = 1
-    /\ exclusiveLockState' = [exclusiveLockState EXCEPT ![caller] = ExclusiveCountSet]
-    /\ UNCHANGED <<inlineSharedCount, deferredSharedSlots, inlineSharedLockState, deferredSharedLockState, exclusiveLockCheckDeferredSharedSlotIndex>>
+  /\ exclusiveLockState[caller] = Initialized
+  /\ exclusiveCount = 0
+  /\ exclusiveCount' = 1
+  /\ exclusiveLockState' = [exclusiveLockState EXCEPT ![caller] = ExclusiveCountSet]
+  /\ UNCHANGED <<
+       inlineSharedCount, deferredSharedSlots,
+       exclusiveLockCheckDeferredSharedSlotIndex,
+       inlineSharedLockState,
+       deferredSharedLockState, tokenfulSlotIndices
+     >>
 
-CheckDeferredSlotsOp(caller) ==
+CheckDeferredSharedSlots(caller) ==
+  LET index == exclusiveLockCheckDeferredSharedSlotIndex[caller] IN
     /\ exclusiveLockState[caller] = ExclusiveCountSet
-    /\ \A i \in 1..MaxDeferredReadersAllocated: ~deferredSharedSlots[i]
-    /\ exclusiveLockState' = [exclusiveLockState EXCEPT ![caller] = DeferredSharedSlotsChecked]
-    /\ UNCHANGED <<exclusiveCount, inlineSharedCount, deferredSharedSlots, inlineSharedLockState, deferredSharedLockState, exclusiveLockCheckDeferredSharedSlotIndex>>
+    /\ ~deferredSharedSlots[index]
+    /\ IF index = MaxDeferredReadersAllocated
+       THEN /\ exclusiveLockState' = [exclusiveLockState EXCEPT ![caller] = DeferredSharedSlotsChecked]
+            /\ UNCHANGED <<exclusiveLockCheckDeferredSharedSlotIndex>>
+       ELSE /\ exclusiveLockCheckDeferredSharedSlotIndex' = [exclusiveLockCheckDeferredSharedSlotIndex EXCEPT ![caller] = index + 1]
+            /\ UNCHANGED <<exclusiveLockState>>
+    /\ UNCHANGED <<
+         exclusiveCount, inlineSharedCount, deferredSharedSlots,
+         inlineSharedLockState,
+         deferredSharedLockState, tokenfulSlotIndices
+       >>
 
-WaitForZeroInlineSharedCountOp(caller) ==
-    /\ exclusiveLockState[caller] = DeferredSharedSlotsChecked
-    /\ inlineSharedCount = 0
-    /\ exclusiveLockState' = [exclusiveLockState EXCEPT ![caller] = ExclusiveLockAcquired]
-    /\ UNCHANGED <<exclusiveCount, inlineSharedCount, deferredSharedSlots, inlineSharedLockState, deferredSharedLockState, exclusiveLockCheckDeferredSharedSlotIndex>>
+WaitForZeroInlineSharedCount(caller) ==
+  /\ exclusiveLockState[caller] = DeferredSharedSlotsChecked
+  /\ inlineSharedCount = 0
+  /\ exclusiveLockState' = [exclusiveLockState EXCEPT ![caller] = ExclusiveLockAcquired]
+  /\ UNCHANGED <<
+       exclusiveCount, inlineSharedCount, deferredSharedSlots,
+       exclusiveLockCheckDeferredSharedSlotIndex,
+       inlineSharedLockState,
+       deferredSharedLockState, tokenfulSlotIndices
+     >>
 
 ReleaseExclusiveLock(caller) ==
-    /\ exclusiveLockState[caller] = ExclusiveLockAcquired
-    /\ exclusiveCount' = 0
-    /\ exclusiveLockState' = [exclusiveLockState EXCEPT ![caller] = ExclusiveLockReleased]
-    /\ UNCHANGED <<inlineSharedCount, deferredSharedSlots, inlineSharedLockState, deferredSharedLockState, exclusiveLockCheckDeferredSharedSlotIndex>>
+  /\ exclusiveLockState[caller] = ExclusiveLockAcquired
+  /\ exclusiveCount' = 0
+  /\ exclusiveLockState' = [exclusiveLockState EXCEPT ![caller] = ExclusiveLockReleased]
+  /\ UNCHANGED <<
+       inlineSharedCount, deferredSharedSlots,
+       exclusiveLockCheckDeferredSharedSlotIndex,
+       inlineSharedLockState,
+       deferredSharedLockState, tokenfulSlotIndices
+     >>
 
 \* Inline Shared Lock Operations
-InlineSharedLockOp(caller) ==
-    /\ inlineSharedLockState[caller] = Initialized
-    /\ exclusiveCount = 0
-    /\ inlineSharedCount' = inlineSharedCount + 1
-    /\ inlineSharedLockState' = [inlineSharedLockState EXCEPT ![caller] = SharedLockAcquired]
-    /\ UNCHANGED <<exclusiveCount, deferredSharedSlots, exclusiveLockState, deferredSharedLockState, exclusiveLockCheckDeferredSharedSlotIndex>>
+InlineSharedLock(caller) ==
+  /\ inlineSharedLockState[caller] = Initialized
+  /\ exclusiveCount = 0
+  /\ inlineSharedCount' = inlineSharedCount + 1
+  /\ inlineSharedLockState' = [inlineSharedLockState EXCEPT ![caller] = SharedLockAcquired]
+  /\ UNCHANGED <<
+       exclusiveCount, deferredSharedSlots,
+       exclusiveLockState, exclusiveLockCheckDeferredSharedSlotIndex,
+       deferredSharedLockState, tokenfulSlotIndices
+     >>
 
 ReleaseInlineSharedLock(caller) ==
-    /\ inlineSharedLockState[caller] = SharedLockAcquired
-    /\ inlineSharedCount' = inlineSharedCount - 1
-    /\ inlineSharedLockState' = [inlineSharedLockState EXCEPT ![caller] = SharedLockReleased]
-    /\ UNCHANGED <<exclusiveCount, deferredSharedSlots, exclusiveLockState, deferredSharedLockState, exclusiveLockCheckDeferredSharedSlotIndex>>
+  /\ inlineSharedLockState[caller] = SharedLockAcquired
+  /\ inlineSharedCount' = inlineSharedCount - 1
+  /\ inlineSharedLockState' = [inlineSharedLockState EXCEPT ![caller] = SharedLockReleased]
+  /\ UNCHANGED <<
+       exclusiveCount, deferredSharedSlots,
+       exclusiveLockState, exclusiveLockCheckDeferredSharedSlotIndex,
+       deferredSharedLockState, tokenfulSlotIndices
+     >>
 
 \* Deferred Shared Lock Operations
-SetDeferredSharedSlotsOp(caller) ==
-    /\ deferredSharedLockState[caller] = Initialized
-    /\ \E i \in {j \in 1..MaxDeferredReadersAllocated: ~deferredSharedSlots[j]}:
-        /\ deferredSharedSlots' = [deferredSharedSlots EXCEPT ![i] = TRUE]
-        /\ deferredSharedLockState' = [deferredSharedLockState EXCEPT ![caller] = DeferredSharedSlotSet]
-    /\ UNCHANGED <<exclusiveCount, inlineSharedCount, exclusiveLockState, inlineSharedLockState, exclusiveLockCheckDeferredSharedSlotIndex>>
+SetDeferredSharedSlots(caller) ==
+  /\ deferredSharedLockState[caller] = Initialized
+  /\ \E i \in {j \in 1..MaxDeferredReadersAllocated: ~deferredSharedSlots[j]}:
+      /\ deferredSharedSlots' = [deferredSharedSlots EXCEPT ![i] = TRUE]
+      /\ deferredSharedLockState' = [deferredSharedLockState EXCEPT ![caller] = DeferredSharedSlotSet]
+      /\ tokenfulSlotIndices' = [tokenfulSlotIndices EXCEPT ![caller] = i]
+  /\ UNCHANGED <<
+       exclusiveCount, inlineSharedCount,
+       exclusiveLockState, exclusiveLockCheckDeferredSharedSlotIndex,
+       inlineSharedLockState
+     >>
 
-CheckZeroExclusiveCountOp(caller) ==
-    /\ deferredSharedLockState[caller] = DeferredSharedSlotSet
-    /\ IF exclusiveCount = 0
-       THEN deferredSharedLockState' = [deferredSharedLockState EXCEPT ![caller] = SharedLockAcquired]
-       ELSE /\ \E i \in {j \in 1..MaxDeferredReadersAllocated: deferredSharedSlots[j]}:
-               deferredSharedSlots' = [deferredSharedSlots EXCEPT ![i] = FALSE]
-            /\ deferredSharedLockState' = [deferredSharedLockState EXCEPT ![caller] = Initialized]
-    /\ UNCHANGED <<exclusiveCount, inlineSharedCount, exclusiveLockState, inlineSharedLockState, exclusiveLockCheckDeferredSharedSlotIndex>>
+CheckZeroExclusiveCount(caller) ==
+  /\ deferredSharedLockState[caller] = DeferredSharedSlotSet
+  /\ LET index == tokenfulSlotIndices[caller] IN
+     /\ Assert(index # 0, "Slot index should not be zero")
+     /\ Assert(deferredSharedSlots[index], "Slot should be occupied")
+     /\ IF exclusiveCount = 0
+        THEN /\ deferredSharedLockState' = [deferredSharedLockState EXCEPT ![caller] = SharedLockAcquired]
+             /\ UNCHANGED <<deferredSharedSlots, tokenfulSlotIndices>>
+        ELSE /\ deferredSharedSlots' = [deferredSharedSlots EXCEPT ![index] = FALSE]
+             /\ deferredSharedLockState' = [deferredSharedLockState EXCEPT ![caller] = Initialized]
+             /\ tokenfulSlotIndices' = [tokenfulSlotIndices EXCEPT ![caller] = 0]
+  /\ UNCHANGED <<
+       exclusiveCount, inlineSharedCount,
+       exclusiveLockState, exclusiveLockCheckDeferredSharedSlotIndex,
+       inlineSharedLockState
+     >>
 
 ReleaseDeferredSharedLock(caller) ==
-    /\ deferredSharedLockState[caller] = SharedLockAcquired
-    /\ \E i \in {j \in 1..MaxDeferredReadersAllocated: deferredSharedSlots[j]}:
-        deferredSharedSlots' = [deferredSharedSlots EXCEPT ![i] = FALSE]
-    /\ deferredSharedLockState' = [deferredSharedLockState EXCEPT ![caller] = SharedLockReleased]
-    /\ UNCHANGED <<exclusiveCount, inlineSharedCount, exclusiveLockState, inlineSharedLockState, exclusiveLockCheckDeferredSharedSlotIndex>>
+  /\ deferredSharedLockState[caller] = SharedLockAcquired
+  /\ LET index == tokenfulSlotIndices[caller] IN
+     /\ Assert(index # 0, "Slot index should not be zero")
+     /\ Assert(deferredSharedSlots[index], "Slot should be occupied")
+     /\ deferredSharedSlots' = [deferredSharedSlots EXCEPT ![index] = FALSE]
+     /\ deferredSharedLockState' = [deferredSharedLockState EXCEPT ![caller] = SharedLockReleased]
+     /\ tokenfulSlotIndices' = [tokenfulSlotIndices EXCEPT ![caller] = 0]
+  /\ UNCHANGED <<
+       exclusiveCount, inlineSharedCount,
+       exclusiveLockState, exclusiveLockCheckDeferredSharedSlotIndex,
+       inlineSharedLockState
+     >>
 
 \* Next operation
-Next == \/ \E caller \in 1..NumExclusiveLockCallers: SetExclusiveCount(caller) \/ CheckDeferredSlotsOp(caller) \/ WaitForZeroInlineSharedCountOp(caller) \/ ReleaseExclusiveLock(caller)
-        \/ \E caller \in 1..NumInlineSharedLockCallers: InlineSharedLockOp(caller) \/ ReleaseInlineSharedLock(caller)
-        \/ \E caller \in 1..NumDeferredSharedLockCallers: SetDeferredSharedSlotsOp(caller) \/ CheckZeroExclusiveCountOp(caller) \/ ReleaseDeferredSharedLock(caller)
+Next ==
+  \/ \E caller \in 1..NumExclusiveLockCallers:
+       SetExclusiveCount(caller) \/ CheckDeferredSharedSlots(caller) \/
+       WaitForZeroInlineSharedCount(caller) \/ ReleaseExclusiveLock(caller)
+  \/ \E caller \in 1..NumInlineSharedLockCallers:
+       InlineSharedLock(caller) \/ ReleaseInlineSharedLock(caller)
+  \/ \E caller \in 1..NumDeferredSharedLockCallers:
+       SetDeferredSharedSlots(caller) \/ CheckZeroExclusiveCount(caller) \/
+       ReleaseDeferredSharedLock(caller)
 
 \* Specification
-Spec == Init /\ [][Next]_<<exclusiveCount, inlineSharedCount, deferredSharedSlots, exclusiveLockState, exclusiveLockCheckDeferredSharedSlotIndex, inlineSharedLockState, deferredSharedLockState>>
+Spec == Init /\ [][Next]_vars /\ WF_vars(Next)
 
-\* Theorems
-SpecIsTypeOK == Spec => TypeOK
+THEOREM SpecIsTypeOK == Spec => TypeOK
+
+\* Liveness Property
+EventuallyReleased == <>(
+  /\ \A caller \in 1..NumExclusiveLockCallers: exclusiveLockState[caller] = ExclusiveLockReleased
+  /\ \A caller \in 1..NumInlineSharedLockCallers: inlineSharedLockState[caller] = SharedLockReleased
+  /\ \A caller \in 1..NumDeferredSharedLockCallers: deferredSharedLockState[caller] = SharedLockReleased)
+THEOREM SpecIsEventuallyReleased == Spec => EventuallyReleased
 
 ExclusiveLockMutualExclusion == \A caller1, caller2 \in 1..NumExclusiveLockCallers:
   (exclusiveLockState[caller1] = ExclusiveLockAcquired) /\ (exclusiveLockState[caller2] = ExclusiveLockAcquired) => caller1 = caller2
+THEOREM SpecIsExclusiveLockMutualExclusion == Spec => ExclusiveLockMutualExclusion
 
 ExclusiveLockPreventsShared == \A caller \in 1..NumExclusiveLockCallers:
   exclusiveLockState[caller] = ExclusiveLockAcquired =>
     /\ \A c \in 1..NumInlineSharedLockCallers: inlineSharedLockState[c] # SharedLockAcquired
     /\ \A c \in 1..NumDeferredSharedLockCallers: deferredSharedLockState[c] # SharedLockAcquired
-=============================================================================
+THEOREM SpecIsExclusiveLockPreventsShared == Spec => ExclusiveLockPreventsShared
+=====================
 ```
 
 ```
@@ -545,13 +627,14 @@ CONSTANTS
   SharedLockReleased = SharedLockReleased
   DeferredSharedSlotSet = DeferredSharedSlotSet
 
-INIT Init
-
-NEXT Next
+SPECIFICATION
+  Spec
 
 INVARIANTS
   TypeOK
-  \* SpecIsTypeOK
   ExclusiveLockMutualExclusion
   ExclusiveLockPreventsShared
+
+PROPERTY
+  \* EventuallyReleased
 ```
