@@ -56,7 +56,7 @@ unlock 时如何保证唤醒特定的线程？分类讨论：r..rw..wr..r../w..w
 看上去只是让 kernel 选一个 w 唤醒
 怎么保证公平性呢？好像是并不公平的，写一个程序试试？
 ```bash
-root@iZ6weflgcxqft2zyh0ij7tZ:~# cat test.cc 
+root@iZ6weflgcxqft2zyh0ij7tZ:~# cat test.cc
 #include <folly/SharedMutex.h>
 #include <thread>
 #include <iostream>
@@ -76,7 +76,7 @@ int main() {
   t1.join();
 }
 root@iZ6weflgcxqft2zyh0ij7tZ:~# g++ -std=c++17 test.cc -I/tmp/fbcode_builder_getdeps-ZrootZfollyZbuildZfbcode_builder-root/installed/folly/include /tmp/fbcode_builder_getdeps-ZrootZfollyZbuildZfbcode_builder-root/installed/folly/lib/libfolly.a /usr/lib/x86_64-linux-gnu/libglog.a /usr/lib/x86_64-linux-gnu/libgflags.a /tmp/fbcode_builder_getdeps-ZrootZfollyZbuildZfbcode_builder-root/installed/fmt-TrRlXoKNSLkeqv9x1dv4BKtTcQYtrehB7wcdtCA2FfE//lib/libfmtd.a -lunwind -o test
-root@iZ6weflgcxqft2zyh0ij7tZ:~# ./test 
+root@iZ6weflgcxqft2zyh0ij7tZ:~# ./test
 r
 w
 ```
@@ -176,7 +176,7 @@ We can use AccessSpreader::current(n)
 这里是说，AccessSpreader 提供了已有的算法，最多可以支持 128 个需求者，如果我们的需求者数量（ kMaxDeferredReaders ）小于 128
 我们干脆就复用 AccessSpreader 好了
   // In order to give each L1 cache its own playground, we need
-  // kMaxDeferredReaders >= #L1 caches. 
+  // kMaxDeferredReaders >= #L1 caches.
 如果 deferred readers 数量比 L1 cache 多，那么是多个 deferred readers 对应一个 L1 cache
 如果 deferred readers 数量比 L1 cache 少，那么是多个 L1 cache 都有可能缓存相同的 deferreed readers ，导致 contention
   // On x86_64 each DeferredReaderSlot is 8 bytes, so we need
@@ -409,7 +409,7 @@ click yieldWaitForZeroBits "https://github.com/facebook/folly/blob/b59f99e724af7
 ```
 
 // https://microsoft.github.io/genaiscript/case-studies/tla-ai-linter/
-```tla+
+```tla
 ---- MODULE Lock ----
 EXTENDS Naturals, Sequences, FiniteSets, TLC
 
@@ -544,17 +544,28 @@ SetDeferredSharedSlots(caller) ==
        inlineSharedLockState
      >>
 
-CheckZeroExclusiveCount(caller) ==
+CheckZeroExclusiveCountSucceed(caller) ==
+  /\ exclusiveCount = 0
   /\ deferredSharedLockState[caller] = DeferredSharedSlotSet
   /\ LET index == tokenfulSlotIndices[caller] IN
      /\ Assert(index # 0, "Slot index should not be zero")
      /\ Assert(deferredSharedSlots[index], "Slot should be occupied")
-     /\ IF exclusiveCount = 0
-        THEN /\ deferredSharedLockState' = [deferredSharedLockState EXCEPT ![caller] = SharedLockAcquired]
-             /\ UNCHANGED <<deferredSharedSlots, tokenfulSlotIndices>>
-        ELSE /\ deferredSharedSlots' = [deferredSharedSlots EXCEPT ![index] = FALSE]
-             /\ deferredSharedLockState' = [deferredSharedLockState EXCEPT ![caller] = Initialized]
-             /\ tokenfulSlotIndices' = [tokenfulSlotIndices EXCEPT ![caller] = 0]
+     /\ deferredSharedLockState' = [deferredSharedLockState EXCEPT ![caller] = SharedLockAcquired]
+  /\ UNCHANGED <<
+       exclusiveCount, inlineSharedCount, deferredSharedSlots,
+       exclusiveLockState, exclusiveLockCheckDeferredSharedSlotIndex,
+       inlineSharedLockState, tokenfulSlotIndices
+     >>
+
+CheckZeroExclusiveCountRollback(caller) ==
+  /\ exclusiveCount # 0
+  /\ deferredSharedLockState[caller] = DeferredSharedSlotSet
+  /\ LET index == tokenfulSlotIndices[caller] IN
+     /\ Assert(index # 0, "Slot index should not be zero")
+     /\ Assert(deferredSharedSlots[index], "Slot should be occupied")
+     /\ deferredSharedSlots' = [deferredSharedSlots EXCEPT ![index] = FALSE]
+     /\ deferredSharedLockState' = [deferredSharedLockState EXCEPT ![caller] = Initialized]
+     /\ tokenfulSlotIndices' = [tokenfulSlotIndices EXCEPT ![caller] = 0]
   /\ UNCHANGED <<
        exclusiveCount, inlineSharedCount,
        exclusiveLockState, exclusiveLockCheckDeferredSharedSlotIndex,
@@ -575,19 +586,42 @@ ReleaseDeferredSharedLock(caller) ==
        inlineSharedLockState
      >>
 
+\* Define a helper action that represents the successful acquisition of a deferred shared lock
+DeferredSharedLockSucceed ==
+  \A caller \in 1..NumDeferredSharedLockCallers:
+    /\ \E i \in {j \in 1..MaxDeferredReadersAllocated: ~deferredSharedSlots[j]}:
+         /\ deferredSharedSlots' = [deferredSharedSlots EXCEPT ![i] = TRUE]
+         /\ deferredSharedLockState[caller] = Initialized
+         /\ deferredSharedLockState' = [deferredSharedLockState EXCEPT ![caller] = SharedLockAcquired]
+         /\ Assert(tokenfulSlotIndices[caller] = 0, "Tokenful slot index should be zero")
+         /\ tokenfulSlotIndices' = [tokenfulSlotIndices EXCEPT ![caller] = i]
+         /\ UNCHANGED <<
+              exclusiveCount, inlineSharedCount,
+              exclusiveLockState, exclusiveLockCheckDeferredSharedSlotIndex,
+              inlineSharedLockState
+            >>
+
 \* Next operation
 Next ==
   \/ \E caller \in 1..NumExclusiveLockCallers:
-       SetExclusiveCount(caller) \/ CheckDeferredSharedSlots(caller) \/
-       WaitForZeroInlineSharedCount(caller) \/ ReleaseExclusiveLock(caller)
+       \/ SetExclusiveCount(caller)
+       \/ CheckDeferredSharedSlots(caller)
+       \/ WaitForZeroInlineSharedCount(caller)
+       \/ ReleaseExclusiveLock(caller)
   \/ \E caller \in 1..NumInlineSharedLockCallers:
-       InlineSharedLock(caller) \/ ReleaseInlineSharedLock(caller)
+       \/ InlineSharedLock(caller)
+       \/ ReleaseInlineSharedLock(caller)
   \/ \E caller \in 1..NumDeferredSharedLockCallers:
-       SetDeferredSharedSlots(caller) \/ CheckZeroExclusiveCount(caller) \/
-       ReleaseDeferredSharedLock(caller)
+       \/ SetDeferredSharedSlots(caller)
+       \/ CheckZeroExclusiveCountSucceed(caller)
+       \/ CheckZeroExclusiveCountRollback(caller)
+       \/ ReleaseDeferredSharedLock(caller)
 
 \* Specification
-Spec == Init /\ [][Next]_vars /\ WF_vars(Next)
+Spec ==
+  /\ Init /\ [][Next]_vars
+  /\ WF_vars(Next)
+  /\ SF_vars(DeferredSharedLockSucceed)
 
 THEOREM SpecIsTypeOK == Spec => TypeOK
 
