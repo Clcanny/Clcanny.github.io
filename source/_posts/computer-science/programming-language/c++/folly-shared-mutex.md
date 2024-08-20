@@ -672,3 +672,13 @@ INVARIANTS
 PROPERTY
   \* EventuallyReleased
 ```
+Finished checking temporal properties in 45s at 2024-08-18 17:44:42
+Model checking completed. No error has been found.
+  Estimates of the probability that TLC did not check all reachable states
+  because two distinct states had the same fingerprint:
+  calculated (optimistic):  val = 4.9E-7
+  based on the actual fingerprints:  val = 6.8E-9
+7707337 states generated, 1431048 distinct states found, 0 states left on queue.
+The depth of the complete state graph search is 40.
+The average outdegree of the complete state graph is 1 (minimum is 0, the maximum 21 and the 95th percentile is 4).
+Finished in 04min 45s at (2024-08-18 17:44:42)
