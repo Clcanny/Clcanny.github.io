@@ -44,9 +44,17 @@ Let's trace the `system_clock::now` function from GCC to Linux:
 
 ## `system_clock` vs. `steady_clock`: Key Differences
 
+When measuring time, both `system_clock` and `steady_clock` are suitable. However, I'm unsure about their differences and which one to use.
+
 The key difference between system_clock and steady_clock lies in their base times: [`system_clock::now`](https://github.com/gcc-mirror/gcc/blob/723b30bee4e4fa3feba9ef03ce7dca95501e1555/libstdc%2B%2B-v3/src/c%2B%2B11/chrono.cc#L59) uses `CLOCK_REALTIME` with `clock_gettime`, [`steady_clock::now`](https://github.com/gcc-mirror/gcc/blob/723b30bee4e4fa3feba9ef03ce7dca95501e1555/libstdc%2B%2B-v3/src/c%2B%2B11/chrono.cc#L87) uses `CLOCK_MONOTONIC`. In the vDSO, [do_hres](https://github.com/torvalds/linux/blob/6e4436539ae182dc86d57d13849862bcafaa4709/lib/vdso/gettimeofday.c#L133) uses `CLOCK_REALTIME` and `CLOCK_MONOTONIC` as indices for `vd->basetime` to retrieve different base timestamps. I suspect that different indices of `vd->basetime` provide different base times. However, since `__arch_get_vdso_data` is a kernel function, I can't call it directly to test this.
 
+`system_clock` uses `vd->basetime[CLOCK_REALTIME]` to get its base time, which is not monotonic and can be adjusted at any moment. As noted in the [C++ reference: std::chrono::system_clock](https://en.cppreference.com/w/cpp/chrono/system_clock):
+
+> It may not be monotonic: on most systems, the system time can be adjusted at any moment.
+
 ## Efficiency Comparison: `CLOCK_THREAD_CPUTIME_ID` vs. `system_clock`
+
+Besides measuring real time, measuring CPU time is also useful. For example, if a step takes a lot of real time and also a lot of CPU time, it indicates heavy computation (like a for loop). If it uses little CPU time, it might be due to insufficient CPU quota.
 
 In the implementation of [`__cvdso_clock_gettime_common`](https://github.com/torvalds/linux/blob/6e4436539ae182dc86d57d13849862bcafaa4709/lib/vdso/gettimeofday.c#L259-L266), when [`CLOCK_THREAD_CPUTIME_ID`](https://github.com/torvalds/linux/blob/6e4436539ae182dc86d57d13849862bcafaa4709/include/uapi/linux/time.h#L52) is used, it doesn't match any of the masks [`VDSO_HRES`](https://github.com/torvalds/linux/blob/6e4436539ae182dc86d57d13849862bcafaa4709/include/vdso/datapage.h#L29), `VDSO_COARSE`, or `VDSO_RAW`. As a result, the function returns -1. This return value triggers the caller function [`__cvdso_clock_gettime_data`](https://github.com/torvalds/linux/blob/6e4436539ae182dc86d57d13849862bcafaa4709/lib/vdso/gettimeofday.c#L278) to fallback to [`clock_gettime_fallback`](https://github.com/torvalds/linux/blob/6e4436539ae182dc86d57d13849862bcafaa4709/arch/x86/include/asm/vdso/gettimeofday.h#L116), leading to a syscall. Retrieving thread CPU time using `CLOCK_THREAD_CPUTIME_ID` is slower than using `system_clock::now` because it requires a syscall.
 
