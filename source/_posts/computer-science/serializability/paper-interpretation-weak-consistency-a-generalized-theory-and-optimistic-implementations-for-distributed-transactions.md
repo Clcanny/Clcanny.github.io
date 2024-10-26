@@ -1575,6 +1575,7 @@ However, I find this statement confusing. I would like to propose an alternative
 
 + [Weak Consistency: A Generalized Theory and Optimistic Implementations for Distributed Transactions, by Atul Adya](https://pmg.csail.mit.edu/papers/adya-phd.pdf)
 + [J. N. Gray and A. Reuter. Transaction Processing: Concepts and Techniques. Morgan Kaufmann Publishers Inc., 1993.](https://www.oreilly.com/library/view/transaction-processing/9780080519555/)
++ [Concurrency Control and Recovery in Database Systems, by Philip A. Bernstein, Vassos Hadzilacos, and Nathan Goodman](https://courses.cs.washington.edu/courses/csep552/18wi/papers/CSE550BHG-Ch7.pdf)
 + [W. E. Weihl. Distributed Version Management for Read-only Actions](https://dl.acm.org/doi/pdf/10.1145/323596.323607)
 + [A Critique of ANSI SQL Isolation Levels, by Hal Berenson, Phil Bernstein, Jim Gray, Jim Melton, Elizabeth O'Neil and Patrick O'Neil](https://www.microsoft.com/en-us/research/wp-content/uploads/2016/02/tr-95-51.pdf)
 
