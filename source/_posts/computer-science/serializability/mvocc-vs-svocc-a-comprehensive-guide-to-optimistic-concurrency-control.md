@@ -333,3 +333,4 @@ If a transaction only reads versions whose `Begin` and `End` fields are neither 
 + [Transaction Processing: Concepts and Techniques](https://www.oreilly.com/library/view/transaction-processing/9780080519555/)
 + [Concurrency Control and Recovery in Database Systems](https://courses.cs.washington.edu/courses/csep552/18wi/papers/CSE550BHG-Ch7.pdf)
 + [On Optimistic Methods for Concurrency Control](https://www.eecs.harvard.edu/~htk/publication/1981-tods-kung-robinson.pdf)
++ [High-Performance Concurrency Control Mechanisms for Main-Memory Databases](https://vldb.org/pvldb/vol5/p298_per-akelarson_vldb2012.pdf)
