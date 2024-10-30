@@ -2,6 +2,24 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   
   <url>
+    <loc>https://clcanny.github.io/2024/10/26/computer-science/serializability/mvocc-vs-svocc-a-comprehensive-guide-to-optimistic-concurrency-control/</loc>
+    
+    <lastmod>2024-10-30</lastmod>
+    
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  
+  <url>
+    <loc>https://clcanny.github.io/2023/03/06/computer-science/serializability/paper-interpretation-weak-consistency-a-generalized-theory-and-optimistic-implementations-for-distributed-transactions/</loc>
+    
+    <lastmod>2024-10-30</lastmod>
+    
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  
+  <url>
     <loc>https://clcanny.github.io/2024/08/27/computer-science/big-data/dfs/design-document-enhancing-inode-attributes-and-storage-policies-in-hdfs/</loc>
     
     <lastmod>2024-10-17</lastmod>
@@ -138,15 +156,6 @@
   
   <url>
     <loc>https://clcanny.github.io/2023/01/05/computer-science/serializability/paper-interpretation-a-critique-of-ansi-sql-solation-levels/</loc>
-    
-    <lastmod>2023-11-07</lastmod>
-    
-    <changefreq>monthly</changefreq>
-    <priority>0.6</priority>
-  </url>
-  
-  <url>
-    <loc>https://clcanny.github.io/2023/03/06/computer-science/serializability/paper-interpretation-weak-consistency-a-generalized-theory-and-optimistic-implementations-for-distributed-transactions/</loc>
     
     <lastmod>2023-11-07</lastmod>
     
@@ -373,7 +382,7 @@
 
   <url>
     <loc>https://clcanny.github.io/</loc>
-    <lastmod>2024-10-18</lastmod>
+    <lastmod>2024-10-30</lastmod>
     <changefreq>daily</changefreq>
     <priority>1.0</priority>
   </url>
@@ -383,133 +392,133 @@
   
   <url>
     <loc>https://clcanny.github.io/categories/Computer-Science/</loc>
-    <lastmod>2024-10-18</lastmod>
+    <lastmod>2024-10-30</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.2</priority>
   </url>
   
   <url>
     <loc>https://clcanny.github.io/categories/Computer-Science/Consensus/</loc>
-    <lastmod>2024-10-18</lastmod>
+    <lastmod>2024-10-30</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.2</priority>
   </url>
   
   <url>
     <loc>https://clcanny.github.io/categories/Computer-Science/Big-Data/</loc>
-    <lastmod>2024-10-18</lastmod>
+    <lastmod>2024-10-30</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.2</priority>
   </url>
   
   <url>
     <loc>https://clcanny.github.io/categories/Computer-Science/Dynamic-Linking/</loc>
-    <lastmod>2024-10-18</lastmod>
+    <lastmod>2024-10-30</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.2</priority>
   </url>
   
   <url>
     <loc>https://clcanny.github.io/categories/Computer-Science/Big-Data/Columnar-Storage/</loc>
-    <lastmod>2024-10-18</lastmod>
+    <lastmod>2024-10-30</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.2</priority>
   </url>
   
   <url>
     <loc>https://clcanny.github.io/categories/Computer-Science/Memory-Analysis/</loc>
-    <lastmod>2024-10-18</lastmod>
+    <lastmod>2024-10-30</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.2</priority>
   </url>
   
   <url>
     <loc>https://clcanny.github.io/categories/Computer-Science/Performance-Analysis/</loc>
-    <lastmod>2024-10-18</lastmod>
+    <lastmod>2024-10-30</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.2</priority>
   </url>
   
   <url>
     <loc>https://clcanny.github.io/categories/Computer-Science/Serializability/</loc>
-    <lastmod>2024-10-18</lastmod>
+    <lastmod>2024-10-30</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.2</priority>
   </url>
   
   <url>
     <loc>https://clcanny.github.io/categories/Computer-Science/Tools/</loc>
-    <lastmod>2024-10-18</lastmod>
+    <lastmod>2024-10-30</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.2</priority>
   </url>
   
   <url>
     <loc>https://clcanny.github.io/categories/Computer-Science/Big-Data/Data-Lake/</loc>
-    <lastmod>2024-10-18</lastmod>
+    <lastmod>2024-10-30</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.2</priority>
   </url>
   
   <url>
     <loc>https://clcanny.github.io/categories/Computer-Science/Big-Data/DFS/</loc>
-    <lastmod>2024-10-18</lastmod>
+    <lastmod>2024-10-30</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.2</priority>
   </url>
   
   <url>
     <loc>https://clcanny.github.io/categories/Computer-Science/Big-Data/Spark/</loc>
-    <lastmod>2024-10-18</lastmod>
+    <lastmod>2024-10-30</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.2</priority>
   </url>
   
   <url>
     <loc>https://clcanny.github.io/categories/Computer-Science/Programming-Language/</loc>
-    <lastmod>2024-10-18</lastmod>
+    <lastmod>2024-10-30</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.2</priority>
   </url>
   
   <url>
     <loc>https://clcanny.github.io/categories/Computer-Science/Memory-Analysis/Jemalloc/</loc>
-    <lastmod>2024-10-18</lastmod>
+    <lastmod>2024-10-30</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.2</priority>
   </url>
   
   <url>
     <loc>https://clcanny.github.io/categories/Computer-Science/Tools/Network/</loc>
-    <lastmod>2024-10-18</lastmod>
+    <lastmod>2024-10-30</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.2</priority>
   </url>
   
   <url>
     <loc>https://clcanny.github.io/categories/Computer-Science/Programming-Language/C/</loc>
-    <lastmod>2024-10-18</lastmod>
+    <lastmod>2024-10-30</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.2</priority>
   </url>
   
   <url>
     <loc>https://clcanny.github.io/categories/Computer-Science/Programming-Language/Java/</loc>
-    <lastmod>2024-10-18</lastmod>
+    <lastmod>2024-10-30</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.2</priority>
   </url>
   
   <url>
     <loc>https://clcanny.github.io/categories/Computer-Science/Programming-Language/TLA/</loc>
-    <lastmod>2024-10-18</lastmod>
+    <lastmod>2024-10-30</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.2</priority>
   </url>
   
   <url>
     <loc>https://clcanny.github.io/categories/Computer-Science/Tools/Vim/</loc>
-    <lastmod>2024-10-18</lastmod>
+    <lastmod>2024-10-30</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.2</priority>
   </url>
