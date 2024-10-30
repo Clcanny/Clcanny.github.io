@@ -461,6 +461,20 @@
   </url>
   
   <url>
+    <loc>https://clcanny.github.io/categories/Computer-Science/Memory-Analysis/Jemalloc/</loc>
+    <lastmod>2024-10-30</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.2</priority>
+  </url>
+  
+  <url>
+    <loc>https://clcanny.github.io/categories/Computer-Science/Tools/Network/</loc>
+    <lastmod>2024-10-30</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.2</priority>
+  </url>
+  
+  <url>
     <loc>https://clcanny.github.io/categories/Computer-Science/Big-Data/DFS/</loc>
     <lastmod>2024-10-30</lastmod>
     <changefreq>weekly</changefreq>
@@ -482,14 +496,7 @@
   </url>
   
   <url>
-    <loc>https://clcanny.github.io/categories/Computer-Science/Memory-Analysis/Jemalloc/</loc>
-    <lastmod>2024-10-30</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.2</priority>
-  </url>
-  
-  <url>
-    <loc>https://clcanny.github.io/categories/Computer-Science/Tools/Network/</loc>
+    <loc>https://clcanny.github.io/categories/Computer-Science/Programming-Language/Java/</loc>
     <lastmod>2024-10-30</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.2</priority>
@@ -497,13 +504,6 @@
   
   <url>
     <loc>https://clcanny.github.io/categories/Computer-Science/Programming-Language/C/</loc>
-    <lastmod>2024-10-30</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.2</priority>
-  </url>
-  
-  <url>
-    <loc>https://clcanny.github.io/categories/Computer-Science/Programming-Language/Java/</loc>
     <lastmod>2024-10-30</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.2</priority>
