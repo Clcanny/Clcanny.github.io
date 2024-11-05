@@ -171,7 +171,7 @@ My understanding of the above code can be split into three parts: validating the
 + The validation phase, the increment of the `tnc`, and the assignment of the incremented `tnc` to the transaction's `tn` are performed as a single atomic action within the same critical section. This ensures that after the validation phase of the current transaction, no transaction that hasn't yet been assigned a `tn` before the current transaction's validation phase will be assigned a smaller `tn` than the current transaction's `tn`.
   + Using the analogy used before: After Jack decides to stay in line (i.e., the current transaction passes the validation check and commits), no one who was not already in the queue (i.e., no transaction without a `tn` before the current transaction's validation phase) can jump ahead of him (i.e., can be assigned a smaller `tn` than Jack's).
   + This is an example of how the assignment of timestamps and the timing of validation are crucial and must be coordinated, as mentioned previously.
-  + Notice: In backward validation, for transactions with a tn larger than the current transaction's tn, it is their responsibility to validate whether they violate serializability with the current transaction—not the current transaction's responsibility.
+  + Notice: In backward validation, for transactions with a tn larger than the current transaction's `tn`, it is their responsibility to validate whether they violate serializability with the current transaction - not the current transaction's responsibility.
 
 ##### Parallel Validation
 
@@ -273,7 +273,7 @@ Moreover, making global modifications offers an advantage: it reduces the transa
 
 #### How to Locate a Specific Version When Reading an Object
 
-Essentially, a transaction locates a version by finding one where its begin timestamp falls between the Begin and End fields of that version. Building on this, [High-Performance Concurrency Control Mechanisms for Main-Memory Databases](https://vldb.org/pvldb/vol5/p298_per-akelarson_vldb2012.pdf) proposes speculative reads and speculative ignores when encountering a version where either the `Begin` or `End` field contains a transaction ID instead of a timestamp (indicating that an ongoing transaction is modifying this version). In this case, the system assumes the ongoing transaction will eventually commit and reads the modifications, creating a commit dependency on the ongoing transaction (i.e., the current transaction must wait for the ongoing transaction to commit before it can commit).
+Essentially, a transaction locates a version by finding one where its begin timestamp falls between the `Begin` and `End` fields of that version. Building on this, [High-Performance Concurrency Control Mechanisms for Main-Memory Databases](https://vldb.org/pvldb/vol5/p298_per-akelarson_vldb2012.pdf) proposes speculative reads and speculative ignores when encountering a version where either the `Begin` or `End` field contains a transaction ID instead of a timestamp (indicating that an ongoing transaction is modifying this version). In this case, the system assumes the ongoing transaction will eventually commit and reads the modifications, creating a commit dependency on the ongoing transaction (i.e., the current transaction must wait for the ongoing transaction to commit before it can commit).
 
 More details can be found in Section 2.5, Version Visibility, of the original paper.
 
