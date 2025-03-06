@@ -67,3 +67,14 @@ https://github.com/deepseek-ai/3FS/blob/c3a16b5cd8caf7a604270813cc4a5a0772b3d279
 https://github.com/deepseek-ai/3FS/issues/84
 
 3FS不cache obejcts的原因，会破坏fdb的lineariable read
+
+3fs 如何回收超期文件？
+SessionManager 用到的比较重要的类：
+https://github.com/deepseek-ai/3FS/blob/cd564a239a28cc51e55c1550099824b3d7903dd3/src/meta/service/MetaServer.cc#L32
+https://github.com/deepseek-ai/3FS/blob/cd564a239a28cc51e55c1550099824b3d7903dd3/src/meta/service/MetaServer.cc#L108
+mgmtdClient_ = std::make_shared<::hf3fs::client::MgmtdClientForServer>(std::move(mgmtdClient));
+prune session?
+https://github.com/deepseek-ai/3FS/blob/cd564a239a28cc51e55c1550099824b3d7903dd3/src/meta/components/SessionManager.cc#L274
+prune session 是怎么产生的？
+https://github.com/deepseek-ai/3FS/blob/cd564a239a28cc51e55c1550099824b3d7903dd3/src/client/meta/MetaClient.cc#L590
+https://github.com/deepseek-ai/3FS/blob/cd564a239a28cc51e55c1550099824b3d7903dd3/src/fbs/meta/Utils.h#L135
