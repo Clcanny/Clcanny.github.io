@@ -1,0 +1,1057 @@
+
+
+<!DOCTYPE html>
+<html lang="zh-CN" data-default-color-scheme=auto>
+
+
+
+<head>
+  <meta charset="UTF-8">
+  <link rel="apple-touch-icon" sizes="76x76" href="/img/fluid.png">
+  <link rel="icon" href="/img/fluid.png">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, shrink-to-fit=no">
+  <meta http-equiv="x-ua-compatible" content="ie=edge">
+  
+  <meta name="theme-color" content="#2f4154">
+  <meta name="author" content="JunBin">
+  <meta name="keywords" content="">
+  
+    <meta name="description" content="This blog begins by introducing key theorems related to serializability. These theorems are then used to explain the three conditions applied in single-version OCC, which form the foundation for imple">
+<meta property="og:type" content="article">
+<meta property="og:title" content="MVOCC vs. SVOCC: A Comprehensive Guide to Optimistic Concurrency Control">
+<meta property="og:url" content="https://clcanny.github.io/2024/10/26/computer-science/serializability/mvocc-vs-svocc-a-comprehensive-guide-to-optimistic-concurrency-control/index.html">
+<meta property="og:site_name" content="On The Road">
+<meta property="og:description" content="This blog begins by introducing key theorems related to serializability. These theorems are then used to explain the three conditions applied in single-version OCC, which form the foundation for imple">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://junbin-hexo-img.oss-cn-beijing.aliyuncs.com/mvocc-vs-svocc-a-comprehensive-guide-to-optimistic-concurrency-control/figure-1-example-account-table-with-one-hash-index-transaction-75-has-transferred-20-from-larrys-account-to-johns-account-but-has-not-yet-committed.png">
+<meta property="article:published_time" content="2024-10-26T06:57:46.000Z">
+<meta property="article:modified_time" content="2025-07-30T15:39:02.323Z">
+<meta property="article:author" content="JunBin">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="https://junbin-hexo-img.oss-cn-beijing.aliyuncs.com/mvocc-vs-svocc-a-comprehensive-guide-to-optimistic-concurrency-control/figure-1-example-account-table-with-one-hash-index-transaction-75-has-transferred-20-from-larrys-account-to-johns-account-but-has-not-yet-committed.png">
+  
+  
+  
+  <title>MVOCC vs. SVOCC: A Comprehensive Guide to Optimistic Concurrency Control - On The Road</title>
+
+  <link  rel="stylesheet" href="https://lib.baomitu.com/twitter-bootstrap/4.6.1/css/bootstrap.min.css" />
+
+
+
+  <link  rel="stylesheet" href="https://lib.baomitu.com/github-markdown-css/4.0.0/github-markdown.min.css" />
+
+  <link  rel="stylesheet" href="https://lib.baomitu.com/hint.css/2.7.0/hint.min.css" />
+
+  <link  rel="stylesheet" href="https://lib.baomitu.com/fancybox/3.5.7/jquery.fancybox.min.css" />
+
+
+
+<!-- 主题依赖的图标库，不要自行修改 -->
+<!-- Do not modify the link that theme dependent icons -->
+
+<link rel="stylesheet" href="//at.alicdn.com/t/font_1749284_hj8rtnfg7um.css">
+
+
+
+<link rel="stylesheet" href="//at.alicdn.com/t/font_1736178_lbnruvf0jn.css">
+
+
+<link  rel="stylesheet" href="/css/main.css" />
+
+
+  <link id="highlight-css" rel="stylesheet" href="/css/highlight.css" />
+  
+    <link id="highlight-css-dark" rel="stylesheet" href="/css/highlight-dark.css" />
+  
+
+
+
+
+  <script id="fluid-configs">
+    var Fluid = window.Fluid || {};
+    Fluid.ctx = Object.assign({}, Fluid.ctx)
+    var CONFIG = {"hostname":"clcanny.github.io","root":"/","version":"1.9.4","typing":{"enable":true,"typeSpeed":70,"cursorChar":"_","loop":false,"scope":[]},"anchorjs":{"enable":true,"element":"h1,h2,h3,h4,h5,h6","placement":"left","visible":"hover","icon":""},"progressbar":{"enable":true,"height_px":3,"color":"#29d","options":{"showSpinner":false,"trickleSpeed":100}},"code_language":{"enable":true,"default":"TEXT"},"copy_btn":true,"image_caption":{"enable":true},"image_zoom":{"enable":true,"img_url_replace":["",""]},"toc":{"enable":true,"placement":"right","headingSelector":"h1,h2,h3,h4,h5,h6","collapseDepth":0},"lazyload":{"enable":true,"loading_img":"/img/loading.gif","onlypost":false,"offset_factor":2},"web_analytics":{"enable":false,"follow_dnt":true,"baidu":null,"google":null,"gtag":null,"tencent":{"sid":null,"cid":null},"woyaola":null,"cnzz":null,"leancloud":{"app_id":null,"app_key":null,"server_url":null,"path":"window.location.pathname","ignore_local":false}},"search_path":"/local-search.xml"};
+
+    if (CONFIG.web_analytics.follow_dnt) {
+      var dntVal = navigator.doNotTrack || window.doNotTrack || navigator.msDoNotTrack;
+      Fluid.ctx.dnt = dntVal && (dntVal.startsWith('1') || dntVal.startsWith('yes') || dntVal.startsWith('on'));
+    }
+  </script>
+  <script  src="/js/utils.js" ></script>
+  <script  src="/js/color-schema.js" ></script>
+  
+
+
+  
+<meta name="generator" content="Hexo 7.0.0-rc1"></head>
+
+
+<body>
+  
+
+  <header>
+    
+
+<div class="header-inner" style="height: 70vh;">
+  <nav id="navbar" class="navbar fixed-top  navbar-expand-lg navbar-dark scrolling-navbar">
+  <div class="container">
+    <a class="navbar-brand" href="/">
+      <strong>Fluid</strong>
+    </a>
+
+    <button id="navbar-toggler-btn" class="navbar-toggler" type="button" data-toggle="collapse"
+            data-target="#navbarSupportedContent"
+            aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
+      <div class="animated-icon"><span></span><span></span><span></span></div>
+    </button>
+
+    <!-- Collapsible content -->
+    <div class="collapse navbar-collapse" id="navbarSupportedContent">
+      <ul class="navbar-nav ml-auto text-center">
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/">
+                <i class="iconfont icon-home-fill"></i>
+                <span>首页</span>
+              </a>
+            </li>
+          
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/archives/">
+                <i class="iconfont icon-archive-fill"></i>
+                <span>归档</span>
+              </a>
+            </li>
+          
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/categories/">
+                <i class="iconfont icon-category-fill"></i>
+                <span>分类</span>
+              </a>
+            </li>
+          
+        
+        
+          <li class="nav-item" id="search-btn">
+            <a class="nav-link" target="_self" href="javascript:;" data-toggle="modal" data-target="#modalSearch" aria-label="Search">
+              <i class="iconfont icon-search"></i>
+            </a>
+          </li>
+          
+        
+        
+          <li class="nav-item" id="color-toggle-btn">
+            <a class="nav-link" target="_self" href="javascript:;" aria-label="Color Toggle">
+              <i class="iconfont icon-dark" id="color-toggle-icon"></i>
+            </a>
+          </li>
+        
+      </ul>
+    </div>
+  </div>
+</nav>
+
+  
+
+<div id="banner" class="banner" parallax=true
+     style="background: url('/img/default.png') no-repeat center center; background-size: cover;">
+  <div class="full-bg-img">
+    <div class="mask flex-center" style="background-color: rgba(0, 0, 0, 0.3)">
+      <div class="banner-text text-center fade-in-up">
+        <div class="h2">
+          
+            <span id="subtitle" data-typed-text="MVOCC vs. SVOCC: A Comprehensive Guide to Optimistic Concurrency Control"></span>
+          
+        </div>
+
+        
+          
+  <div class="mt-3">
+    
+    
+      <span class="post-meta">
+        <i class="iconfont icon-date-fill" aria-hidden="true"></i>
+        <time datetime="2024-10-26 14:57" pubdate>
+          2024年10月26日 下午
+        </time>
+      </span>
+    
+  </div>
+
+  <div class="mt-1">
+    
+      <span class="post-meta mr-2">
+        <i class="iconfont icon-chart"></i>
+        
+          25k 字
+        
+      </span>
+    
+
+    
+      <span class="post-meta mr-2">
+        <i class="iconfont icon-clock-fill"></i>
+        
+        
+        
+          210 分钟
+        
+      </span>
+    
+
+    
+    
+  </div>
+
+
+        
+      </div>
+
+      
+    </div>
+  </div>
+</div>
+
+</div>
+
+  </header>
+
+  <main>
+    
+      
+
+<div class="container-fluid nopadding-x">
+  <div class="row nomargin-x">
+    <div class="side-col d-none d-lg-block col-lg-2">
+      
+
+    </div>
+
+    <div class="col-lg-8 nopadding-x-md">
+      <div class="container nopadding-x-md" id="board-ctn">
+        <div id="board">
+          <article class="post-content mx-auto">
+            <!-- SEO header -->
+            <h1 style="display: none">MVOCC vs. SVOCC: A Comprehensive Guide to Optimistic Concurrency Control</h1>
+            
+            
+              <div class="markdown-body">
+                
+                <p>This blog begins by introducing key theorems related to serializability. These theorems are then used to explain the three conditions applied in single-version OCC, which form the foundation for implementing the validation phase. Finally, we explore multi-version OCC and discuss its advantages over the single-version approach.</p>
+<h2 id="basics-of-optimistic-concurrency-control">Basics of Optimistic Concurrency Control</h2>
+<p><a target="_blank" rel="noopener" href="http://wwwlgis.informatik.uni-kl.de/cms/fileadmin/publications/1984/Hae84.InformationSystems.pdf">OBSERVATIONS ON OPTIMISTIC CONCURRENCY CONTROL SCHEMES</a> describes OCC as follows:</p>
+<blockquote>
+<p>When transactions are accessing a database concurrently, a concurrency control (CC) scheme has to prevent conflicts among them such that their serializability can be guaranteed.</p>
+<p>Conventional CC schemes use two-phase locking protocols acquiring dynamically locks for the objects.</p>
+<p>Optimistic CC schemes are designed to get rid of the locking overhead. The burden of CC is deferred unitl EOT when some checking for potential conflicts has to take place. If a conceivable conflict is detected, a "pessimistic" view has to be taken: this conceivable conflict is resolved by aborting the transaction. Hence, theses schemes rely on transaction backout as a control mechanism.</p>
+</blockquote>
+<h3 id="serialization-graphs-and-conflict-serializability">Serialization Graphs and Conflict-Serializability</h3>
+<p><a target="_blank" rel="noopener" href="https://pmg.csail.mit.edu/papers/adya-phd.pdf">Weak Consistency: A Generalized Theory and Optimistic Implementations for Distributed Transactions</a> provides a generalized theory about OCC. Since the original paper spans 198 pages, this section summarizes critical aspects related to serializability (with some simplifications for clarity):</p>
+<ul>
+<li>A history <span class="math inline">\(H\)</span> represents a set of transactions, described as a partial order of events <span class="math inline">\(E\)</span> that reflect the operations (such as reads, writes, commits, and aborts) of the transactions.</li>
+<li>The direct serialization graph <span class="math inline">\(\operatorname{DSG}(H)\)</span> of a given history <span class="math inline">\(H\)</span> is a graph constructed as follows:
+<ul>
+<li>Each node in <span class="math inline">\(\operatorname{DSG}(H)\)</span> corresponds to a committed transaction in <span class="math inline">\(H\)</span>.</li>
+<li>Directed edges correspond to different types of direct conflicts.
+<ul>
+<li>Directly item-read-depends: <span class="math inline">\(T_j\)</span> directly item-read-depends on <span class="math inline">\(T_i\)</span> if <span class="math inline">\(T_i\)</span> installs some object version <span class="math inline">\(x_i\)</span> and <span class="math inline">\(T_j\)</span> reads <span class="math inline">\(x_i\)</span>.</li>
+<li>Directly item-anti-depends: <span class="math inline">\(T_j\)</span> directly item-anti-depends on transaction <span class="math inline">\(T_i\)</span> if <span class="math inline">\(T_i\)</span> reads some object version <span class="math inline">\(x_k\)</span> and <span class="math inline">\(T_j\)</span> installs <span class="math inline">\(x\)</span>'s next version (after <span class="math inline">\(x_k\)</span>).</li>
+<li>Directly item-write-depends: <span class="math inline">\(T_j\)</span> directly item-write-depends on transaction <span class="math inline">\(T_i\)</span> if <span class="math inline">\(T_i\)</span> installs a version <span class="math inline">\(x_i\)</span> and <span class="math inline">\(T_j\)</span> installs <span class="math inline">\(x\)</span>'s next version (after <span class="math inline">\(x_i\)</span>).</li>
+</ul></li>
+</ul></li>
+<li>The graph <span class="math inline">\(\operatorname{DSG}(H)\)</span> is acyclic, and aborted reads (where a transaction reads a version written by an aborted transaction) and intermediate reads (where a transaction reads a version that is not the final version written by a committed transaction) are proscribed for a history <span class="math inline">\(H\)</span> iff <span class="math inline">\(H\)</span> is conflict-serializable.</li>
+</ul>
+<p>The above description of serialization graphs and conflict-serializability is a simplified and informal explanation. It omits several key aspects for the sake of clarity, such as the inclusion of the version order as part of the history and the need to account for predicate-based dependencies arising from scanning operations. Additionally, the proof that the acyclicity of the direct serialization graph (<span class="math inline">\(\operatorname{DSG}(H)\)</span>) implies conflict-serializability is not provided here. The following references provide the necessary foundational details and formal arguments to address the aspects omitted in the simplified description above:</p>
+<ul>
+<li><a target="_blank" rel="noopener" href="https://pmg.csail.mit.edu/papers/adya-phd.pdf">Weak Consistency: A Generalized Theory and Optimistic Implementations for Distributed Transactions</a></li>
+<li>The Wormhole Theorem, as described in section 7.5.8.1 of <a target="_blank" rel="noopener" href="https://www.oreilly.com/library/view/transaction-processing/9780080519555/">"Transaction Processing: Concepts and Techniques" by J. N. Gray and A. Reuter (Morgan Kaufmann Publishers Inc., 1993)</a></li>
+<li>The Serializability Theorem, as described in Section 2.3 of <a target="_blank" rel="noopener" href="https://courses.cs.washington.edu/courses/csep552/18wi/papers/CSE550BHG-Ch7.pdf">"Concurrency Control and Recovery in Database Systems" by Philip A. Bernstein, Vassos Hadzilacos, and Nathan Goodman</a></li>
+</ul>
+<h3 id="cycle-prevention-with-timestamps">Cycle Prevention with Timestamps</h3>
+<p>Since the acyclicity of the direct serialization graph (<span class="math inline">\(\operatorname{DSG}(H)\)</span>) implies conflict-serializability, OCC only needs to detect cycles and abort transactions that could introduce cycles. However, detecting cycles using traditional graph algorithms can be computationally expensive, as it requires each machine to have a complete view of the graph.</p>
+<p>To overcome this, we can leverage logical clocks (timestamps) to enforce a one-directional dependency graph, which guarantees acyclicity. The idea is simple: assign each transaction a logical timestamp, and enforce a rule where a transaction can only depend on another transaction with a <strong>smaller</strong> timestamp. This ensures that all dependencies flow in one direction, thereby preventing cycles.</p>
+<h4 id="backward-and-forward-validation">Backward and Forward Validation</h4>
+<p><a target="_blank" rel="noopener" href="http://wwwlgis.informatik.uni-kl.de/cms/fileadmin/publications/1984/Hae84.InformationSystems.pdf">OBSERVATIONS ON OPTIMISTIC CONCURRENCY CONTROL SCHEMES</a> proposes two methods for detecting wrong-direction dependencies:</p>
+<blockquote>
+<p>Backward oriented optimistic CC (BOCC) checks during the validation phase of <span class="math inline">\(T_j\)</span> whether its read set <span class="math inline">\(\operatorname{RS}(T_j)\)</span> intersects with any of the write sets <span class="math inline">\(\operatorname{WS}(T_i)\)</span> of all concurrently executed transactions <span class="math inline">\(T_i\)</span> having finished their read phases before <span class="math inline">\(T_j\)</span>. Since "blind" modifications are not very likely, each transaction has to be validated in practice.</p>
+<p>Let <span class="math inline">\(T_{start}\)</span> be the highest transaction number assigned to some transaction when <span class="math inline">\(T_j\)</span> starts, and <span class="math inline">\(T_{finish}\)</span> the highest transaction number when <span class="math inline">\(T_j\)</span> enters its validation phase. Then, essentially the following procedure in <span class="math inline">\(T_j\)</span>'s validation phase will decide <span class="math inline">\(T_j\)</span>'s destiny.</p>
+<figure class="highlight text"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><code class="hljs text">VALID := TRUE;<br>FOR T(i) := T(start+1) TO T(finish) DO<br>  IF RS(T(j)) \intersect WS(T(i)) != \emptyset THEN<br>    VALID := FALSE;<br>IF VALID THEN COMMIT<br>         ELSE ABORT;<br></code></pre></td></tr></table></figure>
+<p>Forward oriented optimistic CC (FOCC) checks during the validation phase of <span class="math inline">\(T_j\)</span> whether its write set <span class="math inline">\(\operatorname{WS}(T_j)\)</span> intersects with any of the read sets <span class="math inline">\(\operatorname{RS}(T_i)\)</span> of all transactions <span class="math inline">\(T_i\)</span> having not yet finished their read phases.</p>
+<p>Let the active transactions have the numbers <span class="math inline">\(T_{act1}\)</span> until <span class="math inline">\(T_{actn}\)</span>. Then, <span class="math inline">\(T_j\)</span> is validated as follows:</p>
+<figure class="highlight text"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><code class="hljs text">VALID := TRUE;<br>FOR T(i) := T(act1) TO T(actn) DO<br>  IF WS(T(j)) \intersect RS(T(i)) != \emptyset THEN<br>    VALID := FALSE;<br>IF VALID THEN COMMIT<br>         ELSE ABORT;<br></code></pre></td></tr></table></figure>
+</blockquote>
+<p>It is important to note that the paper assumes blind writes are not possible, meaning the write set of a transaction is a superset of its read set. As a result, if transaction <span class="math inline">\(T_j\)</span> item-write-depends on transaction <span class="math inline">\(T_i\)</span>, then <span class="math inline">\(T_j\)</span> also item-anti-depends on <span class="math inline">\(T_i\)</span>. Consequently, there is no need to explicitly test for wrong-direction item-write-dependencies during backward validation.</p>
+<p>Both backward-oriented and forward-oriented optimistic CC (also known as backward validation and forward validation) can detect and prevent wrong-direction dependencies. While the formal proof is omitted here, the intuition is as follows, assuming Jack and Tom want to enter two lines:</p>
+<ul>
+<li>Backward validation is like Jack entering a line where no one ahead of him promises not to harm him if he enters. Jack himself makes no promises to those behind him. The only thing Jack needs to do is check whether anyone ahead could potentially harm him. If so, he leaves (the transaction aborts); otherwise, he stays in line (the transaction commits).</li>
+<li>Forward validation is like Tom entering a line where those ahead have promised not to harm him, and Tom himself promises not to harm anyone behind him. Tom's job is to check if anyone behind him might be affected if he stays. If so, he leaves (the transaction aborts); otherwise, he stays (the transaction commits).</li>
+</ul>
+<p>However, backward validation is more commonly used, so we will focus on it. In backward validation, a transaction is validated by checking it against other concurrent transactions (transactions whose lifetimes overlap) <strong>with smaller timestamps</strong>. The assignment of timestamps and the timing of validation are crucial and must be coordinated to ensure that, once Jack decides to stay in line (i.e., the transaction commits), no one who was not already in the queue (i.e., not assigned a timestamp already) before validation can queue ahead of him afterward (i.e., be assigned a smaller timestamp).</p>
+<h2 id="single-version-optimistic-concurrency-control">Single-Version Optimistic Concurrency Control</h2>
+<p>Single-version OCC is a straightforward approach to implementing optimistic concurrency control. In this context, "single-version" means that, globally, there is at most one version of each object available to all transactions. While a transaction may create local copies of objects in its own workspace during execution, these local versions are private and cannot be accessed by other transactions until the transaction commits.</p>
+<h3 id="phases-of-a-transaction-in-svocc">Phases of a Transaction in SVOCC</h3>
+<p><a target="_blank" rel="noopener" href="https://www.eecs.harvard.edu/~htk/publication/1981-tods-kung-robinson.pdf">On Optimistic Methods for Concurrency Control</a> introduces a method where a transaction is divided into three phases:</p>
+<blockquote>
+<p>It is required that any transaction consist of two or three phases: a read phase, a validation phase, and a possible write phase (see Figure 1).</p>
+</blockquote>
+<ul>
+<li>During the read phase, the transaction reads the data and locally stores any changes it intends to make. Importantly, no changes are written to the global database during this phase. All modifications are made on local copies of the data.</li>
+<li>If validation is successful, the transaction enters the write phase, wherein the local changes are applied to the global database.</li>
+</ul>
+<h4 id="local-writes-in-active-transactions">Local Writes in Active Transactions</h4>
+<p><a target="_blank" rel="noopener" href="https://www.eecs.harvard.edu/~htk/publication/1981-tods-kung-robinson.pdf">On Optimistic Methods for Concurrency Control</a> emphasizes that no global modifications occur during the read phase of a transaction:</p>
+<blockquote>
+<p>During the read phase, all writes take place on local copies of the nodes to be modified. Then, if it can be established during the validation phase that the changes the transaction made will not cause a loss of integrity, the local copies are made global in the write phase.</p>
+</blockquote>
+<p>This is the simplest way to avoid aborted reads and intermediate reads.</p>
+<h4 id="the-validation-phase">The Validation Phase</h4>
+<h5 id="choosing-the-timing-for-timestamp-assignment">Choosing the Timing for Timestamp Assignment</h5>
+<p>The following statements are quoted from <a target="_blank" rel="noopener" href="https://www.eecs.harvard.edu/~htk/publication/1981-tods-kung-robinson.pdf">On Optimistic Methods for Concurrency Control</a>:</p>
+<blockquote>
+<p>In order to verify (1), a permutation <span class="math inline">\(\pi\)</span> must be found. This is handled by explicitly assigning each transaction <span class="math inline">\(T_i\)</span>, a unique integer transaction number <span class="math inline">\(t(i)\)</span> during the course of its execution.</p>
+<p>On first thought, we might assign transaction numbers at the beginning of the read phase; however, this is not optimistic (hence contrary to the philosophy of this paper) for the following reason. Consider the case of two transactions, <span class="math inline">\(T_1\)</span> and <span class="math inline">\(T_2\)</span>, starting at roughly the same time, assigned transaction number <span class="math inline">\(n\)</span> and <span class="math inline">\(n + 1\)</span>, respectively. Even if <span class="math inline">\(T_2\)</span> completes its read phase much earlier than <span class="math inline">\(T_1\)</span>, before being validated <span class="math inline">\(T_2\)</span> must wait for the completion of the read phase of <span class="math inline">\(T_1\)</span>, since the validation of <span class="math inline">\(T_2\)</span> in this case relies on knowledge of the write set of <span class="math inline">\(T_1\)</span> (see Figure 3).</p>
+<p>In an optimistic approach, we would like for transactions to be validated immediately if at all possible (in order to improve response time). For these and similar considerations we assign transaction numbers <strong>at the end of the read phase</strong>.</p>
+</blockquote>
+<p>Although the paper states that "before being validated <span class="math inline">\(T_2\)</span> must wait for the completion of the read phase of <span class="math inline">\(T_1\)</span>," I believe this is a limitation of using backward validation in isolation. Combining backward validation with forward validation can address this issue. However, let's follow the paper in the discussion below.</p>
+<h5 id="three-conditions-for-validation">Three Conditions for Validation</h5>
+<p><a target="_blank" rel="noopener" href="https://www.eecs.harvard.edu/~htk/publication/1981-tods-kung-robinson.pdf">On Optimistic Methods for Concurrency Control</a> proposes three conditions to validate transactions:</p>
+<blockquote>
+<p>There must exist a serially equivalent schedule in which transaction <span class="math inline">\(T_i\)</span> comes before transaction <span class="math inline">\(T_j\)</span> whenever <span class="math inline">\(t(i)\)</span> &lt; <span class="math inline">\(t(j)\)</span>. This can be guaranteed by the following validation condition: for each transaction <span class="math inline">\(T_j\)</span> with transaction number <span class="math inline">\(t(j)\)</span>, and for all <span class="math inline">\(T_i\)</span> with <span class="math inline">\(t(i) &lt; t(j)\)</span>; <strong>one of</strong> the following three conditions must hold (see Figure 2):</p>
+<ol type="1">
+<li><span class="math inline">\(T_i\)</span> completes its write phase before <span class="math inline">\(T_j\)</span> starts its read phase.</li>
+<li>The write set of <span class="math inline">\(T_i\)</span> does not intersect the read set of <span class="math inline">\(T_j\)</span>, and <span class="math inline">\(T_i\)</span> completes its write phase before <span class="math inline">\(T_j\)</span> starts its write phase.</li>
+<li>The write set of <span class="math inline">\(T_i\)</span> does not intersect the read set or the write set of <span class="math inline">\(T_j\)</span>, and <span class="math inline">\(T_i\)</span> completes its read phase before <span class="math inline">\(T_j\)</span> completes its read phase.</li>
+</ol>
+</blockquote>
+<p>These three conditions are essential in the backward validation to ensure that no cycles form in the direct serialization graph. The following table shows how the three conditions prevent different types of dependencies with wrong direction:</p>
+<table>
+
+<thead>
+<tr class="header">
+<th>Condition</th>
+<th>Is <span class="math inline">\(T_i\)</span> item-read-depends on <span class="math inline">\(T_j\)</span> possible?</th>
+<th>Is <span class="math inline">\(T_i\)</span> item-anti-depends on <span class="math inline">\(T_j\)</span> possible?</th>
+<th>Is <span class="math inline">\(T_i\)</span> item-write-depends on <span class="math inline">\(T_j\)</span> possible?</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>(1)</td>
+<td>No: <span class="math inline">\(T_i\)</span> completes before <span class="math inline">\(T_j\)</span> starts, so <span class="math inline">\(T_i\)</span> cannot read any versions written by <span class="math inline">\(T_j\)</span>.</td>
+<td>No: <span class="math inline">\(T_j\)</span> starts after <span class="math inline">\(T_i\)</span> completes, so <span class="math inline">\(T_j\)</span> either reads the version written by <span class="math inline">\(T_i\)</span> or a newer version. It cannot read an older version.</td>
+<td>No: <span class="math inline">\(T_i\)</span> completes its write phase before <span class="math inline">\(T_j\)</span> starts writing, so only <span class="math inline">\(T_j\)</span> can overwrite <span class="math inline">\(T_i\)</span>'s version. The reverse is impossible.</td>
+</tr>
+<tr class="even">
+<td>(2)</td>
+<td>No: <span class="math inline">\(T_i\)</span> completes its write phase before <span class="math inline">\(T_j\)</span> starts writing, so <span class="math inline">\(T_i\)</span> completes its read phase before <span class="math inline">\(T_j\)</span> starts writing. Therefore, <span class="math inline">\(T_i\)</span> cannot read any version written by <span class="math inline">\(T_j\)</span>.</td>
+<td>No: The write set of <span class="math inline">\(T_i\)</span> does not intersect the read set of <span class="math inline">\(T_j\)</span>, so what <span class="math inline">\(T_j\)</span> reads cannot be overwritten by <span class="math inline">\(T_i\)</span>.</td>
+<td>No: <span class="math inline">\(T_i\)</span> completes its write phase before <span class="math inline">\(T_j\)</span> starts writing, so only <span class="math inline">\(T_j\)</span> can install the next version. The reverse is not possible.</td>
+</tr>
+<tr class="odd">
+<td>(3)</td>
+<td>No: <span class="math inline">\(T_i\)</span> completes its read phase before <span class="math inline">\(T_j\)</span> completes its read phase, which means <span class="math inline">\(T_i\)</span> also completes its read phase before <span class="math inline">\(T_j\)</span> starts its write phase. Therefore, <span class="math inline">\(T_i\)</span> cannot read what <span class="math inline">\(T_j\)</span> writes.</td>
+<td>No: The read set of <span class="math inline">\(T_j\)</span> does not intersect the write set of <span class="math inline">\(T_i\)</span>, so <span class="math inline">\(T_j\)</span> cannot read any version written by <span class="math inline">\(T_i\)</span>.</td>
+<td>No: The write set of <span class="math inline">\(T_j\)</span> does not intersect the write set of <span class="math inline">\(T_i\)</span>, so neither transaction can overwrite the other's version.</td>
+</tr>
+</tbody>
+</table>
+<p>The above explanation omits some details for the sake of clarity. For example, <a target="_blank" rel="noopener" href="https://pmg.csail.mit.edu/papers/adya-phd.pdf">Weak Consistency: A Generalized Theory and Optimistic Implementations for Distributed Transactions</a> emphasizes that the version order in a history <span class="math inline">\(H\)</span> can be different from the order of write or commit events in <span class="math inline">\(H\)</span>. However, for simplicity, we assume here that the version order of involved objects corresponds directly to the commit event order. Additionally, we do not cover more advanced topics such as scanning operations and predicate-based dependencies.</p>
+<h5 id="serial-validation">Serial Validation</h5>
+<p>The following code is quoted from <a target="_blank" rel="noopener" href="https://www.eecs.harvard.edu/~htk/publication/1981-tods-kung-robinson.pdf">On Optimistic Methods for Concurrency Control</a>:</p>
+<figure class="highlight text"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br></pre></td><td class="code"><pre><code class="hljs text">tbegin = (<br>  create set := empty;<br>  read set := empty;<br>  write set := empty;<br>  delete set := empty;<br>  start tn := tnc)<br>tend = (<br>  // The part enclosed by &lt; and &gt; represents a critical section,<br>  // which functions similarly to a mutex guard.<br>  &lt;finish tn := tnc;<br>   valid := true;<br>   for t from start tn + 1 to finish tn do<br>     if (write set of transaction with transaction number t intersects read set)<br>       then valid:= false;<br>   if valid<br>     then ((write phase); tnc := tnc + 1; tn := tnc)&gt;;<br>  if valid<br>    then (cleanup)<br>    else (backup)).<br></code></pre></td></tr></table></figure>
+<p>My understanding of the above code can be split into three parts: validating the transaction with transactions whose <code>tn</code> is smaller than or equal to <code>start tn</code>, from <code>start tn + 1</code> to <code>finish tn</code>, and larger than <code>finish tn</code>:</p>
+<ul>
+<li>The write phase and the increment of the <code>tnc</code> are performed as a single atomic action within the same critical section. This ensures that all transactions with a <code>tn</code> less than the current transaction's <code>start tn</code> have already completed their write phase before the current transaction starts its read phase. During the validation phase of the current transaction, these earlier transactions (with a <code>tn</code> less than the current transaction's <code>start tn</code>) can be handled using <strong>Condition (1)</strong>, meaning their read and write sets do not need to be explicitly checked with the current transaction's read and write sets - they naturally pass the validation.</li>
+<li>The write phase and the increment of the <code>tnc</code> are executed as a single atomic action within the same critical section. Since the critical section is executed for multiple transactions one by one, this guarantees that transactions with smaller <code>tn</code> complete their write phase before transactions with larger <code>tn</code> start their write phase. As a result, this satisfies part of <strong>Condition (2)</strong>, allowing us to use <strong>Condition (2)</strong> to validate transactions from <code>start tn + 1</code> to <code>finish tn</code>.</li>
+<li>The validation phase, the increment of the <code>tnc</code>, and the assignment of the incremented <code>tnc</code> to the transaction's <code>tn</code> are performed as a single atomic action within the same critical section. This ensures that after the validation phase of the current transaction, no transaction that hasn't yet been assigned a <code>tn</code> before the current transaction's validation phase will be assigned a smaller <code>tn</code> than the current transaction's <code>tn</code>.
+<ul>
+<li>Using the analogy used before: After Jack decides to stay in line (i.e., the current transaction passes the validation check and commits), no one who was not already in the queue (i.e., no transaction without a <code>tn</code> before the current transaction's validation phase) can jump ahead of him (i.e., can be assigned a smaller <code>tn</code> than Jack's).</li>
+<li>This is an example of how the assignment of timestamps and the timing of validation are crucial and must be coordinated, as mentioned previously.</li>
+<li>Notice: In backward validation, for transactions with a tn larger than the current transaction's <code>tn</code>, it is their responsibility to validate whether they violate serializability with the current transaction - not the current transaction's responsibility.</li>
+</ul></li>
+</ul>
+<h5 id="parallel-validation">Parallel Validation</h5>
+<p>The following code is quoted from <a target="_blank" rel="noopener" href="https://www.eecs.harvard.edu/~htk/publication/1981-tods-kung-robinson.pdf">On Optimistic Methods for Concurrency Control</a>:</p>
+<figure class="highlight text"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br></pre></td><td class="code"><pre><code class="hljs text">tend = (<br>  // Critical section A.<br>  &lt;finish tn := tnc;<br>   finish active := (make a copy of active);<br>   active := active \union &#123;id of this transaction&#125;&gt;;<br>  valid := true;<br>  for t from start tn + 1 to finish tn do<br>    if (write set of transaction with transaction number t intersects read set)<br>      then valid := false;<br>  for i \in finish active do<br>    if (write set of transaction Ti intersects read set or write set)<br>      then valid := false;<br>  if valid<br>    then (<br>      (write phase);<br>      // Critical section B.<br>      &lt;tnc := tnc + 1;<br>       tn := tnc;<br>       active := active - &#123;id of this transaction&#125;&gt;;<br>      (cleanup))<br>    else (<br>      // Critical section C.<br>      &lt;active := active - &#123;id of transaction&#125;&gt;;<br>      (backup))).<br></code></pre></td></tr></table></figure>
+<p>My understanding of the above code is as follows:</p>
+<ul>
+<li>The three critical sections, A, B, and C, share the same mutex. At any given time, only one critical section can be executing.</li>
+<li>While validating the current transaction in critical section A, the transactions with <code>tn</code> between <code>start tn + 1</code> and <code>finish tn</code> have already completed their write phases and have been assigned a <code>tn</code> in critical section B (otherwise, these transactions would have a <code>tn</code> larger than <code>finish tn</code>; the critical section A of the current transaction is exclusive with the critical section B of those transactions - they cannot execute concurrently, and one must occur before the other). This ensures that their write phases are completed before the current transaction starts its own write phase, allowing us to apply <strong>Condition (2)</strong> for their validation. This mirrors the behavior of serial validation.</li>
+<li>When the current transaction obtains <code>finish active</code> by copying <code>active</code> in critical section A, it has just completed its read phase and has not yet started its write phase. Meanwhile, all transactions in <code>finish active</code> must have already completed the entire critical section A (otherwise, those transactions would not appear in the <code>finish active</code> set of the current transaction; the critical section A of the current transaction is exclusive with the critical section A of those transactions - they cannot execute concurrently, and one must occur before the other), meaning they completed their read phases before the current transaction completes its read phase or starts its write phase. Therefore, we can apply <strong>Condition (3)</strong> to validate them.
+<ul>
+<li>Notice: Transactions in the <code>finish active</code> set of the current transaction may enter critical section B either before or after the current transaction, meaning their <code>tn</code> could be smaller or larger than the current transaction's <code>tn</code>. In the case that they are assigned a smaller <code>tn</code>, it is the current transaction's responsibility to check for conflicts with them.</li>
+</ul></li>
+<li>For transactions that haven't been assigned a <code>tn</code> and do not appear in the <code>finish active</code> set of the current transaction, it is their responsibility to check for conflicts with the current transaction. In other words, it is not the current transaction's responsibility to check for conflicts with them.</li>
+</ul>
+<h2 id="multi-version-optimistic-concurrency-control">Multi-Version Optimistic Concurrency Control</h2>
+<h3 id="designing-an-mvocc-protocol-based-on-svocc">Designing an MVOCC Protocol Based on SVOCC</h3>
+<h4 id="basic-storage-format-of-versions">Basic Storage Format of Versions</h4>
+<p>In a MVOCC protocol, multiple versions of the same object must explicitly declare the lifecycle of each version. This is achieved by introducing a <code>Begin</code> field and an <code>End</code> field, which define the lifetime of each version. (Note that the <code>Begin</code> and <code>End</code> fields are distinct from the begin timestamp and end timestamp mentioned below; both the <code>Begin</code> field and the <code>End</code> field in the version record correspond to the end timestamp of a transaction.) Together with the original columns, these fields construct the record format for each version.</p>
+<table>
+<thead>
+<tr class="header">
+<th style="text-align: center;">Begin</th>
+<th style="text-align: center;">End</th>
+<th style="text-align: center;">Name</th>
+<th style="text-align: center;">Amount</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: center;">15</td>
+<td style="text-align: center;">inf</td>
+<td style="text-align: center;">Jane</td>
+<td style="text-align: center;">150</td>
+</tr>
+<tr class="even">
+<td style="text-align: center;">10</td>
+<td style="text-align: center;">20</td>
+<td style="text-align: center;">John</td>
+<td style="text-align: center;">100</td>
+</tr>
+<tr class="odd">
+<td style="text-align: center;">20</td>
+<td style="text-align: center;">Txn75</td>
+<td style="text-align: center;">John</td>
+<td style="text-align: center;">110</td>
+</tr>
+<tr class="even">
+<td style="text-align: center;">Txn75</td>
+<td style="text-align: center;">inf</td>
+<td style="text-align: center;">John</td>
+<td style="text-align: center;">130</td>
+</tr>
+<tr class="odd">
+<td style="text-align: center;">30</td>
+<td style="text-align: center;">Txn75</td>
+<td style="text-align: center;">Larry</td>
+<td style="text-align: center;">170</td>
+</tr>
+<tr class="even">
+<td style="text-align: center;">Txn75</td>
+<td style="text-align: center;">inf</td>
+<td style="text-align: center;">Larry</td>
+<td style="text-align: center;">150</td>
+</tr>
+</tbody>
+</table>
+<h4 id="why-two-timestamps-are-needed-in-mvocc">Why Two Timestamps Are Needed in MVOCC</h4>
+<p><a target="_blank" rel="noopener" href="https://vldb.org/pvldb/vol5/p298_per-akelarson_vldb2012.pdf">High-Performance Concurrency Control Mechanisms for Main-Memory Databases</a> assigns two timestamps to a transaction:</p>
+<ul>
+<li>Begin Timestamp: Acquired at the start of the transaction.</li>
+<li>End Timestamp: Acquired when the transaction is ready to be validated.</li>
+</ul>
+<blockquote>
+<p>Transaction 75 is in the process of transferring $20 from Larry's account to John's account. It has created the new versions for Larry (Larry, 150) and for John (John, 130) and inserted them into the appropriate buckets in the index.</p>
+<p>Note that transaction 75 has stored its transaction ID in the <code>Begin</code> and <code>End</code> fields of the new and old versions, respectively. (One bit in the field indicates the field's current content.)</p>
+<p>Now suppose transaction 75 commits with end timestamp 100. It then returns to the old and new versions and sets the <code>Begin</code> and <code>End</code> fields, respectively, to 100. The final values are shown in red below the old and new versions. The old version (John, 110) now has the valid time 20 to 100 and the new version (John, 130) has a valid time from 100 to infinity.</p>
+</blockquote>
+<figure>
+<img src="https://junbin-hexo-img.oss-cn-beijing.aliyuncs.com/mvocc-vs-svocc-a-comprehensive-guide-to-optimistic-concurrency-control/figure-1-example-account-table-with-one-hash-index-transaction-75-has-transferred-20-from-larrys-account-to-johns-account-but-has-not-yet-committed.png" srcset="/img/loading.gif" lazyload alt="" /><figcaption>Figure 1: Example account table with one hash index. Transaction 75 has transferred $20 from Larry's account to John's account but has not yet committed.</figcaption>
+</figure>
+<p>In my view, the end timestamp in <a target="_blank" rel="noopener" href="https://vldb.org/pvldb/vol5/p298_per-akelarson_vldb2012.pdf">High-Performance Concurrency Control Mechanisms for Main-Memory Databases</a> corresponds to the transaction number in <a target="_blank" rel="noopener" href="https://www.eecs.harvard.edu/~htk/publication/1981-tods-kung-robinson.pdf">On Optimistic Methods for Concurrency Control</a>. Both papers opt to assign the end timestamp or transaction number at the end of the read phase to allow transactions to be validated immediately, rather than having to wait for transactions with smaller end timestamps or transaction numbers that have not yet completed their read phase.</p>
+<p>Additionally, an MVOCC transaction requires a timestamp during the read phase to identify the correct version of an object. This timestamp is the begin timestamp. This is why <a target="_blank" rel="noopener" href="https://vldb.org/pvldb/vol5/p298_per-akelarson_vldb2012.pdf">High-Performance Concurrency Control Mechanisms for Main-Memory Databases</a> assigns two timestamps to each transaction.</p>
+<p>However, in my opinion, the requirement that "before being validated <span class="math inline">\(T_2\)</span> must wait for the completion of the read phase of <span class="math inline">\(T_1\)</span>" is a limitation of relying solely on backward validation. I believe that combining backward validation with forward validation could resolve this issue, allowing the end timestamp or transaction number to be assigned at the start of the transaction, thereby eliminating the need for two timestamps in MVOCC. That said, I am still in the process of proving this hypothesis.</p>
+<h4 id="how-active-transactions-write-objects-with-new-versions">How Active Transactions Write Objects with New Versions</h4>
+<p>Due to the presence of <code>Begin</code> and <code>End</code> fields indicating the lifecycle of each version, MVOCC allows global modifications to occur even during the read phase of a transaction, unlike SVOCC. <a target="_blank" rel="noopener" href="https://vldb.org/pvldb/vol5/p298_per-akelarson_vldb2012.pdf">High-Performance Concurrency Control Mechanisms for Main-Memory Databases</a> provides an example of a bank transfer:</p>
+<blockquote>
+<p>Transaction 75 is in the process of transferring $20 from Larry's account to John's account. It has created the new versions for Larry (Larry, 150) and for John (John, 130) and inserted them into the appropriate buckets in the index.</p>
+<p>Note that transaction 75 has stored its transaction ID in the <code>Begin</code> and <code>End</code> fields of the new and old versions, respectively. (One bit in the field indicates the field's current content.)</p>
+</blockquote>
+<table>
+<thead>
+<tr class="header">
+<th style="text-align: center;">Begin</th>
+<th style="text-align: center;">End</th>
+<th style="text-align: center;">Name</th>
+<th style="text-align: center;">Amount</th>
+<th style="text-align: center;"></th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: center;">15</td>
+<td style="text-align: center;">inf</td>
+<td style="text-align: center;">Jane</td>
+<td style="text-align: center;">150</td>
+<td style="text-align: center;"></td>
+</tr>
+<tr class="even">
+<td style="text-align: center;">10</td>
+<td style="text-align: center;">20</td>
+<td style="text-align: center;">John</td>
+<td style="text-align: center;">100</td>
+<td style="text-align: center;"></td>
+</tr>
+<tr class="odd">
+<td style="text-align: center;">20</td>
+<td style="text-align: center;">Txn75</td>
+<td style="text-align: center;">John</td>
+<td style="text-align: center;">110</td>
+<td style="text-align: center;">Old</td>
+</tr>
+<tr class="even">
+<td style="text-align: center;">Txn75</td>
+<td style="text-align: center;">inf</td>
+<td style="text-align: center;">John</td>
+<td style="text-align: center;">130</td>
+<td style="text-align: center;">New</td>
+</tr>
+<tr class="odd">
+<td style="text-align: center;">30</td>
+<td style="text-align: center;">Txn75</td>
+<td style="text-align: center;">Larry</td>
+<td style="text-align: center;">170</td>
+<td style="text-align: center;">Old</td>
+</tr>
+<tr class="even">
+<td style="text-align: center;">Txn75</td>
+<td style="text-align: center;">inf</td>
+<td style="text-align: center;">Larry</td>
+<td style="text-align: center;">150</td>
+<td style="text-align: center;">New</td>
+</tr>
+</tbody>
+</table>
+<p>In the read phase of transaction 75, a new version is created globally. Unlike SVOCC, making global modifications during the read phase of transaction 75 does not result in aborted reads or intermediate reads. This is because the system records the transaction ID, rather than a timestamp, in the <code>End</code> field of the old version and the <code>Begin</code> field of the new version. As a result, other transactions either ignore these in-progress versions or wait for transaction 75 to commit before they proceed with their own commits.</p>
+<p>Moreover, making global modifications offers an advantage: it reduces the transaction abortion rate, as will be demonstrated in a later section.</p>
+<h4 id="how-to-locate-a-specific-version-when-reading-an-object">How to Locate a Specific Version When Reading an Object</h4>
+<p>Essentially, a transaction locates a version by finding one where its begin timestamp falls between the <code>Begin</code> and <code>End</code> fields of that version. Building on this, <a target="_blank" rel="noopener" href="https://vldb.org/pvldb/vol5/p298_per-akelarson_vldb2012.pdf">High-Performance Concurrency Control Mechanisms for Main-Memory Databases</a> proposes speculative reads and speculative ignores when encountering a version where either the <code>Begin</code> or <code>End</code> field contains a transaction ID instead of a timestamp (indicating that an ongoing transaction is modifying this version). In this case, the system assumes the ongoing transaction will eventually commit and reads the modifications, creating a commit dependency on the ongoing transaction (i.e., the current transaction must wait for the ongoing transaction to commit before it can commit).</p>
+<p>More details can be found in Section 2.5, Version Visibility, of the original paper.</p>
+<h4 id="how-to-validate-and-commit">How to Validate and Commit</h4>
+<p>Essentially, <a target="_blank" rel="noopener" href="https://vldb.org/pvldb/vol5/p298_per-akelarson_vldb2012.pdf">High-Performance Concurrency Control Mechanisms for Main-Memory Databases</a> employs backward validation but optimizes it for in-memory storage:</p>
+<blockquote>
+<p>We use backward validation but optimize it for in-memory storage. Instead of validating a read set against the write sets of all other transactions, we simply check whether a version that was read is still visible as of the end of the transaction.</p>
+</blockquote>
+<p>This blog is designed to omit the discussion on scanning operations. However, if we were to address it, I believe the method <a target="_blank" rel="noopener" href="https://vldb.org/pvldb/vol5/p298_per-akelarson_vldb2012.pdf">High-Performance Concurrency Control Mechanisms for Main-Memory Databases</a> uses to detect anomalies in scanning operations is not entirely accurate. The approach of "T walks its ScanSet and repeats each scan looking for versions that came into existence during T's lifetime and are visible as of the end of the transaction" may not be sufficient. I believe that simply checking if the versions seen during scanning still exist at validation is insufficient. It is also necessary to check if any additional versions appear during validation that were not visible during the read phase. The method proposed in <a target="_blank" rel="noopener" href="https://pmg.csail.mit.edu/papers/adya-phd.pdf">Weak Consistency: A Generalized Theory and Optimistic Implementations for Distributed Transactions</a> might be more appropriate.</p>
+<h3 id="advantage-1-lower-abort-rate-for-read-transactions">Advantage 1: Lower Abort Rate for Read Transactions</h3>
+<p>Consider the following sequence of events:</p>
+<ol type="1">
+<li><span class="math inline">\(T_5\)</span> writes <span class="math inline">\(v_5\)</span>.</li>
+<li><span class="math inline">\(T_4\)</span> reads <span class="math inline">\(v\)</span>.</li>
+<li><span class="math inline">\(T_6\)</span> reads <span class="math inline">\(v\)</span>.</li>
+<li><span class="math inline">\(T_5\)</span> commits.</li>
+<li><span class="math inline">\(T_4\)</span> validates.</li>
+<li><span class="math inline">\(T_6\)</span> validates.</li>
+</ol>
+<p>In SVOCC, when <span class="math inline">\(T_5\)</span> writes <span class="math inline">\(v_5\)</span>, it can either appear in global modification or local modification:</p>
+<ul>
+<li>If <span class="math inline">\(v_5\)</span> appears in global modification, then <span class="math inline">\(T_4\)</span> reads <span class="math inline">\(v_5\)</span> and must abort.</li>
+<li>If <span class="math inline">\(v_5\)</span> is in local modification, then <span class="math inline">\(T_6\)</span> cannot read <span class="math inline">\(v_5\)</span> and must abort.</li>
+</ul>
+<p>Thus, in SVOCC, whether <span class="math inline">\(v_5\)</span> appears in global or local modification, at least one transaction will abort.</p>
+<p>In contrast, in MVOCC, <span class="math inline">\(v_5\)</span> can appear in global modification, and:</p>
+<ul>
+<li><span class="math inline">\(T_4\)</span> can read an older version, such as <span class="math inline">\(v_4\)</span>, and commit successfully.</li>
+<li><span class="math inline">\(T_6\)</span> can read <span class="math inline">\(v_5\)</span> and commit after <span class="math inline">\(T_5\)</span> commits.</li>
+</ul>
+<p>Therefore, MVOCC results in a lower transaction abort rate compared to SVOCC.</p>
+<h3 id="advantage-2-skipping-the-validation-phase-for-read-transactions">Advantage 2: Skipping the Validation Phase for Read Transactions</h3>
+<p>If a transaction only reads versions whose <code>Begin</code> and <code>End</code> fields are neither inf nor ongoing transaction IDs, and it does not perform any writes, it may be able to commit directly without undergoing a validation phase. For example, consider a transaction with a begin timestamp of 50 that reads the following data:</p>
+<ul>
+<li><code>Begin=10, End=100, Name=John, Amount=100</code></li>
+<li><code>Begin=30, End=100, Name=Larry, Amount=170</code></li>
+</ul>
+<table>
+<thead>
+<tr class="header">
+<th style="text-align: center;">Begin</th>
+<th style="text-align: center;">End</th>
+<th style="text-align: center;">Name</th>
+<th style="text-align: center;">Amount</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: center;">15</td>
+<td style="text-align: center;">inf</td>
+<td style="text-align: center;">Jane</td>
+<td style="text-align: center;">150</td>
+</tr>
+<tr class="even">
+<td style="text-align: center;">10</td>
+<td style="text-align: center;">20</td>
+<td style="text-align: center;">John</td>
+<td style="text-align: center;">100</td>
+</tr>
+<tr class="odd">
+<td style="text-align: center;">20</td>
+<td style="text-align: center;">100</td>
+<td style="text-align: center;">John</td>
+<td style="text-align: center;">110</td>
+</tr>
+<tr class="even">
+<td style="text-align: center;">100</td>
+<td style="text-align: center;">inf</td>
+<td style="text-align: center;">John</td>
+<td style="text-align: center;">130</td>
+</tr>
+<tr class="odd">
+<td style="text-align: center;">30</td>
+<td style="text-align: center;">100</td>
+<td style="text-align: center;">Larry</td>
+<td style="text-align: center;">170</td>
+</tr>
+<tr class="even">
+<td style="text-align: center;">100</td>
+<td style="text-align: center;">inf</td>
+<td style="text-align: center;">Larry</td>
+<td style="text-align: center;">150</td>
+</tr>
+</tbody>
+</table>
+<h2 id="reference">Reference</h2>
+<ul>
+<li><a target="_blank" rel="noopener" href="http://wwwlgis.informatik.uni-kl.de/cms/fileadmin/publications/1984/Hae84.InformationSystems.pdf">OBSERVATIONS ON OPTIMISTIC CONCURRENCY CONTROL SCHEMES</a></li>
+<li><a target="_blank" rel="noopener" href="https://pmg.csail.mit.edu/papers/adya-phd.pdf">Weak Consistency: A Generalized Theory and Optimistic Implementations for Distributed Transactions</a></li>
+<li><a target="_blank" rel="noopener" href="https://www.oreilly.com/library/view/transaction-processing/9780080519555/">Transaction Processing: Concepts and Techniques</a></li>
+<li><a target="_blank" rel="noopener" href="https://courses.cs.washington.edu/courses/csep552/18wi/papers/CSE550BHG-Ch7.pdf">Concurrency Control and Recovery in Database Systems</a></li>
+<li><a target="_blank" rel="noopener" href="https://www.eecs.harvard.edu/~htk/publication/1981-tods-kung-robinson.pdf">On Optimistic Methods for Concurrency Control</a></li>
+<li><a target="_blank" rel="noopener" href="https://vldb.org/pvldb/vol5/p298_per-akelarson_vldb2012.pdf">High-Performance Concurrency Control Mechanisms for Main-Memory Databases</a></li>
+</ul>
+
+                
+              </div>
+            
+            <hr/>
+            <div>
+              <div class="post-metas my-3">
+  
+    <div class="post-meta mr-3 d-flex align-items-center">
+      <i class="iconfont icon-category"></i>
+      
+
+<span class="category-chains">
+  
+  
+    
+      <span class="category-chain">
+        
+  <a href="/categories/Computer-Science/" class="category-chain-item">Computer Science</a>
+  
+  
+    <span>></span>
+    
+  <a href="/categories/Computer-Science/Serializability/" class="category-chain-item">Serializability</a>
+  
+  
+
+  
+
+      </span>
+    
+  
+</span>
+
+    </div>
+  
+  
+</div>
+
+
+              
+  
+
+  <div class="license-box my-3">
+    <div class="license-title">
+      <div>MVOCC vs. SVOCC: A Comprehensive Guide to Optimistic Concurrency Control</div>
+      <div>https://clcanny.github.io/2024/10/26/computer-science/serializability/mvocc-vs-svocc-a-comprehensive-guide-to-optimistic-concurrency-control/</div>
+    </div>
+    <div class="license-meta">
+      
+        <div class="license-meta-item">
+          <div>作者</div>
+          <div>JunBin</div>
+        </div>
+      
+      
+        <div class="license-meta-item license-meta-date">
+          <div>发布于</div>
+          <div>2024年10月26日</div>
+        </div>
+      
+      
+      
+        <div class="license-meta-item">
+          <div>许可协议</div>
+          <div>
+            
+              
+              
+                <a target="_blank" href="https://creativecommons.org/licenses/by/4.0/">
+                  <span class="hint--top hint--rounded" aria-label="BY - 署名">
+                    <i class="iconfont icon-by"></i>
+                  </span>
+                </a>
+              
+            
+          </div>
+        </div>
+      
+    </div>
+    <div class="license-icon iconfont"></div>
+  </div>
+
+
+
+              
+                <div class="post-prevnext my-3">
+                  <article class="post-prev col-6">
+                    
+                    
+                      <a href="/2025/07/30/computer-science/big-data/dfs/falconfs-trading-slow-directory-operations-for-one-hop-everything-else/" title="falconfs-trading-slow-directory-operations-for-one-hop-everything-else">
+                        <i class="iconfont icon-arrowleft"></i>
+                        <span class="hidden-mobile">falconfs-trading-slow-directory-operations-for-one-hop-everything-else</span>
+                        <span class="visible-mobile">上一篇</span>
+                      </a>
+                    
+                  </article>
+                  <article class="post-next col-6">
+                    
+                    
+                      <a href="/2024/09/22/computer-science/big-data/dfs/design-document-datanode-for-distributed-filesystem/" title="Design Document: DataNode for Distributed Filesystem">
+                        <span class="hidden-mobile">Design Document: DataNode for Distributed Filesystem</span>
+                        <span class="visible-mobile">下一篇</span>
+                        <i class="iconfont icon-arrowright"></i>
+                      </a>
+                    
+                  </article>
+                </div>
+              
+            </div>
+
+            
+          </article>
+        </div>
+      </div>
+    </div>
+
+    <div class="side-col d-none d-lg-block col-lg-2">
+      
+  <aside class="sidebar" style="margin-left: -1rem">
+    <div id="toc">
+  <p class="toc-header">
+    <i class="iconfont icon-list"></i>
+    <span>目录</span>
+  </p>
+  <div class="toc-body" id="toc-body"></div>
+</div>
+
+
+
+  </aside>
+
+
+    </div>
+  </div>
+</div>
+
+
+
+
+
+  
+
+
+
+  
+
+
+
+  
+
+
+
+  
+
+
+
+  
+
+
+  
+  
+
+
+
+
+
+  <script>
+  Fluid.utils.createScript('https://lib.baomitu.com/mermaid/8.14.0/mermaid.min.js', function() {
+    mermaid.initialize({"theme":"default"});
+
+    Fluid.events.registerRefreshCallback(function() {
+      if ('mermaid' in window) {
+        mermaid.init();
+      }
+    });
+  });
+</script>
+
+
+
+
+
+
+    
+
+    
+      <a id="scroll-top-button" aria-label="TOP" href="#" role="button">
+        <i class="iconfont icon-arrowup" aria-hidden="true"></i>
+      </a>
+    
+
+    
+      <div class="modal fade" id="modalSearch" tabindex="-1" role="dialog" aria-labelledby="ModalLabel"
+     aria-hidden="true">
+  <div class="modal-dialog modal-dialog-scrollable modal-lg" role="document">
+    <div class="modal-content">
+      <div class="modal-header text-center">
+        <h4 class="modal-title w-100 font-weight-bold">搜索</h4>
+        <button type="button" id="local-search-close" class="close" data-dismiss="modal" aria-label="Close">
+          <span aria-hidden="true">&times;</span>
+        </button>
+      </div>
+      <div class="modal-body mx-3">
+        <div class="md-form mb-5">
+          <input type="text" id="local-search-input" class="form-control validate">
+          <label data-error="x" data-success="v" for="local-search-input">关键词</label>
+        </div>
+        <div class="list-group" id="local-search-result"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+    
+
+    
+  </main>
+
+  <footer>
+    <div class="footer-inner">
+  
+    <div class="footer-content">
+       <a href="https://hexo.io" target="_blank" rel="nofollow noopener"><span>Hexo</span></a> <i class="iconfont icon-love"></i> <a href="https://github.com/fluid-dev/hexo-theme-fluid" target="_blank" rel="nofollow noopener"><span>Fluid</span></a> 
+    </div>
+  
+  
+  
+  
+</div>
+
+  </footer>
+
+  <!-- Scripts -->
+  
+  <script  src="https://lib.baomitu.com/nprogress/0.2.0/nprogress.min.js" ></script>
+  <link  rel="stylesheet" href="https://lib.baomitu.com/nprogress/0.2.0/nprogress.min.css" />
+
+  <script>
+    NProgress.configure({"showSpinner":false,"trickleSpeed":100})
+    NProgress.start()
+    window.addEventListener('load', function() {
+      NProgress.done();
+    })
+  </script>
+
+
+<script  src="https://lib.baomitu.com/jquery/3.6.0/jquery.min.js" ></script>
+<script  src="https://lib.baomitu.com/twitter-bootstrap/4.6.1/js/bootstrap.min.js" ></script>
+<script  src="/js/events.js" ></script>
+<script  src="/js/plugins.js" ></script>
+
+
+  <script  src="https://lib.baomitu.com/typed.js/2.0.12/typed.min.js" ></script>
+  <script>
+    (function (window, document) {
+      var typing = Fluid.plugins.typing;
+      var subtitle = document.getElementById('subtitle');
+      if (!subtitle || !typing) {
+        return;
+      }
+      var text = subtitle.getAttribute('data-typed-text');
+      
+        typing(text);
+      
+    })(window, document);
+  </script>
+
+
+
+
+  
+    <script  src="/js/img-lazyload.js" ></script>
+  
+
+
+
+
+  
+<script>
+  Fluid.utils.createScript('https://lib.baomitu.com/tocbot/4.18.2/tocbot.min.js', function() {
+    var toc = jQuery('#toc');
+    if (toc.length === 0 || !window.tocbot) { return; }
+    var boardCtn = jQuery('#board-ctn');
+    var boardTop = boardCtn.offset().top;
+
+    window.tocbot.init(Object.assign({
+      tocSelector     : '#toc-body',
+      contentSelector : '.markdown-body',
+      linkClass       : 'tocbot-link',
+      activeLinkClass : 'tocbot-active-link',
+      listClass       : 'tocbot-list',
+      isCollapsedClass: 'tocbot-is-collapsed',
+      collapsibleClass: 'tocbot-is-collapsible',
+      scrollSmooth    : true,
+      includeTitleTags: true,
+      headingsOffset  : -boardTop,
+    }, CONFIG.toc));
+    if (toc.find('.toc-list-item').length > 0) {
+      toc.css('visibility', 'visible');
+    }
+
+    Fluid.events.registerRefreshCallback(function() {
+      if ('tocbot' in window) {
+        tocbot.refresh();
+        var toc = jQuery('#toc');
+        if (toc.length === 0 || !tocbot) {
+          return;
+        }
+        if (toc.find('.toc-list-item').length > 0) {
+          toc.css('visibility', 'visible');
+        }
+      }
+    });
+  });
+</script>
+
+
+  <script src=https://lib.baomitu.com/clipboard.js/2.0.11/clipboard.min.js></script>
+
+  <script>Fluid.plugins.codeWidget();</script>
+
+
+  
+<script>
+  Fluid.utils.createScript('https://lib.baomitu.com/anchor-js/4.3.1/anchor.min.js', function() {
+    window.anchors.options = {
+      placement: CONFIG.anchorjs.placement,
+      visible  : CONFIG.anchorjs.visible
+    };
+    if (CONFIG.anchorjs.icon) {
+      window.anchors.options.icon = CONFIG.anchorjs.icon;
+    }
+    var el = (CONFIG.anchorjs.element || 'h1,h2,h3,h4,h5,h6').split(',');
+    var res = [];
+    for (var item of el) {
+      res.push('.markdown-body > ' + item.trim());
+    }
+    if (CONFIG.anchorjs.placement === 'left') {
+      window.anchors.options.class = 'anchorjs-link-left';
+    }
+    window.anchors.add(res.join(', '));
+
+    Fluid.events.registerRefreshCallback(function() {
+      if ('anchors' in window) {
+        anchors.removeAll();
+        var el = (CONFIG.anchorjs.element || 'h1,h2,h3,h4,h5,h6').split(',');
+        var res = [];
+        for (var item of el) {
+          res.push('.markdown-body > ' + item.trim());
+        }
+        if (CONFIG.anchorjs.placement === 'left') {
+          anchors.options.class = 'anchorjs-link-left';
+        }
+        anchors.add(res.join(', '));
+      }
+    });
+  });
+</script>
+
+
+  
+<script>
+  Fluid.utils.createScript('https://lib.baomitu.com/fancybox/3.5.7/jquery.fancybox.min.js', function() {
+    Fluid.plugins.fancyBox();
+  });
+</script>
+
+
+  <script>Fluid.plugins.imageCaption();</script>
+
+  
+      <script>
+        if (!window.MathJax) {
+          window.MathJax = {
+            tex    : {
+              inlineMath: { '[+]': [['$', '$']] }
+            },
+            loader : {
+              load: ['ui/lazy']
+            },
+            options: {
+              renderActions: {
+                insertedScript: [200, () => {
+                  document.querySelectorAll('mjx-container').forEach(node => {
+                    let target = node.parentNode;
+                    if (target.nodeName.toLowerCase() === 'li') {
+                      target.parentNode.classList.add('has-jax');
+                    }
+                  });
+                }, '', false]
+              }
+            }
+          };
+        } else {
+          MathJax.startup.document.state(0);
+          MathJax.texReset();
+          MathJax.typeset();
+          MathJax.typesetPromise();
+        }
+
+        Fluid.events.registerRefreshCallback(function() {
+          if ('MathJax' in window && MathJax.startup.document && typeof MathJax.startup.document.state === 'function') {
+            MathJax.startup.document.state(0);
+            MathJax.texReset();
+            MathJax.typeset();
+            MathJax.typesetPromise();
+          }
+        });
+      </script>
+    
+
+  <script  src="https://lib.baomitu.com/mathjax/3.2.2/es5/tex-mml-chtml.js" ></script>
+
+  <script  src="/js/local-search.js" ></script>
+
+
+
+
+
+<!-- 主题的启动项，将它保持在最底部 -->
+<!-- the boot of the theme, keep it at the bottom -->
+<script  src="/js/boot.js" ></script>
+
+
+  
+
+  <noscript>
+    <div class="noscript-warning">博客在允许 JavaScript 运行的环境下浏览效果更佳</div>
+  </noscript>
+</body>
+</html>

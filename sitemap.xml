@@ -1,0 +1,544 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  
+  <url>
+    <loc>https://clcanny.github.io/2025/07/31/computer-science/big-data/dfs/understanding-workloads-to-schedule-kvcache-a-methodological-approach/</loc>
+    
+    <lastmod>2025-07-31</lastmod>
+    
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  
+  <url>
+    <loc>https://clcanny.github.io/2025/07/30/computer-science/big-data/dfs/falconfs-trading-slow-directory-operations-for-one-hop-everything-else/</loc>
+    
+    <lastmod>2025-07-30</lastmod>
+    
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  
+  <url>
+    <loc>https://clcanny.github.io/2023/03/06/computer-science/serializability/paper-interpretation-weak-consistency-a-generalized-theory-and-optimistic-implementations-for-distributed-transactions/</loc>
+    
+    <lastmod>2025-07-30</lastmod>
+    
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  
+  <url>
+    <loc>https://clcanny.github.io/2024/10/26/computer-science/serializability/mvocc-vs-svocc-a-comprehensive-guide-to-optimistic-concurrency-control/</loc>
+    
+    <lastmod>2025-07-30</lastmod>
+    
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  
+  <url>
+    <loc>https://clcanny.github.io/2024/09/22/computer-science/big-data/dfs/design-document-datanode-for-distributed-filesystem/</loc>
+    
+    <lastmod>2025-07-30</lastmod>
+    
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  
+  <url>
+    <loc>https://clcanny.github.io/2024/08/21/computer-science/programming-language/c++/under-the-hood-implementing-system-clock-and-steady-clock/</loc>
+    
+    <lastmod>2025-03-02</lastmod>
+    
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  
+  <url>
+    <loc>https://clcanny.github.io/2024/08/27/computer-science/big-data/dfs/design-document-enhancing-inode-attributes-and-storage-policies-in-hdfs/</loc>
+    
+    <lastmod>2025-03-02</lastmod>
+    
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  
+  <url>
+    <loc>https://clcanny.github.io/2021/07/04/computer-science/tools/iptables-and-k8s/</loc>
+    
+    <lastmod>2024-10-30</lastmod>
+    
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  
+  <url>
+    <loc>https://clcanny.github.io/2020/06/14/computer-science/tools/vim/useful-vim-plugins/</loc>
+    
+    <lastmod>2024-10-30</lastmod>
+    
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  
+  <url>
+    <loc>https://clcanny.github.io/google05435c427f494d89.html</loc>
+    
+    <lastmod>2024-10-30</lastmod>
+    
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  
+  <url>
+    <loc>https://clcanny.github.io/categories/index.html</loc>
+    
+    <lastmod>2024-10-30</lastmod>
+    
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  
+  <url>
+    <loc>https://clcanny.github.io/2020/11/24/computer-science/dynamic-linking/introduction-to-elf-file/</loc>
+    
+    <lastmod>2024-10-30</lastmod>
+    
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  
+  <url>
+    <loc>https://clcanny.github.io/2020/11/21/computer-science/dynamic-linking/relocation-across-files/</loc>
+    
+    <lastmod>2024-10-30</lastmod>
+    
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  
+  <url>
+    <loc>https://clcanny.github.io/2020/12/03/computer-science/dynamic-linking/relocation-types/</loc>
+    
+    <lastmod>2024-10-30</lastmod>
+    
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  
+  <url>
+    <loc>https://clcanny.github.io/2020/11/20/computer-science/dynamic-linking/search-symbols-in-one-binary/</loc>
+    
+    <lastmod>2024-10-30</lastmod>
+    
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  
+  <url>
+    <loc>https://clcanny.github.io/2020/11/18/computer-science/dynamic-linking/symbol-search-order/</loc>
+    
+    <lastmod>2024-10-30</lastmod>
+    
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  
+  <url>
+    <loc>https://clcanny.github.io/2021/01/30/computer-science/dynamic-linking/the-first-three-items-of-got/</loc>
+    
+    <lastmod>2024-10-30</lastmod>
+    
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  
+  <url>
+    <loc>https://clcanny.github.io/2022/01/15/computer-science/memory-analysis/jemalloc-size-classes/</loc>
+    
+    <lastmod>2024-10-30</lastmod>
+    
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  
+  <url>
+    <loc>https://clcanny.github.io/2020/04/24/computer-science/memory-analysis/mmap-analyser-v1/</loc>
+    
+    <lastmod>2024-10-30</lastmod>
+    
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  
+  <url>
+    <loc>https://clcanny.github.io/2020/02/17/computer-science/memory-analysis/tcmalloc-in-toma/</loc>
+    
+    <lastmod>2024-10-30</lastmod>
+    
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  
+  <url>
+    <loc>https://clcanny.github.io/2020/06/19/computer-science/performance-analysis/perf-without-programming/</loc>
+    
+    <lastmod>2024-10-30</lastmod>
+    
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  
+  <url>
+    <loc>https://clcanny.github.io/2023/01/05/computer-science/serializability/paper-interpretation-a-critique-of-ansi-sql-solation-levels/</loc>
+    
+    <lastmod>2024-10-30</lastmod>
+    
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  
+  <url>
+    <loc>https://clcanny.github.io/2023/12/10/computer-science/serializability/paper-interpretation-building-consistent-transactions-with-inconsistent-replication/</loc>
+    
+    <lastmod>2024-10-30</lastmod>
+    
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  
+  <url>
+    <loc>https://clcanny.github.io/2020/09/13/computer-science/programming-language/c++/a-simple-example-of-antlr4-and-c++/</loc>
+    
+    <lastmod>2024-10-30</lastmod>
+    
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  
+  <url>
+    <loc>https://clcanny.github.io/2023/01/03/computer-science/programming-language/c++/callback-to-c-20-coroutine/</loc>
+    
+    <lastmod>2024-10-30</lastmod>
+    
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  
+  <url>
+    <loc>https://clcanny.github.io/2022/07/30/computer-science/programming-language/c++/explore-c++-20-coroutine/</loc>
+    
+    <lastmod>2024-10-30</lastmod>
+    
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  
+  <url>
+    <loc>https://clcanny.github.io/2020/02/16/computer-science/programming-language/c++/string-literal-in-cpp11/</loc>
+    
+    <lastmod>2024-10-30</lastmod>
+    
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  
+  <url>
+    <loc>https://clcanny.github.io/2019/07/16/computer-science/programming-language/c++/useful-and-easy-new-features-of-cpp11/</loc>
+    
+    <lastmod>2024-10-30</lastmod>
+    
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  
+  <url>
+    <loc>https://clcanny.github.io/2020/10/24/computer-science/programming-language/java/build-openjdk/</loc>
+    
+    <lastmod>2024-10-30</lastmod>
+    
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  
+  <url>
+    <loc>https://clcanny.github.io/2023/07/24/computer-science/programming-language/tla+/implementing-multi-decree-parliament-in-tla/</loc>
+    
+    <lastmod>2024-10-30</lastmod>
+    
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  
+  <url>
+    <loc>https://clcanny.github.io/2023/06/26/computer-science/programming-language/tla+/the-beginner-s-guide-to-tla+-specifying-and-verifying-distributed-systems/</loc>
+    
+    <lastmod>2024-10-30</lastmod>
+    
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  
+  <url>
+    <loc>https://clcanny.github.io/2022/10/05/computer-science/consensus/paper-interpretation-the-part-time-parliament/</loc>
+    
+    <lastmod>2024-10-30</lastmod>
+    
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  
+  <url>
+    <loc>https://clcanny.github.io/2023/08/11/computer-science/consensus/paper-interpretation-there-is-more-consensus-in-egalitarian-parliaments/</loc>
+    
+    <lastmod>2024-10-30</lastmod>
+    
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  
+  <url>
+    <loc>https://clcanny.github.io/2024/02/02/computer-science/consensus/understanding-raft-within-the-context-of-a-generalized-solution-to-distributed-consensus/</loc>
+    
+    <lastmod>2024-10-30</lastmod>
+    
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  
+  <url>
+    <loc>https://clcanny.github.io/2021/03/12/computer-science/dynamic-linking/about-global-strings/</loc>
+    
+    <lastmod>2024-10-30</lastmod>
+    
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  
+  <url>
+    <loc>https://clcanny.github.io/2020/12/22/computer-science/dynamic-linking/compatibility-of-hash-tables/</loc>
+    
+    <lastmod>2024-10-30</lastmod>
+    
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  
+  <url>
+    <loc>https://clcanny.github.io/2020/11/15/computer-science/dynamic-linking/init-order/</loc>
+    
+    <lastmod>2024-10-30</lastmod>
+    
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  
+  <url>
+    <loc>https://clcanny.github.io/2021/03/29/computer-science/columnar-storage/dremel/</loc>
+    
+    <lastmod>2024-10-30</lastmod>
+    
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  
+  <url>
+    <loc>https://clcanny.github.io/2021/03/31/computer-science/columnar-storage/get-started-with-parquet/</loc>
+    
+    <lastmod>2024-10-30</lastmod>
+    
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  
+  <url>
+    <loc>https://clcanny.github.io/2023/11/04/computer-science/consensus/paper-interpretation-a-generalised-solution-to-distributed-consensus/</loc>
+    
+    <lastmod>2024-10-30</lastmod>
+    
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  
+  <url>
+    <loc>https://clcanny.github.io/2023/07/30/computer-science/consensus/paper-interpretation-fast-paxos/</loc>
+    
+    <lastmod>2024-10-30</lastmod>
+    
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  
+  <url>
+    <loc>https://clcanny.github.io/2023/07/29/computer-science/consensus/paper-interpretation-flexible-paxos-quorum-intersection-revisited/</loc>
+    
+    <lastmod>2024-10-30</lastmod>
+    
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  
+  <url>
+    <loc>https://clcanny.github.io/2021/05/23/computer-science/big-data/data-lake/delta-lake/</loc>
+    
+    <lastmod>2024-10-30</lastmod>
+    
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  
+  <url>
+    <loc>https://clcanny.github.io/2020/05/03/computer-science/big-data/spark/spark-useful-tips/</loc>
+    
+    <lastmod>2024-10-30</lastmod>
+    
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  
+
+  <url>
+    <loc>https://clcanny.github.io/</loc>
+    <lastmod>2025-07-31</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>1.0</priority>
+  </url>
+
+  
+
+  
+  <url>
+    <loc>https://clcanny.github.io/categories/Computer-Science/</loc>
+    <lastmod>2025-07-31</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.2</priority>
+  </url>
+  
+  <url>
+    <loc>https://clcanny.github.io/categories/Computer-Science/Consensus/</loc>
+    <lastmod>2025-07-31</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.2</priority>
+  </url>
+  
+  <url>
+    <loc>https://clcanny.github.io/categories/Computer-Science/Big-Data/</loc>
+    <lastmod>2025-07-31</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.2</priority>
+  </url>
+  
+  <url>
+    <loc>https://clcanny.github.io/categories/Computer-Science/Dynamic-Linking/</loc>
+    <lastmod>2025-07-31</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.2</priority>
+  </url>
+  
+  <url>
+    <loc>https://clcanny.github.io/categories/Computer-Science/Big-Data/Columnar-Storage/</loc>
+    <lastmod>2025-07-31</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.2</priority>
+  </url>
+  
+  <url>
+    <loc>https://clcanny.github.io/categories/Computer-Science/Memory-Analysis/</loc>
+    <lastmod>2025-07-31</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.2</priority>
+  </url>
+  
+  <url>
+    <loc>https://clcanny.github.io/categories/Computer-Science/Performance-Analysis/</loc>
+    <lastmod>2025-07-31</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.2</priority>
+  </url>
+  
+  <url>
+    <loc>https://clcanny.github.io/categories/Computer-Science/Serializability/</loc>
+    <lastmod>2025-07-31</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.2</priority>
+  </url>
+  
+  <url>
+    <loc>https://clcanny.github.io/categories/Computer-Science/Tools/</loc>
+    <lastmod>2025-07-31</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.2</priority>
+  </url>
+  
+  <url>
+    <loc>https://clcanny.github.io/categories/Computer-Science/Big-Data/Data-Lake/</loc>
+    <lastmod>2025-07-31</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.2</priority>
+  </url>
+  
+  <url>
+    <loc>https://clcanny.github.io/categories/Computer-Science/Big-Data/DFS/</loc>
+    <lastmod>2025-07-31</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.2</priority>
+  </url>
+  
+  <url>
+    <loc>https://clcanny.github.io/categories/Computer-Science/Big-Data/Spark/</loc>
+    <lastmod>2025-07-31</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.2</priority>
+  </url>
+  
+  <url>
+    <loc>https://clcanny.github.io/categories/Computer-Science/Programming-Language/</loc>
+    <lastmod>2025-07-31</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.2</priority>
+  </url>
+  
+  <url>
+    <loc>https://clcanny.github.io/categories/Computer-Science/Memory-Analysis/Jemalloc/</loc>
+    <lastmod>2025-07-31</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.2</priority>
+  </url>
+  
+  <url>
+    <loc>https://clcanny.github.io/categories/Computer-Science/Tools/Network/</loc>
+    <lastmod>2025-07-31</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.2</priority>
+  </url>
+  
+  <url>
+    <loc>https://clcanny.github.io/categories/Computer-Science/Programming-Language/C/</loc>
+    <lastmod>2025-07-31</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.2</priority>
+  </url>
+  
+  <url>
+    <loc>https://clcanny.github.io/categories/Computer-Science/Programming-Language/Java/</loc>
+    <lastmod>2025-07-31</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.2</priority>
+  </url>
+  
+  <url>
+    <loc>https://clcanny.github.io/categories/Computer-Science/Programming-Language/TLA/</loc>
+    <lastmod>2025-07-31</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.2</priority>
+  </url>
+  
+  <url>
+    <loc>https://clcanny.github.io/categories/Computer-Science/Tools/Vim/</loc>
+    <lastmod>2025-07-31</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.2</priority>
+  </url>
+  
+</urlset>

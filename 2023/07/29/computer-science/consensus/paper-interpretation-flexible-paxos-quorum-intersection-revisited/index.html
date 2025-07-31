@@ -1,0 +1,768 @@
+
+
+<!DOCTYPE html>
+<html lang="zh-CN" data-default-color-scheme=auto>
+
+
+
+<head>
+  <meta charset="UTF-8">
+  <link rel="apple-touch-icon" sizes="76x76" href="/img/fluid.png">
+  <link rel="icon" href="/img/fluid.png">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, shrink-to-fit=no">
+  <meta http-equiv="x-ua-compatible" content="ie=edge">
+  
+  <meta name="theme-color" content="#2f4154">
+  <meta name="author" content="JunBin">
+  <meta name="keywords" content="">
+  
+    <meta name="description" content="Introduction The steps outlined in the &quot;The Basic Protocol&quot; section of The Part-Time Parliament are as follows:  Priest \(p\) chooses a new ballot number \(b\) greater than \(\operatorname{lastTried}(">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Paper Interpretation - Flexible Paxos: Quorum intersection revisited">
+<meta property="og:url" content="https://clcanny.github.io/2023/07/29/computer-science/consensus/paper-interpretation-flexible-paxos-quorum-intersection-revisited/index.html">
+<meta property="og:site_name" content="On The Road">
+<meta property="og:description" content="Introduction The steps outlined in the &quot;The Basic Protocol&quot; section of The Part-Time Parliament are as follows:  Priest \(p\) chooses a new ballot number \(b\) greater than \(\operatorname{lastTried}(">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="http://junbin-hexo-img.oss-cn-beijing.aliyuncs.com/paper-interpretation-flexible-paxos-quorum-intersection-revisited/grid-quorums.png">
+<meta property="article:published_time" content="2023-07-29T11:43:09.000Z">
+<meta property="article:modified_time" content="2024-10-30T15:47:28.507Z">
+<meta property="article:author" content="JunBin">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="http://junbin-hexo-img.oss-cn-beijing.aliyuncs.com/paper-interpretation-flexible-paxos-quorum-intersection-revisited/grid-quorums.png">
+  
+  
+  
+  <title>Paper Interpretation - Flexible Paxos: Quorum intersection revisited - On The Road</title>
+
+  <link  rel="stylesheet" href="https://lib.baomitu.com/twitter-bootstrap/4.6.1/css/bootstrap.min.css" />
+
+
+
+  <link  rel="stylesheet" href="https://lib.baomitu.com/github-markdown-css/4.0.0/github-markdown.min.css" />
+
+  <link  rel="stylesheet" href="https://lib.baomitu.com/hint.css/2.7.0/hint.min.css" />
+
+  <link  rel="stylesheet" href="https://lib.baomitu.com/fancybox/3.5.7/jquery.fancybox.min.css" />
+
+
+
+<!-- 主题依赖的图标库，不要自行修改 -->
+<!-- Do not modify the link that theme dependent icons -->
+
+<link rel="stylesheet" href="//at.alicdn.com/t/font_1749284_hj8rtnfg7um.css">
+
+
+
+<link rel="stylesheet" href="//at.alicdn.com/t/font_1736178_lbnruvf0jn.css">
+
+
+<link  rel="stylesheet" href="/css/main.css" />
+
+
+  <link id="highlight-css" rel="stylesheet" href="/css/highlight.css" />
+  
+    <link id="highlight-css-dark" rel="stylesheet" href="/css/highlight-dark.css" />
+  
+
+
+
+
+  <script id="fluid-configs">
+    var Fluid = window.Fluid || {};
+    Fluid.ctx = Object.assign({}, Fluid.ctx)
+    var CONFIG = {"hostname":"clcanny.github.io","root":"/","version":"1.9.4","typing":{"enable":true,"typeSpeed":70,"cursorChar":"_","loop":false,"scope":[]},"anchorjs":{"enable":true,"element":"h1,h2,h3,h4,h5,h6","placement":"left","visible":"hover","icon":""},"progressbar":{"enable":true,"height_px":3,"color":"#29d","options":{"showSpinner":false,"trickleSpeed":100}},"code_language":{"enable":true,"default":"TEXT"},"copy_btn":true,"image_caption":{"enable":true},"image_zoom":{"enable":true,"img_url_replace":["",""]},"toc":{"enable":true,"placement":"right","headingSelector":"h1,h2,h3,h4,h5,h6","collapseDepth":0},"lazyload":{"enable":true,"loading_img":"/img/loading.gif","onlypost":false,"offset_factor":2},"web_analytics":{"enable":false,"follow_dnt":true,"baidu":null,"google":null,"gtag":null,"tencent":{"sid":null,"cid":null},"woyaola":null,"cnzz":null,"leancloud":{"app_id":null,"app_key":null,"server_url":null,"path":"window.location.pathname","ignore_local":false}},"search_path":"/local-search.xml"};
+
+    if (CONFIG.web_analytics.follow_dnt) {
+      var dntVal = navigator.doNotTrack || window.doNotTrack || navigator.msDoNotTrack;
+      Fluid.ctx.dnt = dntVal && (dntVal.startsWith('1') || dntVal.startsWith('yes') || dntVal.startsWith('on'));
+    }
+  </script>
+  <script  src="/js/utils.js" ></script>
+  <script  src="/js/color-schema.js" ></script>
+  
+
+
+  
+<meta name="generator" content="Hexo 7.0.0-rc1"></head>
+
+
+<body>
+  
+
+  <header>
+    
+
+<div class="header-inner" style="height: 70vh;">
+  <nav id="navbar" class="navbar fixed-top  navbar-expand-lg navbar-dark scrolling-navbar">
+  <div class="container">
+    <a class="navbar-brand" href="/">
+      <strong>Fluid</strong>
+    </a>
+
+    <button id="navbar-toggler-btn" class="navbar-toggler" type="button" data-toggle="collapse"
+            data-target="#navbarSupportedContent"
+            aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
+      <div class="animated-icon"><span></span><span></span><span></span></div>
+    </button>
+
+    <!-- Collapsible content -->
+    <div class="collapse navbar-collapse" id="navbarSupportedContent">
+      <ul class="navbar-nav ml-auto text-center">
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/">
+                <i class="iconfont icon-home-fill"></i>
+                <span>首页</span>
+              </a>
+            </li>
+          
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/archives/">
+                <i class="iconfont icon-archive-fill"></i>
+                <span>归档</span>
+              </a>
+            </li>
+          
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/categories/">
+                <i class="iconfont icon-category-fill"></i>
+                <span>分类</span>
+              </a>
+            </li>
+          
+        
+        
+          <li class="nav-item" id="search-btn">
+            <a class="nav-link" target="_self" href="javascript:;" data-toggle="modal" data-target="#modalSearch" aria-label="Search">
+              <i class="iconfont icon-search"></i>
+            </a>
+          </li>
+          
+        
+        
+          <li class="nav-item" id="color-toggle-btn">
+            <a class="nav-link" target="_self" href="javascript:;" aria-label="Color Toggle">
+              <i class="iconfont icon-dark" id="color-toggle-icon"></i>
+            </a>
+          </li>
+        
+      </ul>
+    </div>
+  </div>
+</nav>
+
+  
+
+<div id="banner" class="banner" parallax=true
+     style="background: url('/img/default.png') no-repeat center center; background-size: cover;">
+  <div class="full-bg-img">
+    <div class="mask flex-center" style="background-color: rgba(0, 0, 0, 0.3)">
+      <div class="banner-text text-center fade-in-up">
+        <div class="h2">
+          
+            <span id="subtitle" data-typed-text="Paper Interpretation - Flexible Paxos: Quorum intersection revisited"></span>
+          
+        </div>
+
+        
+          
+  <div class="mt-3">
+    
+    
+      <span class="post-meta">
+        <i class="iconfont icon-date-fill" aria-hidden="true"></i>
+        <time datetime="2023-07-29 19:43" pubdate>
+          2023年7月29日 晚上
+        </time>
+      </span>
+    
+  </div>
+
+  <div class="mt-1">
+    
+      <span class="post-meta mr-2">
+        <i class="iconfont icon-chart"></i>
+        
+          11k 字
+        
+      </span>
+    
+
+    
+      <span class="post-meta mr-2">
+        <i class="iconfont icon-clock-fill"></i>
+        
+        
+        
+          92 分钟
+        
+      </span>
+    
+
+    
+    
+  </div>
+
+
+        
+      </div>
+
+      
+    </div>
+  </div>
+</div>
+
+</div>
+
+  </header>
+
+  <main>
+    
+      
+
+<div class="container-fluid nopadding-x">
+  <div class="row nomargin-x">
+    <div class="side-col d-none d-lg-block col-lg-2">
+      
+
+    </div>
+
+    <div class="col-lg-8 nopadding-x-md">
+      <div class="container nopadding-x-md" id="board-ctn">
+        <div id="board">
+          <article class="post-content mx-auto">
+            <!-- SEO header -->
+            <h1 style="display: none">Paper Interpretation - Flexible Paxos: Quorum intersection revisited</h1>
+            
+            
+              <div class="markdown-body">
+                
+                <h2 id="introduction">Introduction</h2>
+<p>The steps outlined in the "The Basic Protocol" section of <a target="_blank" rel="noopener" href="https://www.microsoft.com/en-us/research/uploads/prod/2016/12/The-Part-Time-Parliament.pdf">The Part-Time Parliament</a> are as follows:</p>
+<ol type="1">
+<li>Priest <span class="math inline">\(p\)</span> chooses a new ballot number <span class="math inline">\(b\)</span> greater than <span class="math inline">\(\operatorname{lastTried}(p)\)</span>,sets <span class="math inline">\(\operatorname{lastTried}(p)\)</span> to <span class="math inline">\(b\)</span>, and sends a <span class="math inline">\(\operatorname{NextBallot}(b)\)</span> message to some set of priests. Please notice that the quorum <span class="math inline">\(Q\)</span> has not yet been determined.</li>
+<li>Upon receipt of a <span class="math inline">\(\operatorname{NextBallot}(b)\)</span> message from <span class="math inline">\(p\)</span> with <span class="math inline">\(b &gt; \operatorname{nextBal}(q)\)</span>, priest <span class="math inline">\(q\)</span> sets <span class="math inline">\(\operatorname{nextBal}(q)\)</span> to <span class="math inline">\(b\)</span> and sends a <span class="math inline">\(\operatorname{LastVote}(b, v)\)</span> message to <span class="math inline">\(p\)</span>, where <span class="math inline">\(v\)</span> equals <span class="math inline">\(\operatorname{prevVote}(q)\)</span>. A <span class="math inline">\(\operatorname{NextBallot}(b)\)</span> message is ignored if <span class="math inline">\(b \le \operatorname{nextBal}(q)\)</span>.</li>
+<li>After receiving a <span class="math inline">\(\operatorname{LastVote}(b, v)\)</span> message from every priest in <strong>some majority set</strong> <span class="math inline">\(Q\)</span>, where <span class="math inline">\(b = \operatorname{lastTried}(p)\)</span>, priest <span class="math inline">\(p\)</span> initiates a new ballot with number <span class="math inline">\(b\)</span>, quorum <span class="math inline">\(Q\)</span>, and decree <span class="math inline">\(d\)</span>, where <span class="math inline">\(d\)</span> is chosen to satisfy <span class="math inline">\(\operatorname{B3}\)</span>. He then sends a <span class="math inline">\(\operatorname{BeginBallot}(b, d)\)</span> message to <strong>every</strong> priest in <span class="math inline">\(Q\)</span>. (If <span class="math inline">\(b \neq \operatorname{lastTried}(p)\)</span>, the <span class="math inline">\(\operatorname{LastVote}(b, v)\)</span> message is a response to a <strong>previous</strong> <span class="math inline">\(\operatorname{NextBallot}(b)\)</span> conducted by priest <span class="math inline">\(p\)</span>; so, priest <span class="math inline">\(p\)</span> just ignores it.)</li>
+<li>Upon receipt of a <span class="math inline">\(\operatorname{BeginBallot}(b, d)\)</span> message with <span class="math inline">\(b = \operatorname{nextBal}(q)\)</span>, priest <span class="math inline">\(q\)</span> casts his vote in ballot number <span class="math inline">\(b\)</span>, sets <span class="math inline">\(\operatorname{prevVote}(q)\)</span> to this vote, and sends a <span class="math inline">\(\operatorname{Voted}(b, q)\)</span> message to <span class="math inline">\(p\)</span>. (A <span class="math inline">\(\operatorname{BeginBallot}(b, d)\)</span> message is ignored if <span class="math inline">\(b \neq \operatorname{nextBal}(q)\)</span>.)</li>
+<li>If <span class="math inline">\(p\)</span> has received a <span class="math inline">\(\operatorname{Voted}(b, q)\)</span> message from <strong>every</strong> priest <span class="math inline">\(q\)</span> in <span class="math inline">\(Q\)</span> (the quorum for ballot number <span class="math inline">\(b\)</span>), where <span class="math inline">\(b = \operatorname{lastTried}(p)\)</span>, then he writes <span class="math inline">\(d\)</span> (the decree of that ballot) in his ledger and sends a <span class="math inline">\(\operatorname{Success}(d)\)</span> message to <strong>every</strong> priest.</li>
+<li>Upon receiving a <span class="math inline">\(\operatorname{Success}(d)\)</span> message, a priest enters decree <span class="math inline">\(d\)</span> in his ledger.</li>
+</ol>
+<p>The steps outlined in the "Paxos" section of <a target="_blank" rel="noopener" href="https://arxiv.org/pdf/1608.06696v1.pdf">Flexible Paxos: Quorum intersection revisited</a> are as follows:</p>
+<ol type="1">
+<li>Phase 1 - Prepare &amp; Promise
+<ol type="1">
+<li>A proposer selects a unique proposal number <span class="math inline">\(p\)</span> and sends <span class="math inline">\(\operatorname{prepare}(p)\)</span> to the acceptors.</li>
+<li>Each acceptor receives <span class="math inline">\(\operatorname{prepare}(p)\)</span>. If <span class="math inline">\(p\)</span> is the highest proposal number promised, then <span class="math inline">\(p\)</span> is written to persistent storage and the acceptor replies with <span class="math inline">\(\operatorname{promise}(p&#39;, v&#39;)\)</span>. <span class="math inline">\((p&#39;, v&#39;)\)</span> is the last accepted proposal (if present) where <span class="math inline">\(p&#39;\)</span> is the proposal number and <span class="math inline">\(v&#39;\)</span> is the corresponding proposed value.</li>
+<li>Once the proposer receives promise from the majority of acceptors, it proceeds to phase two. Otherwise, it may try again with higher proposal number.</li>
+</ol></li>
+<li>Phase 2 - Propose &amp; Accept
+<ol type="1">
+<li>The proposer must now select a value <span class="math inline">\(v\)</span>. If more than one proposal was returned in phase 1 then it must choose the value associated with the highest proposal number. If no proposals were returned, then the proposer can choose its own value for <span class="math inline">\(v\)</span>. The proposer then sends <span class="math inline">\(\operatorname{propose}(p, v)\)</span> to the acceptors.</li>
+<li>Each acceptor receives a <span class="math inline">\(\operatorname{propose}(p, v)\)</span>. If <span class="math inline">\(p\)</span> is equal to or greater than the highest promised proposal number, then the promised proposal number and accepted proposal is written to persistent storage and the acceptor replies with <span class="math inline">\(\operatorname{accept}(p)\)</span>.</li>
+<li>Once the proposer receives <span class="math inline">\(\operatorname{accept}(p)\)</span> from the majority of acceptors, it learns that the value <span class="math inline">\(v\)</span> is decided. Otherwise, it may try phase 1 again with a higher proposal number.</li>
+</ol></li>
+</ol>
+<p>When comparing the steps outlined in the "The Basic Protocol" section of "The Part-Time Parliament" with those detailed in the "Paxos" section of "Flexible Paxos: Quorum intersection revisited", we observe that Flexible Paxos introduces a significant modification to the classical Paxos.</p>
+<ul>
+<li>Flexible Paxos does not stress that the majority of acceptors who responded with <span class="math inline">\(\operatorname{accept}(p)\)</span> to the proposer must be the exact same majority of acceptors who sent <span class="math inline">\(\operatorname{promise}(p&#39;, v&#39;)\)</span> to the proposer.</li>
+<li>Flexible Paxos permits acceptors to respond to <span class="math inline">\(\operatorname{propose}(p, v)\)</span> when <span class="math inline">\(p\)</span> is greater than the highest promised proposal number.</li>
+<li>Flexible Paxos divides the third step of the Classical Paxos into two distinct components, and integrates them into the first and second phases respectively.</li>
+</ul>
+<p>As outlined in "Flexible Paxos: Quorum Intersection Revisited", there are two quorums in the specified version of Classical Paxos, existing respectively in phase one and phase two. This context clarifies Heidi Howard's assertion: "In this paper, we weaken the requirement in the original protocol that all quorums intersect to require only that quorums from different phases intersect. Within each of the phases of Paxos, it is safe to use disjoint quorums and majority quorums are not necessary."</p>
+<h2 id="fpaxos">FPaxos</h2>
+<p>We will differentiate between the quorum used by the first phase of Paxos, which we will refer to as <span class="math inline">\(Q1\)</span> and the quorum for second phase, referred to as <span class="math inline">\(Q2\)</span>. We observe that it is only necessary for phase 1 quorums (<span class="math inline">\(Q1\)</span>) and phase 2 quorums (<span class="math inline">\(Q2\)</span>) to intersect. There is no need to require that <span class="math inline">\(Q1\)</span>'s intersect with each other nor <span class="math inline">\(Q2\)</span>'s intersect with each other.</p>
+<p>Using this observation, we can make use of many non-intersecting quorum systems. In its most straight-forward application, we can simply decrease the size of <span class="math inline">\(Q2\)</span> at the cost of increasing the size of <span class="math inline">\(Q1\)</span> quorums. Notice that the second phase of Paxos (replication) is far more frequent than the first phase (leader election) in Multi-Paxos. Therefore, reducing the size of <span class="math inline">\(Q2\)</span> decreases latency in the common case by reducing the number of acceptors required to participate in replication, improves system tolerance to slow acceptors and allows us to use disjoint sets of acceptors for higher throughput. The price we pay for this is requiring more acceptors to participate when we need to establish a new leader. Whilst electing a new leader is a rare event in a stable system, if sufficient failures occur that we cannot form a <span class="math inline">\(Q1\)</span> quorum, then we cannot make progress until some of the acceptors recover.</p>
+<h2 id="implications">Implications</h2>
+<h3 id="majority-quorums">Majority quorums</h3>
+<p>Currently, Paxos requires us to use quorums of size <span class="math inline">\(n / 2 + 1\)</span> when the number of acceptors <span class="math inline">\(n\)</span> is even. Using our observation, we can safely reduce the size of <span class="math inline">\(Q2\)</span> by one from <span class="math inline">\(n / 2 + 1\)</span> to <span class="math inline">\(n / 2\)</span> and keep <span class="math inline">\(Q1\)</span> the same.</p>
+<h3 id="simple-quorums">Simple quorums</h3>
+<p>We will use the term simple quorums to refer to a quorum systems where any acceptor is able to participate in a quorum and each acceptor's participation is counted equally. Simple quorums are a straightforward generalization of majority quorums.</p>
+<p>Therefore, FPaxos with simple quorums must require that <span class="math inline">\(|Q1| + |Q2| &gt; N\)</span>. We know that in practice the second phase is much more common than the first phase so we allow <span class="math inline">\(|Q2| &lt; N / 2\)</span> and increase the size of <span class="math inline">\(Q1\)</span> accordingly. For a given size of <span class="math inline">\(Q2\)</span> and number of acceptors <span class="math inline">\(N\)</span>, then minimum size of our first phase quorum is <span class="math inline">\(|Q1| = N - |Q2| + 1\)</span>. FPaxos will always be able to handle up to <span class="math inline">\(|Q2| - 1\)</span> failures. However, if between <span class="math inline">\(|Q2|\)</span> to <span class="math inline">\(N - |Q2|\)</span> failures occur, we can continue replication <strong>until a new leader is required</strong>.</p>
+<h3 id="grid-quorums">Grid quorums</h3>
+<p>The key limitation of simple quorums is that reducing the size of the <span class="math inline">\(Q2\)</span> requires a corresponding increase in the size of <span class="math inline">\(Q1\)</span> to continue to ensure intersection. Grid quorums are an example of an alternative quorum system. Grid quorums can reduce the size of <span class="math inline">\(Q1\)</span> by offering a different trade off between quorum sizes, flexibility when choosing quorums and failure tolerance.</p>
+<p>Grid quorum schemes arrange the <span class="math inline">\(N\)</span> nodes into a matrix of <span class="math inline">\(N1\)</span> columns by <span class="math inline">\(N2\)</span> rows, where <span class="math inline">\(N1 × N2 = N\)</span> and quorums are composed of rows and columns. As with many other quorum systems, grid quorums restrict which combinations of acceptors can form valid quorums. This restriction allows us to reduce the size of quorums whilst still ensuring that they intersect.</p>
+<ul>
+<li>Paxos requires that all quorums intersect thus one suitable grid scheme would require one row and one column to form a quorum. Figure 3a shows an example <span class="math inline">\(Q1\)</span> quorum and <span class="math inline">\(Q2\)</span> quorum using this scheme.</li>
+<li>In FPaxos, we can safely reduce our quorums to one row of size <span class="math inline">\(N1\)</span> for <span class="math inline">\(Q1\)</span> and one column of size <span class="math inline">\(N2\)</span> for <span class="math inline">\(Q2\)</span>, examples are shown in Figure 3b.</li>
+</ul>
+<figure>
+<img src="http://junbin-hexo-img.oss-cn-beijing.aliyuncs.com/paper-interpretation-flexible-paxos-quorum-intersection-revisited/grid-quorums.png" srcset="/img/loading.gif" lazyload alt="" /><figcaption>Figure 3: Example of using a 5 by 4 grid to form quorums for a system of 20 acceptors</figcaption>
+</figure>
+<h2 id="safety">Safety</h2>
+<p>Heidi Howard demonstrates the safety of Flexible Paxos through proof by contradiction and classification discussion. This approach is notably easier to comprehend and retain compared to the proof of the single-decree Synod protocol.</p>
+<p><strong>Theorem 2.</strong> If value <span class="math inline">\(v\)</span> is decided with proposal number <span class="math inline">\(p\)</span> then for any message <span class="math inline">\(\operatorname{propose}(p&#39;, v&#39;)\)</span> where <span class="math inline">\(p&#39; &gt; p\)</span> then <span class="math inline">\(v = v&#39;\)</span>.</p>
+<p>Proof is by contradiction, that is, assume <span class="math inline">\(v \neq v&#39;\)</span>. We will consider the <strong>smallest</strong> proposal number <span class="math inline">\(p&#39; &gt; p\)</span> for which such a message is sent.</p>
+<p>Let <span class="math inline">\(Q_{p, 2}\)</span> be the phase 2 quorum used by proposal number <span class="math inline">\(p\)</span> and <span class="math inline">\(Q_{p&#39;, 1}\)</span> be the phase 1 quorum used by proposal number <span class="math inline">\(p&#39;\)</span>. Let <span class="math inline">\(\bar{A}\)</span> be the set of acceptors which participated both in the phase 2 quorum used by proposal number <span class="math inline">\(p\)</span> and phase 1 quorum used by proposal number <span class="math inline">\(p&#39;\)</span>, thus <span class="math inline">\(\bar{A} = Q_{p, 2} \cap Q_{p&#39;, 1}\)</span>. We can infer that at least one acceptor must participate in both quorums, <span class="math inline">\(\bar{A} \neq \emptyset\)</span>.</p>
+<p>Let us consider the ordering of events from the perspective of one acceptor <span class="math inline">\(acc\)</span> where <span class="math inline">\(acc \in \bar{A}\)</span>. It is either the case that they receive <span class="math inline">\(\operatorname{prepare}(p&#39;)\)</span> first or <span class="math inline">\(\operatorname{propose}(p, v)\)</span> first. We will consider each of these cases separately:</p>
+<ul>
+<li>CASE 1: Acceptor <span class="math inline">\(acc\)</span> receives <span class="math inline">\(\operatorname{prepare}(p&#39;)\)</span> before it receives <span class="math inline">\(\operatorname{propose}(p, v)\)</span>. When <span class="math inline">\(acc\)</span> receives <span class="math inline">\(\operatorname{propose}(p, v)\)</span>, its last promised proposal will be <span class="math inline">\(p&#39;\)</span> or higher. As <span class="math inline">\(p&#39; &gt; p\)</span> then it will not accept the proposal from <span class="math inline">\(p\)</span>, however as <span class="math inline">\(acc \in Q_{p, 2}\)</span> it must accept <span class="math inline">\(\operatorname{propose}(p, v)\)</span> (given the value <span class="math inline">\(v\)</span> is decided). This is a contradiction thus it cannot be the case.</li>
+<li>CASE 2: Acceptor <span class="math inline">\(acc\)</span> receives <span class="math inline">\(\operatorname{propose}(p, v)\)</span> before it receives <span class="math inline">\(\operatorname{prepare}(p&#39;)\)</span>. When acc receives <span class="math inline">\(\operatorname{prepare}(p&#39;)\)</span>, there are two cases. Either:
+<ul>
+<li>CASE 2a: The last promised proposal by acceptor <span class="math inline">\(acc\)</span> is already higher than <span class="math inline">\(p&#39;\)</span>. Then it will not accept the prepare from <span class="math inline">\(p&#39;\)</span>, however as <span class="math inline">\(acc \in Q_{p&#39;, 1}\)</span> it must accept <span class="math inline">\(\operatorname{prepare}(p&#39;)\)</span>. This is a contradiction thus it cannot be the case.</li>
+<li>CASE 2b: The last promised proposal by acceptor <span class="math inline">\(acc\)</span> is less than <span class="math inline">\(p&#39;\)</span> then it will reply with <span class="math inline">\(\operatorname{promise}(q, v)\)</span> where <span class="math inline">\(p \le q \lt p&#39;\)</span>. The value <span class="math inline">\(v\)</span> will be the same the one <span class="math inline">\(acc\)</span> accepted with <span class="math inline">\(p\)</span>, under the minimility hypothesis on <span class="math inline">\(p&#39;\)</span> (<span class="math inline">\(p&#39;\)</span> is the <strong>smallest</strong> proposal number for which such a message is sent).
+<ul>
+<li><span class="math inline">\(acc \in Q_{p&#39;, 1}\)</span> therefore <span class="math inline">\(\operatorname{promise}(q, v)\)</span> will be at least one of the responses received by the proposer of <span class="math inline">\(p&#39;\)</span>. If this is the only accepted value returned, then its value <span class="math inline">\(v\)</span> will be chosen.</li>
+<li>Other proposals may also be received for members of <span class="math inline">\(Q_{p&#39;, 1}\)</span>. Recall that <span class="math inline">\(p &lt; p&#39;\)</span>. For each other <span class="math inline">\(\operatorname{proposal}(q&#39;, v&#39;&#39;)\)</span> received, either:
+<ul>
+<li>CASE (i) <span class="math inline">\(q&#39; &lt; q\)</span>: These proposal will be ignored as the proposer must choose the value associated with the highest proposal.</li>
+<li>CASE (ii) <span class="math inline">\((q&#39; &gt; q) \land (q&#39; &gt; p&#39;)\)</span>: This case cannot occur as an acceptor will only reply to <span class="math inline">\(\operatorname{prepare}(p&#39;)\)</span> when last promised is <span class="math inline">\(&lt; p&#39;\)</span>.</li>
+<li>CASE (iii) <span class="math inline">\((q&#39; &gt; q) \land (q&#39; &lt; p&#39;)\)</span>: <span class="math inline">\(p &lt; q &lt; q&#39; &lt; p&#39;\)</span>. For an acceptor to have accepted <span class="math inline">\((q&#39;, v&#39;&#39;)\)</span> then it must have first been proposed. This is impossible by the minimality assumption on <span class="math inline">\(p&#39;\)</span> (<span class="math inline">\(p&#39;\)</span> is the <strong>smallest</strong> proposal number for which such a message is sent).</li>
+</ul></li>
+</ul></li>
+</ul></li>
+</ul>
+<p>Thus the value <span class="math inline">\(v\)</span> will be chosen, in contradiction to the assumption that <span class="math inline">\(\operatorname{propose}(p&#39;, v&#39;)\)</span> was sent.</p>
+<p>For a given value <span class="math inline">\(v\)</span> to be decided, it must first have been be proposed. Thus:</p>
+<p><strong>Theorem 1.</strong> If value <span class="math inline">\(v\)</span> is decided with proposal number <span class="math inline">\(p\)</span> and <span class="math inline">\(v&#39;\)</span> is decided with proposal number <span class="math inline">\(p&#39;\)</span> then <span class="math inline">\(v = v&#39;\)</span>.</p>
+<h2 id="reference">Reference</h2>
+<ul>
+<li><a target="_blank" rel="noopener" href="https://fpaxos.github.io/">Flexible Paxos: Quorum intersection revisited</a></li>
+<li><a target="_blank" rel="noopener" href="https://arxiv.org/pdf/1608.06696v1.pdf">Flexible Paxos: Quorum intersection revisited</a></li>
+<li><a target="_blank" rel="noopener" href="https://www.microsoft.com/en-us/research/uploads/prod/2016/12/The-Part-Time-Parliament.pdf">The Part-Time Parliament</a></li>
+</ul>
+
+                
+              </div>
+            
+            <hr/>
+            <div>
+              <div class="post-metas my-3">
+  
+    <div class="post-meta mr-3 d-flex align-items-center">
+      <i class="iconfont icon-category"></i>
+      
+
+<span class="category-chains">
+  
+  
+    
+      <span class="category-chain">
+        
+  <a href="/categories/Computer-Science/" class="category-chain-item">Computer Science</a>
+  
+  
+    <span>></span>
+    
+  <a href="/categories/Computer-Science/Consensus/" class="category-chain-item">Consensus</a>
+  
+  
+
+  
+
+      </span>
+    
+  
+</span>
+
+    </div>
+  
+  
+</div>
+
+
+              
+  
+
+  <div class="license-box my-3">
+    <div class="license-title">
+      <div>Paper Interpretation - Flexible Paxos: Quorum intersection revisited</div>
+      <div>https://clcanny.github.io/2023/07/29/computer-science/consensus/paper-interpretation-flexible-paxos-quorum-intersection-revisited/</div>
+    </div>
+    <div class="license-meta">
+      
+        <div class="license-meta-item">
+          <div>作者</div>
+          <div>JunBin</div>
+        </div>
+      
+      
+        <div class="license-meta-item license-meta-date">
+          <div>发布于</div>
+          <div>2023年7月29日</div>
+        </div>
+      
+      
+      
+        <div class="license-meta-item">
+          <div>许可协议</div>
+          <div>
+            
+              
+              
+                <a target="_blank" href="https://creativecommons.org/licenses/by/4.0/">
+                  <span class="hint--top hint--rounded" aria-label="BY - 署名">
+                    <i class="iconfont icon-by"></i>
+                  </span>
+                </a>
+              
+            
+          </div>
+        </div>
+      
+    </div>
+    <div class="license-icon iconfont"></div>
+  </div>
+
+
+
+              
+                <div class="post-prevnext my-3">
+                  <article class="post-prev col-6">
+                    
+                    
+                      <a href="/2023/07/30/computer-science/consensus/paper-interpretation-fast-paxos/" title="Paper Interpretation - Fast Paxos">
+                        <i class="iconfont icon-arrowleft"></i>
+                        <span class="hidden-mobile">Paper Interpretation - Fast Paxos</span>
+                        <span class="visible-mobile">上一篇</span>
+                      </a>
+                    
+                  </article>
+                  <article class="post-next col-6">
+                    
+                    
+                      <a href="/2023/07/24/computer-science/programming-language/tla+/implementing-multi-decree-parliament-in-tla/" title="Implementing Multi-Decree Parliament In TLA+">
+                        <span class="hidden-mobile">Implementing Multi-Decree Parliament In TLA+</span>
+                        <span class="visible-mobile">下一篇</span>
+                        <i class="iconfont icon-arrowright"></i>
+                      </a>
+                    
+                  </article>
+                </div>
+              
+            </div>
+
+            
+          </article>
+        </div>
+      </div>
+    </div>
+
+    <div class="side-col d-none d-lg-block col-lg-2">
+      
+  <aside class="sidebar" style="margin-left: -1rem">
+    <div id="toc">
+  <p class="toc-header">
+    <i class="iconfont icon-list"></i>
+    <span>目录</span>
+  </p>
+  <div class="toc-body" id="toc-body"></div>
+</div>
+
+
+
+  </aside>
+
+
+    </div>
+  </div>
+</div>
+
+
+
+
+
+  
+
+
+
+  
+
+
+
+  
+
+
+
+  
+
+
+
+  
+
+
+  
+  
+
+
+
+
+
+  <script>
+  Fluid.utils.createScript('https://lib.baomitu.com/mermaid/8.14.0/mermaid.min.js', function() {
+    mermaid.initialize({"theme":"default"});
+
+    Fluid.events.registerRefreshCallback(function() {
+      if ('mermaid' in window) {
+        mermaid.init();
+      }
+    });
+  });
+</script>
+
+
+
+
+
+
+    
+
+    
+      <a id="scroll-top-button" aria-label="TOP" href="#" role="button">
+        <i class="iconfont icon-arrowup" aria-hidden="true"></i>
+      </a>
+    
+
+    
+      <div class="modal fade" id="modalSearch" tabindex="-1" role="dialog" aria-labelledby="ModalLabel"
+     aria-hidden="true">
+  <div class="modal-dialog modal-dialog-scrollable modal-lg" role="document">
+    <div class="modal-content">
+      <div class="modal-header text-center">
+        <h4 class="modal-title w-100 font-weight-bold">搜索</h4>
+        <button type="button" id="local-search-close" class="close" data-dismiss="modal" aria-label="Close">
+          <span aria-hidden="true">&times;</span>
+        </button>
+      </div>
+      <div class="modal-body mx-3">
+        <div class="md-form mb-5">
+          <input type="text" id="local-search-input" class="form-control validate">
+          <label data-error="x" data-success="v" for="local-search-input">关键词</label>
+        </div>
+        <div class="list-group" id="local-search-result"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+    
+
+    
+  </main>
+
+  <footer>
+    <div class="footer-inner">
+  
+    <div class="footer-content">
+       <a href="https://hexo.io" target="_blank" rel="nofollow noopener"><span>Hexo</span></a> <i class="iconfont icon-love"></i> <a href="https://github.com/fluid-dev/hexo-theme-fluid" target="_blank" rel="nofollow noopener"><span>Fluid</span></a> 
+    </div>
+  
+  
+  
+  
+</div>
+
+  </footer>
+
+  <!-- Scripts -->
+  
+  <script  src="https://lib.baomitu.com/nprogress/0.2.0/nprogress.min.js" ></script>
+  <link  rel="stylesheet" href="https://lib.baomitu.com/nprogress/0.2.0/nprogress.min.css" />
+
+  <script>
+    NProgress.configure({"showSpinner":false,"trickleSpeed":100})
+    NProgress.start()
+    window.addEventListener('load', function() {
+      NProgress.done();
+    })
+  </script>
+
+
+<script  src="https://lib.baomitu.com/jquery/3.6.0/jquery.min.js" ></script>
+<script  src="https://lib.baomitu.com/twitter-bootstrap/4.6.1/js/bootstrap.min.js" ></script>
+<script  src="/js/events.js" ></script>
+<script  src="/js/plugins.js" ></script>
+
+
+  <script  src="https://lib.baomitu.com/typed.js/2.0.12/typed.min.js" ></script>
+  <script>
+    (function (window, document) {
+      var typing = Fluid.plugins.typing;
+      var subtitle = document.getElementById('subtitle');
+      if (!subtitle || !typing) {
+        return;
+      }
+      var text = subtitle.getAttribute('data-typed-text');
+      
+        typing(text);
+      
+    })(window, document);
+  </script>
+
+
+
+
+  
+    <script  src="/js/img-lazyload.js" ></script>
+  
+
+
+
+
+  
+<script>
+  Fluid.utils.createScript('https://lib.baomitu.com/tocbot/4.18.2/tocbot.min.js', function() {
+    var toc = jQuery('#toc');
+    if (toc.length === 0 || !window.tocbot) { return; }
+    var boardCtn = jQuery('#board-ctn');
+    var boardTop = boardCtn.offset().top;
+
+    window.tocbot.init(Object.assign({
+      tocSelector     : '#toc-body',
+      contentSelector : '.markdown-body',
+      linkClass       : 'tocbot-link',
+      activeLinkClass : 'tocbot-active-link',
+      listClass       : 'tocbot-list',
+      isCollapsedClass: 'tocbot-is-collapsed',
+      collapsibleClass: 'tocbot-is-collapsible',
+      scrollSmooth    : true,
+      includeTitleTags: true,
+      headingsOffset  : -boardTop,
+    }, CONFIG.toc));
+    if (toc.find('.toc-list-item').length > 0) {
+      toc.css('visibility', 'visible');
+    }
+
+    Fluid.events.registerRefreshCallback(function() {
+      if ('tocbot' in window) {
+        tocbot.refresh();
+        var toc = jQuery('#toc');
+        if (toc.length === 0 || !tocbot) {
+          return;
+        }
+        if (toc.find('.toc-list-item').length > 0) {
+          toc.css('visibility', 'visible');
+        }
+      }
+    });
+  });
+</script>
+
+
+  <script src=https://lib.baomitu.com/clipboard.js/2.0.11/clipboard.min.js></script>
+
+  <script>Fluid.plugins.codeWidget();</script>
+
+
+  
+<script>
+  Fluid.utils.createScript('https://lib.baomitu.com/anchor-js/4.3.1/anchor.min.js', function() {
+    window.anchors.options = {
+      placement: CONFIG.anchorjs.placement,
+      visible  : CONFIG.anchorjs.visible
+    };
+    if (CONFIG.anchorjs.icon) {
+      window.anchors.options.icon = CONFIG.anchorjs.icon;
+    }
+    var el = (CONFIG.anchorjs.element || 'h1,h2,h3,h4,h5,h6').split(',');
+    var res = [];
+    for (var item of el) {
+      res.push('.markdown-body > ' + item.trim());
+    }
+    if (CONFIG.anchorjs.placement === 'left') {
+      window.anchors.options.class = 'anchorjs-link-left';
+    }
+    window.anchors.add(res.join(', '));
+
+    Fluid.events.registerRefreshCallback(function() {
+      if ('anchors' in window) {
+        anchors.removeAll();
+        var el = (CONFIG.anchorjs.element || 'h1,h2,h3,h4,h5,h6').split(',');
+        var res = [];
+        for (var item of el) {
+          res.push('.markdown-body > ' + item.trim());
+        }
+        if (CONFIG.anchorjs.placement === 'left') {
+          anchors.options.class = 'anchorjs-link-left';
+        }
+        anchors.add(res.join(', '));
+      }
+    });
+  });
+</script>
+
+
+  
+<script>
+  Fluid.utils.createScript('https://lib.baomitu.com/fancybox/3.5.7/jquery.fancybox.min.js', function() {
+    Fluid.plugins.fancyBox();
+  });
+</script>
+
+
+  <script>Fluid.plugins.imageCaption();</script>
+
+  
+      <script>
+        if (!window.MathJax) {
+          window.MathJax = {
+            tex    : {
+              inlineMath: { '[+]': [['$', '$']] }
+            },
+            loader : {
+              load: ['ui/lazy']
+            },
+            options: {
+              renderActions: {
+                insertedScript: [200, () => {
+                  document.querySelectorAll('mjx-container').forEach(node => {
+                    let target = node.parentNode;
+                    if (target.nodeName.toLowerCase() === 'li') {
+                      target.parentNode.classList.add('has-jax');
+                    }
+                  });
+                }, '', false]
+              }
+            }
+          };
+        } else {
+          MathJax.startup.document.state(0);
+          MathJax.texReset();
+          MathJax.typeset();
+          MathJax.typesetPromise();
+        }
+
+        Fluid.events.registerRefreshCallback(function() {
+          if ('MathJax' in window && MathJax.startup.document && typeof MathJax.startup.document.state === 'function') {
+            MathJax.startup.document.state(0);
+            MathJax.texReset();
+            MathJax.typeset();
+            MathJax.typesetPromise();
+          }
+        });
+      </script>
+    
+
+  <script  src="https://lib.baomitu.com/mathjax/3.2.2/es5/tex-mml-chtml.js" ></script>
+
+  <script  src="/js/local-search.js" ></script>
+
+
+
+
+
+<!-- 主题的启动项，将它保持在最底部 -->
+<!-- the boot of the theme, keep it at the bottom -->
+<script  src="/js/boot.js" ></script>
+
+
+  
+
+  <noscript>
+    <div class="noscript-warning">博客在允许 JavaScript 运行的环境下浏览效果更佳</div>
+  </noscript>
+</body>
+</html>

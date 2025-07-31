@@ -1,0 +1,833 @@
+
+
+<!DOCTYPE html>
+<html lang="zh-CN" data-default-color-scheme=auto>
+
+
+
+<head>
+  <meta charset="UTF-8">
+  <link rel="apple-touch-icon" sizes="76x76" href="/img/fluid.png">
+  <link rel="icon" href="/img/fluid.png">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, shrink-to-fit=no">
+  <meta http-equiv="x-ua-compatible" content="ie=edge">
+  
+  <meta name="theme-color" content="#2f4154">
+  <meta name="author" content="JunBin">
+  <meta name="keywords" content="">
+  
+    <meta name="description" content="Background: HDFS Solutions and Implementation for Archival Storage Apache Hadoop 3.3.6 &gt; Archival Storage, SSD &amp; Memory introduces archival storage to decouple storage capacity from compute cap">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Design Document: Enhancing Inode Attributes and Storage Policies in HDFS">
+<meta property="og:url" content="https://clcanny.github.io/2024/08/27/computer-science/big-data/dfs/design-document-enhancing-inode-attributes-and-storage-policies-in-hdfs/index.html">
+<meta property="og:site_name" content="On The Road">
+<meta property="og:description" content="Background: HDFS Solutions and Implementation for Archival Storage Apache Hadoop 3.3.6 &gt; Archival Storage, SSD &amp; Memory introduces archival storage to decouple storage capacity from compute cap">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://junbin-hexo-img.oss-cn-beijing.aliyuncs.com/enhancing-inode-attributes-and-storage-policies-in-hdfs/fig-1-namenode-extensions.png">
+<meta property="og:image" content="https://junbin-hexo-img.oss-cn-beijing.aliyuncs.com/enhancing-inode-attributes-and-storage-policies-in-hdfs/fig-2-coordinating-blocks-movement-using-c-dn.png">
+<meta property="og:image" content="https://junbin-hexo-img.oss-cn-beijing.aliyuncs.com/design-document-enhancing-inode-attributes-and-storage-policies-in-hdfs/illustration-of-intuitive-rename-affected-inherited-xattr-resolution.excalidraw.svg">
+<meta property="og:image" content="https://junbin-hexo-img.oss-cn-beijing.aliyuncs.com/design-document-enhancing-inode-attributes-and-storage-policies-in-hdfs/illustration-of-intuitive-non-rename-affected-inherited-xattr-resolution.excalidraw.svg">
+<meta property="og:image" content="https://junbin-hexo-img.oss-cn-beijing.aliyuncs.com/design-document-enhancing-inode-attributes-and-storage-policies-in-hdfs/illustration-for-tracking-txids-in-xattr-resolution-graph-1.excalidraw.svg">
+<meta property="og:image" content="https://junbin-hexo-img.oss-cn-beijing.aliyuncs.com/design-document-enhancing-inode-attributes-and-storage-policies-in-hdfs/illustration-for-tracking-txids-in-xattr-resolution-graph-2.excalidraw.svg">
+<meta property="article:published_time" content="2024-08-26T16:59:08.000Z">
+<meta property="article:modified_time" content="2025-03-02T14:55:02.171Z">
+<meta property="article:author" content="JunBin">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="https://junbin-hexo-img.oss-cn-beijing.aliyuncs.com/enhancing-inode-attributes-and-storage-policies-in-hdfs/fig-1-namenode-extensions.png">
+  
+  
+  
+  <title>Design Document: Enhancing Inode Attributes and Storage Policies in HDFS - On The Road</title>
+
+  <link  rel="stylesheet" href="https://lib.baomitu.com/twitter-bootstrap/4.6.1/css/bootstrap.min.css" />
+
+
+
+  <link  rel="stylesheet" href="https://lib.baomitu.com/github-markdown-css/4.0.0/github-markdown.min.css" />
+
+  <link  rel="stylesheet" href="https://lib.baomitu.com/hint.css/2.7.0/hint.min.css" />
+
+  <link  rel="stylesheet" href="https://lib.baomitu.com/fancybox/3.5.7/jquery.fancybox.min.css" />
+
+
+
+<!-- 主题依赖的图标库，不要自行修改 -->
+<!-- Do not modify the link that theme dependent icons -->
+
+<link rel="stylesheet" href="//at.alicdn.com/t/font_1749284_hj8rtnfg7um.css">
+
+
+
+<link rel="stylesheet" href="//at.alicdn.com/t/font_1736178_lbnruvf0jn.css">
+
+
+<link  rel="stylesheet" href="/css/main.css" />
+
+
+  <link id="highlight-css" rel="stylesheet" href="/css/highlight.css" />
+  
+    <link id="highlight-css-dark" rel="stylesheet" href="/css/highlight-dark.css" />
+  
+
+
+
+
+  <script id="fluid-configs">
+    var Fluid = window.Fluid || {};
+    Fluid.ctx = Object.assign({}, Fluid.ctx)
+    var CONFIG = {"hostname":"clcanny.github.io","root":"/","version":"1.9.4","typing":{"enable":true,"typeSpeed":70,"cursorChar":"_","loop":false,"scope":[]},"anchorjs":{"enable":true,"element":"h1,h2,h3,h4,h5,h6","placement":"left","visible":"hover","icon":""},"progressbar":{"enable":true,"height_px":3,"color":"#29d","options":{"showSpinner":false,"trickleSpeed":100}},"code_language":{"enable":true,"default":"TEXT"},"copy_btn":true,"image_caption":{"enable":true},"image_zoom":{"enable":true,"img_url_replace":["",""]},"toc":{"enable":true,"placement":"right","headingSelector":"h1,h2,h3,h4,h5,h6","collapseDepth":0},"lazyload":{"enable":true,"loading_img":"/img/loading.gif","onlypost":false,"offset_factor":2},"web_analytics":{"enable":false,"follow_dnt":true,"baidu":null,"google":null,"gtag":null,"tencent":{"sid":null,"cid":null},"woyaola":null,"cnzz":null,"leancloud":{"app_id":null,"app_key":null,"server_url":null,"path":"window.location.pathname","ignore_local":false}},"search_path":"/local-search.xml"};
+
+    if (CONFIG.web_analytics.follow_dnt) {
+      var dntVal = navigator.doNotTrack || window.doNotTrack || navigator.msDoNotTrack;
+      Fluid.ctx.dnt = dntVal && (dntVal.startsWith('1') || dntVal.startsWith('yes') || dntVal.startsWith('on'));
+    }
+  </script>
+  <script  src="/js/utils.js" ></script>
+  <script  src="/js/color-schema.js" ></script>
+  
+
+
+  
+<meta name="generator" content="Hexo 7.0.0-rc1"></head>
+
+
+<body>
+  
+
+  <header>
+    
+
+<div class="header-inner" style="height: 70vh;">
+  <nav id="navbar" class="navbar fixed-top  navbar-expand-lg navbar-dark scrolling-navbar">
+  <div class="container">
+    <a class="navbar-brand" href="/">
+      <strong>Fluid</strong>
+    </a>
+
+    <button id="navbar-toggler-btn" class="navbar-toggler" type="button" data-toggle="collapse"
+            data-target="#navbarSupportedContent"
+            aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
+      <div class="animated-icon"><span></span><span></span><span></span></div>
+    </button>
+
+    <!-- Collapsible content -->
+    <div class="collapse navbar-collapse" id="navbarSupportedContent">
+      <ul class="navbar-nav ml-auto text-center">
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/">
+                <i class="iconfont icon-home-fill"></i>
+                <span>首页</span>
+              </a>
+            </li>
+          
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/archives/">
+                <i class="iconfont icon-archive-fill"></i>
+                <span>归档</span>
+              </a>
+            </li>
+          
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/categories/">
+                <i class="iconfont icon-category-fill"></i>
+                <span>分类</span>
+              </a>
+            </li>
+          
+        
+        
+          <li class="nav-item" id="search-btn">
+            <a class="nav-link" target="_self" href="javascript:;" data-toggle="modal" data-target="#modalSearch" aria-label="Search">
+              <i class="iconfont icon-search"></i>
+            </a>
+          </li>
+          
+        
+        
+          <li class="nav-item" id="color-toggle-btn">
+            <a class="nav-link" target="_self" href="javascript:;" aria-label="Color Toggle">
+              <i class="iconfont icon-dark" id="color-toggle-icon"></i>
+            </a>
+          </li>
+        
+      </ul>
+    </div>
+  </div>
+</nav>
+
+  
+
+<div id="banner" class="banner" parallax=true
+     style="background: url('/img/default.png') no-repeat center center; background-size: cover;">
+  <div class="full-bg-img">
+    <div class="mask flex-center" style="background-color: rgba(0, 0, 0, 0.3)">
+      <div class="banner-text text-center fade-in-up">
+        <div class="h2">
+          
+            <span id="subtitle" data-typed-text="Design Document: Enhancing Inode Attributes and Storage Policies in HDFS"></span>
+          
+        </div>
+
+        
+          
+  <div class="mt-3">
+    
+    
+      <span class="post-meta">
+        <i class="iconfont icon-date-fill" aria-hidden="true"></i>
+        <time datetime="2024-08-27 00:59" pubdate>
+          2024年8月27日 凌晨
+        </time>
+      </span>
+    
+  </div>
+
+  <div class="mt-1">
+    
+      <span class="post-meta mr-2">
+        <i class="iconfont icon-chart"></i>
+        
+          19k 字
+        
+      </span>
+    
+
+    
+      <span class="post-meta mr-2">
+        <i class="iconfont icon-clock-fill"></i>
+        
+        
+        
+          161 分钟
+        
+      </span>
+    
+
+    
+    
+  </div>
+
+
+        
+      </div>
+
+      
+    </div>
+  </div>
+</div>
+
+</div>
+
+  </header>
+
+  <main>
+    
+      
+
+<div class="container-fluid nopadding-x">
+  <div class="row nomargin-x">
+    <div class="side-col d-none d-lg-block col-lg-2">
+      
+
+    </div>
+
+    <div class="col-lg-8 nopadding-x-md">
+      <div class="container nopadding-x-md" id="board-ctn">
+        <div id="board">
+          <article class="post-content mx-auto">
+            <!-- SEO header -->
+            <h1 style="display: none">Design Document: Enhancing Inode Attributes and Storage Policies in HDFS</h1>
+            
+            
+              <div class="markdown-body">
+                
+                <h2 id="background-hdfs-solutions-and-implementation-for-archival-storage">Background: HDFS Solutions and Implementation for Archival Storage</h2>
+<p><a target="_blank" rel="noopener" href="https://hadoop.apache.org/docs/stable/hadoop-project-dist/hadoop-hdfs/ArchivalStorage.html">Apache Hadoop 3.3.6 &gt; Archival Storage, SSD &amp; Memory</a> introduces archival storage to decouple storage capacity from compute capacity:</p>
+<blockquote>
+<p>Archival Storage is a solution to decouple growing storage capacity from compute capacity. Nodes with higher density and less expensive storage with low compute power are becoming available and can be used as cold storage in the clusters. Based on policy the data from hot can be moved to the cold. Adding more nodes to the cold storage can grow the storage independent of the compute capacity in the cluster.</p>
+</blockquote>
+<p>Archival storage consists of two key components:</p>
+<ol type="1">
+<li>Storage Policy Resolution: Determines the storage policy for files (e.g., hot, cold, warm, all SSD, one SSD).</li>
+<li>Data Movement: Ensures data is relocated to match the storage policy, addressing any discrepancies between expected and actual storage locations.</li>
+</ol>
+<p><a target="_blank" rel="noopener" href="https://hadoop.apache.org/docs/stable/hadoop-project-dist/hadoop-hdfs/ArchivalStorage.html">Apache Hadoop 3.3.6 &gt; Archival Storage, SSD &amp; Memory</a> and <a target="_blank" rel="noopener" href="https://issues.apache.org/jira/browse/HDFS-10285">Storage-Policy-Satisfier-in-HDFS-Oct-26-2017.pdf</a> highlight two scenarios requiring data movement:</p>
+<blockquote>
+<ol type="1">
+<li>Setting a new storage policy on already existing file/dir will change the policy in Namespace, but it will not move the blocks physically across storage medias.</li>
+<li>Other scenario is, when user rename the files from one affected storage policy file (inherited policy from parent directory) to another storage policy effected directory, it will not copy inherited storage policy from source. So it will take effect from destination file/dir parent storage policy. This rename operation is just a metadata change in Namenode. The physical blocks still remain with source storage policy.</li>
+</ol>
+</blockquote>
+<p>Storage policy resolution is straightforward:</p>
+<blockquote>
+<p>The effective storage policy of a file or directory is resolved by the following rules.</p>
+<ol type="1">
+<li>If the file or directory is specified with a storage policy, return it.</li>
+<li>For an unspecified file or directory, if it is the root directory, return the default storage policy. Otherwise, return its parent's effective storage policy.</li>
+</ol>
+</blockquote>
+<p>Users have two options to move blocks according to a new policy. The first option is the <a target="_blank" rel="noopener" href="https://issues.apache.org/jira/browse/HDFS-10285">HDFS-10285: Storage Policy Satisfier in HDFS</a>. The following figures illustrate the basic workflow of SPS:</p>
+<figure>
+<img src="https://junbin-hexo-img.oss-cn-beijing.aliyuncs.com/enhancing-inode-attributes-and-storage-policies-in-hdfs/fig-1-namenode-extensions.png" srcset="/img/loading.gif" lazyload alt="" /><figcaption>Fig-1: Namenode extensions</figcaption>
+</figure>
+<figure>
+<img src="https://junbin-hexo-img.oss-cn-beijing.aliyuncs.com/enhancing-inode-attributes-and-storage-policies-in-hdfs/fig-2-coordinating-blocks-movement-using-c-dn.png" srcset="/img/loading.gif" lazyload alt="" /><figcaption>Fig-2: Coordinatingblocksmovement using C-DN</figcaption>
+</figure>
+<p>The primary responsibility of the NameNode extensions is to recursively scan all files within a user-specified directory and connect with the Coordinator DataNode using the <code>BlockStorageMovementCommand</code>. The details are illustrated in <a target="_blank" rel="noopener" href="https://issues.apache.org/jira/browse/HDFS-10285">Storage-Policy-Satisfier-in-HDFS-Oct-26-2017.pdf</a>:</p>
+<blockquote>
+<p>If the source path is a directory then all the files under the directory recursively would be considered for satisfying the policy. All the submitted directory inodes will be tracked separately at queue <code>BlockStorageMovementNeeded#spsDirsToBeTraversedLater</code>, these directories will be asynchronously traversed and all the file inodes under each directory will be added to the queue <code>BlockStorageMovementNeeded#storageMovementNeeded</code>. There could be a case of large directory, which can have several files under it. Here, traversing all files and collecting Inodes would be time consuming and its not recommended to hold Namenode locks longer time until the directory is fully scanned. Again, this could increase memory consumption if we keep lot of files inode into memory. To avoid these issues, SPS will throttle itself and traverse the directories in batch wise. Added a limit of 1000 size to the queue <code>storageMovementNeeded</code>. If <code>storageMovementNeeded</code> becomes full with 1000 elements, directory traversal will be suspended until <code>storageMovementNeeded</code> has some free slots available, lower than 1000. When scan was suspended, it releases the Namenode lock, so that other Namenode operations will not be blocked.</p>
+</blockquote>
+<h2 id="limitations-in-xattr-resolution-and-improvements">Limitations in Xattr Resolution and Improvements</h2>
+<p>In general, we not only consider storage policy as a standalone concept but treat it as a type of xattr. The following section discusses xattrs in this broader context.</p>
+<h3 id="current-limitations-in-xattr-resolution">Current Limitations in Xattr Resolution</h3>
+<p>In HDFS, the biggest shortcoming of storage policy resolution is its counter-intuitive nature. Consider this example, where TxID (transaction ID) represents the logical clock for capturing "happen-before" relationships - transactions with smaller TxID values occur before those with larger ones:</p>
+<ul>
+<li>Operations:
+<ul>
+<li>[TxID=1] Set storage policy to "hot" on directory /a/b.</li>
+<li>[TxID=2] Set storage policy to "all ssd" on directory /a.</li>
+</ul></li>
+<li>Result: The file /a/b/c unexpectedly retains the "hot" storage policy, even when the policy for the entire /a directory is reset. Let's take the Linux <code>chown</code> command as an example. In Linux, if a user executes <code>chown -R</code> on /a, it may not affect /a/b/c if <code>chown -R</code> was previously executed on /a/b. This behavior can seem unexpected and counter-intuitive.</li>
+</ul>
+<h3 id="desired-behavior-for-xattr-resolution">Desired Behavior for Xattr Resolution</h3>
+<p>Let's define the following terms for our discussion:</p>
+<ul>
+<li>Immediate Parent (or Parent): /a is the immediate parent of /a/b, but not of /a/b/c.</li>
+<li>Ancestor: Both /a and /a/b are ancestors of /a/b/c.</li>
+<li>Immediate Child (or Child): /a/b is the immediate child of /a, but /a/b/c is not.</li>
+<li>Descendant: Both /a/b and /a/b/c are descendants of /a.</li>
+<li>Non-inherited Xattr: When an xattr is set on /a, only /a is affected; its descendants are not.</li>
+<li>Inherited Xattr: When an xattr is set on /a, it also affects the xattrs of /a's descendants.</li>
+<li>Rename Affected Inherited Xattr: When /a/c is renamed to /b/c, /b/c's xattr aligns with /b instead of retaining its original xattr.</li>
+<li>Non-rename Affected Inherited Xattr: When /a/c is renamed to /b/c, /b/c retains its original xattr without change.</li>
+</ul>
+<p>In this section, we focus on inherited xattrs. The implementation of non-inherited xattrs is straightforward and not worth discussing in detail. Below, we explore the desired behavior for inherited xattrs. Let's define what kind of xattr resolution is intuitive and straightforward:</p>
+<ul>
+<li>Imagine a "magician" who can instantly modify the xattr of the target inode and all its descendant inodes.</li>
+<li>Each inode's xattr is determined by the most recent operation applied to it.</li>
+</ul>
+<figure>
+<img src="https://junbin-hexo-img.oss-cn-beijing.aliyuncs.com/design-document-enhancing-inode-attributes-and-storage-policies-in-hdfs/illustration-of-intuitive-rename-affected-inherited-xattr-resolution.excalidraw.svg" srcset="/img/loading.gif" lazyload alt="" /><figcaption>Illustration of Intuitive Rename Affected Inherited Xattr Resolution</figcaption>
+</figure>
+<p>The graph above illustrates how the "magician" handles rename affected inherited xattr:</p>
+<ul>
+<li>In TxID 1, a and all its descendants are set to blue when the user sets /a to blue.</li>
+<li>In TxID 3, d inherits the blue xattr from its destination parent.</li>
+</ul>
+<figure>
+<img src="https://junbin-hexo-img.oss-cn-beijing.aliyuncs.com/design-document-enhancing-inode-attributes-and-storage-policies-in-hdfs/illustration-of-intuitive-non-rename-affected-inherited-xattr-resolution.excalidraw.svg" srcset="/img/loading.gif" lazyload alt="" /><figcaption>Illustration of Intuitive Non-rename Affected Inherited Xattr Resolution</figcaption>
+</figure>
+<p>The graph above illustrates how the "magician" handles non-rename affected inherited xattr. It is similar to rename affected inherited xattr, but with one key difference: when /a/b is renamed to /a/c/b, b and <strong>its descendant inodes</strong> retain their original xattrs.</p>
+<h3 id="implementation-outline-for-improved-resolution">Implementation Outline for Improved Resolution</h3>
+<h4 id="rename-affected-inherited-xattr">Rename Affected Inherited Xattr</h4>
+<p>Let's discuss the rename affected inherited xattr first. We define the following symbols to aid our discussion:</p>
+<ul>
+<li><span class="math inline">\(\operatorname{TxID}(\text{node}, \text{setxattr})\)</span>: The transaction ID when xattr is set on <span class="math inline">\(\text{node}\)</span>.</li>
+<li><span class="math inline">\(\operatorname{TxID}(\text{node}, \text{renamed})\)</span>: The transaction ID when <span class="math inline">\(\text{node}\)</span> is renamed.</li>
+<li><span class="math inline">\(\operatorname{TxID}(\text{node})\)</span>: The transaction ID that determines the xattr of <span class="math inline">\(\text{node}\)</span>.</li>
+</ul>
+<p>There are three operations for a node: create, rename, and delete. We'll focus on the most complex operation, rename.</p>
+<p>To simplify the process, imagine that a setxattr event always accompanies a rename event. For example, when [TxID=3] renames /a/b/d to /a/c/d, it also generates a setxattr event [TxID=3] to set /a/c/d's xattr to /a/c's xattr. This introduces a constraint: <span class="math inline">\(\operatorname{TxID}(\text{node}, \text{setxattr}) \ge \operatorname{TxID}(\text{node}, \text{renamed})\)</span>.</p>
+<p>Now, let's denote the node we are calculating as <span class="math inline">\(\text{self}\)</span> and its parent as <span class="math inline">\(\text{parent}\)</span>. There are three cases to consider:</p>
+<ul>
+<li><span class="math inline">\(\operatorname{TxID}(\text{parent}) &gt; \operatorname{TxID}(\text{self}, \text{setxattr}) \ge \operatorname{TxID}(\text{self}, \text{renamed})\)</span>: This means that <span class="math inline">\(\text{self}\)</span> was first moved into <span class="math inline">\(\text{parent}\)</span>, then <span class="math inline">\(\text{parent}\)</span> or its ancestors had their xattr set by a user's direct setxattr request or an accompanying event triggered by a user's rename request. The xattr should be determined by the parent's xattr. This is correct because the event at <span class="math inline">\(\text{parent}\)</span> or its ancestors is more recent.</li>
+<li><span class="math inline">\(\operatorname{TxID}(\text{self}, \text{setxattr}) &gt; \operatorname{TxID}(\text{parent}) &gt; \operatorname{TxID}(\text{self}, \text{renamed})\)</span>: Here, <span class="math inline">\(\text{self}\)</span> is renamed into <span class="math inline">\(\text{parent}\)</span>, then the ancestor's xattr is set, and finally, <span class="math inline">\(\text{self}\)</span>'s xattr is set. The xattr should be determined by the setxattr event on <span class="math inline">\(\text{self}\)</span>. This is straightforward.</li>
+<li><span class="math inline">\(\operatorname{TxID}(\text{self}, \text{setxattr}) \ge \operatorname{TxID}(\text{self}, \text{renamed}) &gt; \operatorname{TxID}(\text{parent})\)</span>: The xattr should be determined by the setxattr event on <span class="math inline">\(\text{self}\)</span>. This is also straightforward.</li>
+</ul>
+<p>The above three cases can be simplified to two:</p>
+<ul>
+<li><span class="math inline">\(\operatorname{TxID}(\text{parent}) &gt; \operatorname{TxID}(\text{self}, \text{setxattr})\)</span>: The xattr should be determined by the parent's xattr.</li>
+<li><span class="math inline">\(\operatorname{TxID}(\text{self}, \text{setxattr}) &gt; \operatorname{TxID}(\text{parent})\)</span>: The xattr should be determined by the setxattr event on <span class="math inline">\(\text{self}\)</span>.</li>
+</ul>
+<p>Interestingly, we find that we don't need to record <span class="math inline">\(\operatorname{TxID}(\text{self}, \text{renamed})\)</span> because it is unnecessary. The xattr of <span class="math inline">\(\text{self}\)</span> is determined by the maximum <span class="math inline">\(\operatorname{TxID}(\text{node}, \text{setxattr})\)</span>, where <span class="math inline">\(\text{node}\)</span> is <span class="math inline">\(\text{self}\)</span> or its ancestors.</p>
+<h4 id="non-rename-affected-inherited-xattr">Non-rename Affected Inherited Xattr</h4>
+<p>In discussing non-rename affected inherited xattrs, we encounter more complexity compared to rename-affected inherited xattrs. The following two graphs illustrate these complexities. Notice that the color represents the expected xattr (also referred to as the "magician" xattr), while the actual xattr of each node is indicated by text.</p>
+<figure>
+<img src="https://junbin-hexo-img.oss-cn-beijing.aliyuncs.com/design-document-enhancing-inode-attributes-and-storage-policies-in-hdfs/illustration-for-tracking-txids-in-xattr-resolution-graph-1.excalidraw.svg" srcset="/img/loading.gif" lazyload alt="" /><figcaption>Illustration for Tracking TxIDs in Xattr Resolution (Graph 1)</figcaption>
+</figure>
+<p>In Graph 1, at TxID 6, the expected xattr of d is not influenced by its parent c, because d was renamed after c set its xattr. Conversely, e's expected xattr is affected by its parent c since it was renamed before c's setxattr. At TxID 7, when e's xattr is set, it is no longer influenced by its parent. Therefore, the expected xattr is calculated using its rename TxID, setxattr TxID, and its parent's setxattr TxID.</p>
+<figure>
+<img src="https://junbin-hexo-img.oss-cn-beijing.aliyuncs.com/design-document-enhancing-inode-attributes-and-storage-policies-in-hdfs/illustration-for-tracking-txids-in-xattr-resolution-graph-2.excalidraw.svg" srcset="/img/loading.gif" lazyload alt="" /><figcaption>Illustration for Tracking TxIDs in Xattr Resolution (Graph 2)</figcaption>
+</figure>
+<p>In Graph 2, TxID 6 shows a rename operation. When renaming d:</p>
+<ul>
+<li>d should inherit the actual xattr blue from its source parent c. Otherwise, if its actual xattr remains white after renaming, the expected xattr for d and its children cannot be calculated.</li>
+<li>Naturally, d should also inherit the setxattr TxID from its source parent c.
+<ul>
+<li>One way to think about this is that when setxattr was applied to c at TxID 3, the "magician" set all of its descendants' setxattr TxID to 3 at that moment. To avoid losing this information during renaming, d should inherit the TxID from its parent.</li>
+<li>Another perspective is that d's setxattr TxID should be greater than e's setxattr TxID (2) and smaller than f's setxattr TxID (4), which can only be 3. Otherwise, at least one of d's children's xattrs cannot be calculated.</li>
+</ul></li>
+</ul>
+<p>Combining insights from Graph 1 and Graph 2, the algorithm for calculating non-rename affected inherited xattrs becomes clear:</p>
+<ul>
+<li>Compare the inode's setxattr TxID, rename TxID, and the parent's setxattr TxID to determine the inode's xattr. Recursively apply this process up to the root.</li>
+<li>When a rename occurs, the renamed inode should inherit the setxattr TxID and xattr from its ancestors if necessary. The setxattr TxID should be from the ancestor whose setxattr influences the renamed inode's xattr. Similarly, the xattr should be from the ancestor whose setxattr affects the renamed inode's xattr.</li>
+</ul>
+<h3 id="formal-verification-with-tla">Formal Verification with TLA+</h3>
+<p>In the following TLA+ specification, we do not use natural numbers as TxIDs for rename and setxattr operations. Instead, we use a variable <code>modOrder</code> to capture the "happens-before" relationship of operations. This approach reduces the number of states TLA+ needs to calculate, as the specific TxID values become irrelevant. For example, the setxattr of a and b at TxIDs 1 and 3, or at 2 and 4, are considered identical when using <code>modOrder</code>.</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br><span class="line">86</span><br><span class="line">87</span><br><span class="line">88</span><br><span class="line">89</span><br><span class="line">90</span><br><span class="line">91</span><br><span class="line">92</span><br><span class="line">93</span><br><span class="line">94</span><br><span class="line">95</span><br><span class="line">96</span><br><span class="line">97</span><br><span class="line">98</span><br><span class="line">99</span><br><span class="line">100</span><br><span class="line">101</span><br><span class="line">102</span><br><span class="line">103</span><br><span class="line">104</span><br><span class="line">105</span><br><span class="line">106</span><br><span class="line">107</span><br><span class="line">108</span><br><span class="line">109</span><br><span class="line">110</span><br><span class="line">111</span><br><span class="line">112</span><br><span class="line">113</span><br><span class="line">114</span><br><span class="line">115</span><br><span class="line">116</span><br><span class="line">117</span><br><span class="line">118</span><br><span class="line">119</span><br><span class="line">120</span><br><span class="line">121</span><br><span class="line">122</span><br><span class="line">123</span><br><span class="line">124</span><br><span class="line">125</span><br><span class="line">126</span><br><span class="line">127</span><br><span class="line">128</span><br><span class="line">129</span><br><span class="line">130</span><br><span class="line">131</span><br><span class="line">132</span><br><span class="line">133</span><br><span class="line">134</span><br><span class="line">135</span><br><span class="line">136</span><br><span class="line">137</span><br><span class="line">138</span><br><span class="line">139</span><br><span class="line">140</span><br><span class="line">141</span><br><span class="line">142</span><br><span class="line">143</span><br><span class="line">144</span><br><span class="line">145</span><br><span class="line">146</span><br><span class="line">147</span><br><span class="line">148</span><br><span class="line">149</span><br><span class="line">150</span><br><span class="line">151</span><br><span class="line">152</span><br><span class="line">153</span><br><span class="line">154</span><br><span class="line">155</span><br><span class="line">156</span><br><span class="line">157</span><br><span class="line">158</span><br><span class="line">159</span><br><span class="line">160</span><br><span class="line">161</span><br><span class="line">162</span><br><span class="line">163</span><br><span class="line">164</span><br><span class="line">165</span><br><span class="line">166</span><br><span class="line">167</span><br><span class="line">168</span><br><span class="line">169</span><br><span class="line">170</span><br><span class="line">171</span><br><span class="line">172</span><br><span class="line">173</span><br><span class="line">174</span><br><span class="line">175</span><br><span class="line">176</span><br><span class="line">177</span><br><span class="line">178</span><br><span class="line">179</span><br><span class="line">180</span><br><span class="line">181</span><br><span class="line">182</span><br><span class="line">183</span><br><span class="line">184</span><br><span class="line">185</span><br><span class="line">186</span><br><span class="line">187</span><br><span class="line">188</span><br><span class="line">189</span><br><span class="line">190</span><br><span class="line">191</span><br><span class="line">192</span><br><span class="line">193</span><br><span class="line">194</span><br><span class="line">195</span><br></pre></td><td class="code"><pre><code class="hljs tla">---------------------------------------- MODULE Xattr ----------------------------------------<br>EXTENDS Naturals, Sequences, TLC<br>CONSTANTS root, inodes, null, values, rename, setxattr, operations<br><br>ASSUME<br>  /\ root \notin inodes<br>  /\ null \in values<br>  /\ operations = &#123;rename, setxattr&#125;<br><br>VARIABLES parent,<br>          expRenAffXattr, actRenAffXattr,<br>          expNonRenAffXattr, actNonRenAffXattr,<br>          modOrder<br>SYMM == Permutations(inodes) \union Permutations(values \ &#123;null&#125;)<br><br>\* Utility Operations.<br>Min(set) == CHOOSE x \in set: \A y \in set: x &lt;= y<br>Max(set) == CHOOSE x \in set: \A y \in set: x &gt;= y<br>RECURSIVE IndexOf(_, _)<br>IndexOf(seq, ele) ==<br>  IF seq = &lt;&lt;&gt;&gt; THEN 0<br>  ELSE IF Head(seq) = ele THEN 1<br>  ELSE LET i == IndexOf(Tail(seq), ele) IN<br>       IF i = 0 THEN 0 ELSE i + 1<br>RECURSIVE Remove(_, _)<br>Remove(seq, set) ==<br>  IF Len(seq) = 0 THEN seq<br>  ELSE (<br>       (IF Head(seq) \in set THEN &lt;&lt;&gt;&gt; ELSE &lt;&lt;Head(seq)&gt;&gt;)<br>    \o Remove(Tail(seq), set))<br>Reinsert(seq, fromIndex, toIndex) ==<br>  IF toIndex &gt;= fromIndex<br>  THEN LET elem == seq[fromIndex]<br>           withoutEleSeq ==<br>                SubSeq(seq, 1, fromIndex - 1)<br>             \o SubSeq(seq, fromIndex + 1, Len(seq))<br>       IN   SubSeq(withoutEleSeq, 1, toIndex - 1)<br>         \o &lt;&lt;elem&gt;&gt;<br>         \o SubSeq(withoutEleSeq, toIndex, Len(withoutEleSeq))<br>  ELSE Assert(FALSE, &quot;toIndex must be greater than or equal to fromIndex.&quot;)<br><br>NodeSet == inodes \cup &#123;root&#125;<br>IsParent(p, c) == &lt;&lt;p, c&gt;&gt; \in parent<br>RECURSIVE IsAncestor(_, _)<br>IsAncestor(a, d) ==<br>  \/ IsParent(a, d)<br>  \/ (\E p \in NodeSet: IsParent(a, p) /\ IsAncestor(p, d))<br>IsSelfOrAncestor(sa, d) ==<br>  \/ sa = d<br>  \/ IsAncestor(sa, d)<br>IsDescendant(d, a) == IsAncestor(a, d)<br>IsSelfOrDescendant(sd, a) == IsDescendant(sd, a) \/ sd = a<br><br>CalcRenAffXattr(n) ==<br>  LET ancestors == &#123;a \in NodeSet: IsSelfOrAncestor(a, n)&#125;<br>      filteredSeq == SelectSeq(modOrder, LAMBDA x: x[1] \in ancestors)<br>      len == Len(filteredSeq)<br>  IN IF len = 0<br>     THEN null<br>     ELSE actRenAffXattr[filteredSeq[len][1]]<br><br>RECURSIVE GetNonRenXattrModIDR(_, _, _)<br>GetNonRenXattrModIDR(n, renameID, setXattrID) ==<br>  IF ~IsAncestor(root, n) THEN setXattrID<br>  ELSE LET p == CHOOSE x \in NodeSet: IsParent(x, n)<br>           parentRenameID == IndexOf(modOrder, &lt;&lt;p, rename&gt;&gt;)<br>           parentSetXattrID == IndexOf(modOrder, &lt;&lt;p, setxattr&gt;&gt;)<br>           maxRenameID == Max(&#123;parentRenameID, renameID&#125;)<br>           maxSetXattrID == IF parentSetXattrID &gt; Max(&#123;setXattrID, renameID&#125;)<br>                            THEN parentSetXattrID<br>                            ELSE setXattrID<br>       IN GetNonRenXattrModIDR(p, maxRenameID, maxSetXattrID)<br>GetNonRenXattrModID(n) ==<br>  LET renameID == IndexOf(modOrder, &lt;&lt;n, rename&gt;&gt;)<br>      setXattrID == IndexOf(modOrder, &lt;&lt;n, setxattr&gt;&gt;)<br>  IN GetNonRenXattrModIDR(n, renameID, setXattrID)<br>CalcNonRenAffXattr(n) ==<br>  LET id == GetNonRenXattrModID(n)<br>  IN IF id = 0<br>     THEN null<br>     ELSE actNonRenAffXattr[modOrder[id][1]]<br><br>Init ==<br>  /\ parent = &#123;&#125;<br>  /\ expRenAffXattr = [n \in NodeSet |-&gt; null]<br>  /\ actRenAffXattr = [n \in NodeSet |-&gt; null]<br>  /\ expNonRenAffXattr = [n \in NodeSet |-&gt; null]<br>  /\ actNonRenAffXattr = [n \in NodeSet |-&gt; null]<br>  /\ modOrder = &lt;&lt;&gt;&gt;<br><br>Create(n, p) ==<br>  /\ ~IsDescendant(n, root)<br>  /\ IsSelfOrDescendant(p, root)<br>  /\ parent&#x27; = parent \cup &#123;&lt;&lt;p, n&gt;&gt;&#125;<br>  /\ expRenAffXattr&#x27; = [expRenAffXattr EXCEPT ![n] = expRenAffXattr[p]]<br>  /\ actRenAffXattr&#x27; = [actRenAffXattr EXCEPT ![n] = CalcRenAffXattr(p)]<br>  /\ UNCHANGED &lt;&lt;expNonRenAffXattr, actNonRenAffXattr&gt;&gt;<br>  /\ modOrder&#x27; = Append(Append(modOrder, &lt;&lt;n, rename&gt;&gt;), &lt;&lt;n, setxattr&gt;&gt;)<br>Rename(n, p1, p2) ==<br>  /\ IsSelfOrDescendant(p1, root)<br>  /\ IsSelfOrDescendant(p2, root)<br>  /\ IsParent(p1, n)<br>  /\ ~IsSelfOrAncestor(n, p2)<br>  /\ parent&#x27; = (parent \ &#123;&lt;&lt;p1, n&gt;&gt;&#125;) \union &#123;&lt;&lt;p2, n&gt;&gt;&#125;<br>  /\ expRenAffXattr&#x27; = [x \in NodeSet |-&gt;<br>                          IF IsSelfOrDescendant(x, n)<br>                          THEN expRenAffXattr[p2]<br>                          ELSE expRenAffXattr[x]]<br>  /\ actRenAffXattr&#x27; = [actRenAffXattr EXCEPT ![n] = CalcRenAffXattr(p2)]<br>  /\ UNCHANGED &lt;&lt;expNonRenAffXattr&gt;&gt;<br>  /\ actNonRenAffXattr&#x27; = [actNonRenAffXattr EXCEPT ![n] = CalcNonRenAffXattr(n)]<br>  /\ modOrder&#x27; =<br>       Append(<br>         Remove(<br>           Reinsert(modOrder,<br>                    IndexOf(modOrder, &lt;&lt;n, setxattr&gt;&gt;),<br>                    GetNonRenXattrModID(n)),<br>           &#123;&lt;&lt;n, rename&gt;&gt;&#125;),<br>         &lt;&lt;n, rename&gt;&gt;)<br>  /\ LET i == IndexOf(modOrder&#x27;, &lt;&lt;n, setxattr&gt;&gt;)<br>         j == IndexOf(modOrder&#x27;, &lt;&lt;modOrder[GetNonRenXattrModID(n)][1], setxattr&gt;&gt;)<br>     IN Assert(i = j \/ i = j + 1,<br>               &quot;n&#x27;s setxattr should be directly after its latest ancestor&#x27;s setxattr.&quot;)<br>Delete(n) ==<br>  LET descendants == &#123;x \in NodeSet: IsSelfOrDescendant(x, n)&#125; IN<br>  /\ IsDescendant(n, root)<br>  /\ parent&#x27; = &#123;&lt;&lt;p, c&gt;&gt; \in parent: ~IsDescendant(c, n) /\ c # n&#125;<br>  /\ expRenAffXattr&#x27; = [x \in NodeSet |-&gt;<br>                          IF IsSelfOrDescendant(x, n)<br>                          THEN null<br>                          ELSE expRenAffXattr[x]]<br>  /\ actRenAffXattr&#x27; = [x \in NodeSet |-&gt;<br>                          IF IsSelfOrDescendant(x, n)<br>                          THEN null<br>                          ELSE actRenAffXattr[x]]<br>  /\ expNonRenAffXattr&#x27; = [x \in NodeSet |-&gt;<br>                             IF IsSelfOrDescendant(x, n)<br>                             THEN null<br>                             ELSE expNonRenAffXattr[x]]<br>  /\ actNonRenAffXattr&#x27; = [x \in NodeSet |-&gt;<br>                             IF IsSelfOrDescendant(x, n)<br>                             THEN null<br>                             ELSE actNonRenAffXattr[x]]<br>  /\ modOrder&#x27; =<br>       Remove(<br>         modOrder,<br>         &#123;x \in inodes: IsSelfOrDescendant(x, n)&#125; \times operations)<br>SetXattr(n, v) ==<br>  /\ IsDescendant(n, root)<br>  /\ expRenAffXattr&#x27; = [x \in NodeSet |-&gt;<br>                         IF IsSelfOrDescendant(x, n) THEN v<br>                         ELSE expRenAffXattr[x]]<br>  /\ actRenAffXattr&#x27; = [actRenAffXattr EXCEPT ![n] = v]<br>  /\ expNonRenAffXattr&#x27; = [x \in NodeSet |-&gt;<br>                            IF IsSelfOrDescendant(x, n) THEN v<br>                            ELSE expNonRenAffXattr[x]]<br>  /\ actNonRenAffXattr&#x27; = [actNonRenAffXattr EXCEPT ![n] = v]<br>  /\ modOrder&#x27; = Append(Remove(modOrder, &#123;&lt;&lt;n, setxattr&gt;&gt;&#125;), &lt;&lt;n, setxattr&gt;&gt;)<br>  /\ UNCHANGED &lt;&lt;parent&gt;&gt;<br>Next ==<br>  \/ \E n \in inodes, p \in NodeSet: Create(n, p)<br>  \/ \E n \in inodes, p1, p2 \in NodeSet: Rename(n, p1, p2)<br>  \/ \E n \in inodes: Delete(n)<br>  \/ \E n \in inodes, v \in values: SetXattr(n, v)<br><br>Spec ==<br>  /\ Init<br>  /\ [][Next]_&lt;&lt;parent,<br>               expRenAffXattr, actRenAffXattr,<br>               expNonRenAffXattr, actNonRenAffXattr,<br>               modOrder&gt;&gt;<br><br>TypeOK ==<br>  /\ \A &lt;&lt;p, c&gt;&gt; \in parent:<br>      p \in NodeSet /\ c \in inodes /\ IsSelfOrDescendant(p, root)<br>  /\ expRenAffXattr \in [NodeSet -&gt; values]<br>  /\ actRenAffXattr \in [NodeSet -&gt; values]<br>  /\ expNonRenAffXattr \in [NodeSet -&gt; values]<br>  /\ actNonRenAffXattr \in [NodeSet -&gt; values]<br>  /\ modOrder \in Seq(inodes \times operations)<br>  /\ \A n \in inodes:<br>          (IndexOf(modOrder, &lt;&lt;n, rename&gt;&gt;) # 0 /\ IndexOf(modOrder, &lt;&lt;n, setxattr&gt;&gt;) # 0)<br>      &lt;=&gt; IsDescendant(n, root)<br>  /\ \A n \in inodes, op \in operations:<br>       \A i, j \in 1..Len(modOrder):<br>         (modOrder[i] = &lt;&lt;n, op&gt;&gt; /\ modOrder[j] = &lt;&lt;n, op&gt;&gt;) =&gt; i = j<br><br>Consistent ==<br>  /\ \A n \in NodeSet: CalcRenAffXattr(n) = expRenAffXattr[n]<br>  /\ \A n \in NodeSet: CalcNonRenAffXattr(n) = expNonRenAffXattr[n]<br><br>Invariant ==<br>  /\ TypeOK<br>  /\ Consistent<br>==============================================================================================<br></code></pre></td></tr></table></figure>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br></pre></td><td class="code"><pre><code class="hljs cfg">\* Xattr.cfg<br>CONSTANT<br>root = root<br>inodes = &#123;a, b, c, d&#125;<br>null = null<br>blue = blue<br>green = green<br>values = &#123;null, blue, green&#125;<br>rename = rename<br>setxattr = setxattr<br>operations = &#123;rename, setxattr&#125;<br><br>SYMMETRY<br>SYMM<br><br>SPECIFICATION<br>Spec<br><br>INVARIANT<br>Invariant<br></code></pre></td></tr></table></figure>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><code class="hljs bash"><span class="hljs-comment"># java -Xms60g -XX:+UseParallelGC -XX:MaxDirectMemorySize=60g -Dtlc2.tool.fp.FPSet.impl=tlc2.tool.fp.OffHeapDiskFPSet -cp /usr/local/lib/tla2tools.jar tlc2.TLC Xattr -workers auto -checkpoint 0</span><br>Model checking completed. No error has been found.<br>  Estimates of the probability that TLC did not check all reachable states<br>  because two distinct states had the same fingerprint:<br>  calculated (optimistic):  val = .0010<br>  based on the actual fingerprints:  val = 3.4E-6<br>740384039 states generated, 26449486 distinct states found, 0 states left on queue.<br>The depth of the complete state graph search is 19.<br>The average outdegree of the complete state graph is 1 (minimum is 0, the maximum 25 and the 95th percentile is 5).<br>Finished <span class="hljs-keyword">in</span> 01h 25min at (2024-10-17 00:34:40)<br></code></pre></td></tr></table></figure>
+<h2 id="proposing-enhancements-for-data-movement">Proposing Enhancements for Data Movement</h2>
+<p>Some xattrs, such as storage policies, can affect data placement. HDFS proposes a storage policy satisfier that performs data movement based on recursive scanning to fulfill storage policies. However, it has a shortcoming: if the active namenode fails over during the process, it must rescan from the beginning. To overcome this, we propose:</p>
+<ul>
+<li>For newly created files, calculate the exact xattr using the above method and choose block locations based on the resolved xattr.</li>
+<li>For renamed directories or files, if their xattr does not match the xattr after renaming, generate an index to inform the satisfier that this subtree needs handling.</li>
+<li>For setxattr operations that change the xattr of a subtree, also generate an index to inform the satisfier.</li>
+<li>The xattr satisfier scans the subtree indicated by the indices. When scanning a node, after setting the actual xattr of all <strong>immediate children</strong> to the expected xattr (note: if a child's actual xattr and expected xattr do not match, generate a new index), remove the corresponding index for that node.</li>
+</ul>
+<p>With this approach, each inode is scanned at most once, even if a namenode failover occurs.</p>
+
+                
+              </div>
+            
+            <hr/>
+            <div>
+              <div class="post-metas my-3">
+  
+    <div class="post-meta mr-3 d-flex align-items-center">
+      <i class="iconfont icon-category"></i>
+      
+
+<span class="category-chains">
+  
+  
+    
+      <span class="category-chain">
+        
+  <a href="/categories/Computer-Science/" class="category-chain-item">Computer Science</a>
+  
+  
+    <span>></span>
+    
+  <a href="/categories/Computer-Science/Big-Data/" class="category-chain-item">Big Data</a>
+  
+  
+    <span>></span>
+    
+  <a href="/categories/Computer-Science/Big-Data/DFS/" class="category-chain-item">DFS</a>
+  
+  
+
+  
+
+  
+
+      </span>
+    
+  
+</span>
+
+    </div>
+  
+  
+</div>
+
+
+              
+  
+
+  <div class="license-box my-3">
+    <div class="license-title">
+      <div>Design Document: Enhancing Inode Attributes and Storage Policies in HDFS</div>
+      <div>https://clcanny.github.io/2024/08/27/computer-science/big-data/dfs/design-document-enhancing-inode-attributes-and-storage-policies-in-hdfs/</div>
+    </div>
+    <div class="license-meta">
+      
+        <div class="license-meta-item">
+          <div>作者</div>
+          <div>JunBin</div>
+        </div>
+      
+      
+        <div class="license-meta-item license-meta-date">
+          <div>发布于</div>
+          <div>2024年8月27日</div>
+        </div>
+      
+      
+      
+        <div class="license-meta-item">
+          <div>许可协议</div>
+          <div>
+            
+              
+              
+                <a target="_blank" href="https://creativecommons.org/licenses/by/4.0/">
+                  <span class="hint--top hint--rounded" aria-label="BY - 署名">
+                    <i class="iconfont icon-by"></i>
+                  </span>
+                </a>
+              
+            
+          </div>
+        </div>
+      
+    </div>
+    <div class="license-icon iconfont"></div>
+  </div>
+
+
+
+              
+                <div class="post-prevnext my-3">
+                  <article class="post-prev col-6">
+                    
+                    
+                      <a href="/2024/09/22/computer-science/big-data/dfs/design-document-datanode-for-distributed-filesystem/" title="Design Document: DataNode for Distributed Filesystem">
+                        <i class="iconfont icon-arrowleft"></i>
+                        <span class="hidden-mobile">Design Document: DataNode for Distributed Filesystem</span>
+                        <span class="visible-mobile">上一篇</span>
+                      </a>
+                    
+                  </article>
+                  <article class="post-next col-6">
+                    
+                    
+                      <a href="/2024/08/21/computer-science/programming-language/c++/under-the-hood-implementing-system-clock-and-steady-clock/" title="Under the Hood - Implementing system_clock and steady_clock">
+                        <span class="hidden-mobile">Under the Hood - Implementing system_clock and steady_clock</span>
+                        <span class="visible-mobile">下一篇</span>
+                        <i class="iconfont icon-arrowright"></i>
+                      </a>
+                    
+                  </article>
+                </div>
+              
+            </div>
+
+            
+          </article>
+        </div>
+      </div>
+    </div>
+
+    <div class="side-col d-none d-lg-block col-lg-2">
+      
+  <aside class="sidebar" style="margin-left: -1rem">
+    <div id="toc">
+  <p class="toc-header">
+    <i class="iconfont icon-list"></i>
+    <span>目录</span>
+  </p>
+  <div class="toc-body" id="toc-body"></div>
+</div>
+
+
+
+  </aside>
+
+
+    </div>
+  </div>
+</div>
+
+
+
+
+
+  
+
+
+
+  
+
+
+
+  
+
+
+
+  
+
+
+
+  
+
+
+  
+  
+
+
+
+
+
+  <script>
+  Fluid.utils.createScript('https://lib.baomitu.com/mermaid/8.14.0/mermaid.min.js', function() {
+    mermaid.initialize({"theme":"default"});
+
+    Fluid.events.registerRefreshCallback(function() {
+      if ('mermaid' in window) {
+        mermaid.init();
+      }
+    });
+  });
+</script>
+
+
+
+
+
+
+    
+
+    
+      <a id="scroll-top-button" aria-label="TOP" href="#" role="button">
+        <i class="iconfont icon-arrowup" aria-hidden="true"></i>
+      </a>
+    
+
+    
+      <div class="modal fade" id="modalSearch" tabindex="-1" role="dialog" aria-labelledby="ModalLabel"
+     aria-hidden="true">
+  <div class="modal-dialog modal-dialog-scrollable modal-lg" role="document">
+    <div class="modal-content">
+      <div class="modal-header text-center">
+        <h4 class="modal-title w-100 font-weight-bold">搜索</h4>
+        <button type="button" id="local-search-close" class="close" data-dismiss="modal" aria-label="Close">
+          <span aria-hidden="true">&times;</span>
+        </button>
+      </div>
+      <div class="modal-body mx-3">
+        <div class="md-form mb-5">
+          <input type="text" id="local-search-input" class="form-control validate">
+          <label data-error="x" data-success="v" for="local-search-input">关键词</label>
+        </div>
+        <div class="list-group" id="local-search-result"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+    
+
+    
+  </main>
+
+  <footer>
+    <div class="footer-inner">
+  
+    <div class="footer-content">
+       <a href="https://hexo.io" target="_blank" rel="nofollow noopener"><span>Hexo</span></a> <i class="iconfont icon-love"></i> <a href="https://github.com/fluid-dev/hexo-theme-fluid" target="_blank" rel="nofollow noopener"><span>Fluid</span></a> 
+    </div>
+  
+  
+  
+  
+</div>
+
+  </footer>
+
+  <!-- Scripts -->
+  
+  <script  src="https://lib.baomitu.com/nprogress/0.2.0/nprogress.min.js" ></script>
+  <link  rel="stylesheet" href="https://lib.baomitu.com/nprogress/0.2.0/nprogress.min.css" />
+
+  <script>
+    NProgress.configure({"showSpinner":false,"trickleSpeed":100})
+    NProgress.start()
+    window.addEventListener('load', function() {
+      NProgress.done();
+    })
+  </script>
+
+
+<script  src="https://lib.baomitu.com/jquery/3.6.0/jquery.min.js" ></script>
+<script  src="https://lib.baomitu.com/twitter-bootstrap/4.6.1/js/bootstrap.min.js" ></script>
+<script  src="/js/events.js" ></script>
+<script  src="/js/plugins.js" ></script>
+
+
+  <script  src="https://lib.baomitu.com/typed.js/2.0.12/typed.min.js" ></script>
+  <script>
+    (function (window, document) {
+      var typing = Fluid.plugins.typing;
+      var subtitle = document.getElementById('subtitle');
+      if (!subtitle || !typing) {
+        return;
+      }
+      var text = subtitle.getAttribute('data-typed-text');
+      
+        typing(text);
+      
+    })(window, document);
+  </script>
+
+
+
+
+  
+    <script  src="/js/img-lazyload.js" ></script>
+  
+
+
+
+
+  
+<script>
+  Fluid.utils.createScript('https://lib.baomitu.com/tocbot/4.18.2/tocbot.min.js', function() {
+    var toc = jQuery('#toc');
+    if (toc.length === 0 || !window.tocbot) { return; }
+    var boardCtn = jQuery('#board-ctn');
+    var boardTop = boardCtn.offset().top;
+
+    window.tocbot.init(Object.assign({
+      tocSelector     : '#toc-body',
+      contentSelector : '.markdown-body',
+      linkClass       : 'tocbot-link',
+      activeLinkClass : 'tocbot-active-link',
+      listClass       : 'tocbot-list',
+      isCollapsedClass: 'tocbot-is-collapsed',
+      collapsibleClass: 'tocbot-is-collapsible',
+      scrollSmooth    : true,
+      includeTitleTags: true,
+      headingsOffset  : -boardTop,
+    }, CONFIG.toc));
+    if (toc.find('.toc-list-item').length > 0) {
+      toc.css('visibility', 'visible');
+    }
+
+    Fluid.events.registerRefreshCallback(function() {
+      if ('tocbot' in window) {
+        tocbot.refresh();
+        var toc = jQuery('#toc');
+        if (toc.length === 0 || !tocbot) {
+          return;
+        }
+        if (toc.find('.toc-list-item').length > 0) {
+          toc.css('visibility', 'visible');
+        }
+      }
+    });
+  });
+</script>
+
+
+  <script src=https://lib.baomitu.com/clipboard.js/2.0.11/clipboard.min.js></script>
+
+  <script>Fluid.plugins.codeWidget();</script>
+
+
+  
+<script>
+  Fluid.utils.createScript('https://lib.baomitu.com/anchor-js/4.3.1/anchor.min.js', function() {
+    window.anchors.options = {
+      placement: CONFIG.anchorjs.placement,
+      visible  : CONFIG.anchorjs.visible
+    };
+    if (CONFIG.anchorjs.icon) {
+      window.anchors.options.icon = CONFIG.anchorjs.icon;
+    }
+    var el = (CONFIG.anchorjs.element || 'h1,h2,h3,h4,h5,h6').split(',');
+    var res = [];
+    for (var item of el) {
+      res.push('.markdown-body > ' + item.trim());
+    }
+    if (CONFIG.anchorjs.placement === 'left') {
+      window.anchors.options.class = 'anchorjs-link-left';
+    }
+    window.anchors.add(res.join(', '));
+
+    Fluid.events.registerRefreshCallback(function() {
+      if ('anchors' in window) {
+        anchors.removeAll();
+        var el = (CONFIG.anchorjs.element || 'h1,h2,h3,h4,h5,h6').split(',');
+        var res = [];
+        for (var item of el) {
+          res.push('.markdown-body > ' + item.trim());
+        }
+        if (CONFIG.anchorjs.placement === 'left') {
+          anchors.options.class = 'anchorjs-link-left';
+        }
+        anchors.add(res.join(', '));
+      }
+    });
+  });
+</script>
+
+
+  
+<script>
+  Fluid.utils.createScript('https://lib.baomitu.com/fancybox/3.5.7/jquery.fancybox.min.js', function() {
+    Fluid.plugins.fancyBox();
+  });
+</script>
+
+
+  <script>Fluid.plugins.imageCaption();</script>
+
+  
+      <script>
+        if (!window.MathJax) {
+          window.MathJax = {
+            tex    : {
+              inlineMath: { '[+]': [['$', '$']] }
+            },
+            loader : {
+              load: ['ui/lazy']
+            },
+            options: {
+              renderActions: {
+                insertedScript: [200, () => {
+                  document.querySelectorAll('mjx-container').forEach(node => {
+                    let target = node.parentNode;
+                    if (target.nodeName.toLowerCase() === 'li') {
+                      target.parentNode.classList.add('has-jax');
+                    }
+                  });
+                }, '', false]
+              }
+            }
+          };
+        } else {
+          MathJax.startup.document.state(0);
+          MathJax.texReset();
+          MathJax.typeset();
+          MathJax.typesetPromise();
+        }
+
+        Fluid.events.registerRefreshCallback(function() {
+          if ('MathJax' in window && MathJax.startup.document && typeof MathJax.startup.document.state === 'function') {
+            MathJax.startup.document.state(0);
+            MathJax.texReset();
+            MathJax.typeset();
+            MathJax.typesetPromise();
+          }
+        });
+      </script>
+    
+
+  <script  src="https://lib.baomitu.com/mathjax/3.2.2/es5/tex-mml-chtml.js" ></script>
+
+  <script  src="/js/local-search.js" ></script>
+
+
+
+
+
+<!-- 主题的启动项，将它保持在最底部 -->
+<!-- the boot of the theme, keep it at the bottom -->
+<script  src="/js/boot.js" ></script>
+
+
+  
+
+  <noscript>
+    <div class="noscript-warning">博客在允许 JavaScript 运行的环境下浏览效果更佳</div>
+  </noscript>
+</body>
+</html>

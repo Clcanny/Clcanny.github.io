@@ -1,0 +1,1290 @@
+
+
+<!DOCTYPE html>
+<html lang="zh-CN" data-default-color-scheme=auto>
+
+
+
+<head>
+  <meta charset="UTF-8">
+  <link rel="apple-touch-icon" sizes="76x76" href="/img/fluid.png">
+  <link rel="icon" href="/img/fluid.png">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, shrink-to-fit=no">
+  <meta http-equiv="x-ua-compatible" content="ie=edge">
+  
+  <meta name="theme-color" content="#2f4154">
+  <meta name="author" content="JunBin">
+  <meta name="keywords" content="">
+  
+    <meta name="description" content="Introduction Honestly, it took me at least a year to develop a solid understanding of the Paxos consensus algorithm. As the authors of Raft: In Search of an Understandable Consensus Algorithm wrote:">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Paper Interpretation - The Part-Time Parliament">
+<meta property="og:url" content="https://clcanny.github.io/2022/10/05/computer-science/consensus/paper-interpretation-the-part-time-parliament/index.html">
+<meta property="og:site_name" content="On The Road">
+<meta property="og:description" content="Introduction Honestly, it took me at least a year to develop a solid understanding of the Paxos consensus algorithm. As the authors of Raft: In Search of an Understandable Consensus Algorithm wrote:">
+<meta property="og:locale" content="zh_CN">
+<meta property="article:published_time" content="2022-10-05T04:00:00.000Z">
+<meta property="article:modified_time" content="2024-10-30T15:47:28.511Z">
+<meta property="article:author" content="JunBin">
+<meta name="twitter:card" content="summary_large_image">
+  
+  
+  
+  <title>Paper Interpretation - The Part-Time Parliament - On The Road</title>
+
+  <link  rel="stylesheet" href="https://lib.baomitu.com/twitter-bootstrap/4.6.1/css/bootstrap.min.css" />
+
+
+
+  <link  rel="stylesheet" href="https://lib.baomitu.com/github-markdown-css/4.0.0/github-markdown.min.css" />
+
+  <link  rel="stylesheet" href="https://lib.baomitu.com/hint.css/2.7.0/hint.min.css" />
+
+  <link  rel="stylesheet" href="https://lib.baomitu.com/fancybox/3.5.7/jquery.fancybox.min.css" />
+
+
+
+<!-- 主题依赖的图标库，不要自行修改 -->
+<!-- Do not modify the link that theme dependent icons -->
+
+<link rel="stylesheet" href="//at.alicdn.com/t/font_1749284_hj8rtnfg7um.css">
+
+
+
+<link rel="stylesheet" href="//at.alicdn.com/t/font_1736178_lbnruvf0jn.css">
+
+
+<link  rel="stylesheet" href="/css/main.css" />
+
+
+  <link id="highlight-css" rel="stylesheet" href="/css/highlight.css" />
+  
+    <link id="highlight-css-dark" rel="stylesheet" href="/css/highlight-dark.css" />
+  
+
+
+
+
+  <script id="fluid-configs">
+    var Fluid = window.Fluid || {};
+    Fluid.ctx = Object.assign({}, Fluid.ctx)
+    var CONFIG = {"hostname":"clcanny.github.io","root":"/","version":"1.9.4","typing":{"enable":true,"typeSpeed":70,"cursorChar":"_","loop":false,"scope":[]},"anchorjs":{"enable":true,"element":"h1,h2,h3,h4,h5,h6","placement":"left","visible":"hover","icon":""},"progressbar":{"enable":true,"height_px":3,"color":"#29d","options":{"showSpinner":false,"trickleSpeed":100}},"code_language":{"enable":true,"default":"TEXT"},"copy_btn":true,"image_caption":{"enable":true},"image_zoom":{"enable":true,"img_url_replace":["",""]},"toc":{"enable":true,"placement":"right","headingSelector":"h1,h2,h3,h4,h5,h6","collapseDepth":0},"lazyload":{"enable":true,"loading_img":"/img/loading.gif","onlypost":false,"offset_factor":2},"web_analytics":{"enable":false,"follow_dnt":true,"baidu":null,"google":null,"gtag":null,"tencent":{"sid":null,"cid":null},"woyaola":null,"cnzz":null,"leancloud":{"app_id":null,"app_key":null,"server_url":null,"path":"window.location.pathname","ignore_local":false}},"search_path":"/local-search.xml"};
+
+    if (CONFIG.web_analytics.follow_dnt) {
+      var dntVal = navigator.doNotTrack || window.doNotTrack || navigator.msDoNotTrack;
+      Fluid.ctx.dnt = dntVal && (dntVal.startsWith('1') || dntVal.startsWith('yes') || dntVal.startsWith('on'));
+    }
+  </script>
+  <script  src="/js/utils.js" ></script>
+  <script  src="/js/color-schema.js" ></script>
+  
+
+
+  
+<meta name="generator" content="Hexo 7.0.0-rc1"></head>
+
+
+<body>
+  
+
+  <header>
+    
+
+<div class="header-inner" style="height: 70vh;">
+  <nav id="navbar" class="navbar fixed-top  navbar-expand-lg navbar-dark scrolling-navbar">
+  <div class="container">
+    <a class="navbar-brand" href="/">
+      <strong>Fluid</strong>
+    </a>
+
+    <button id="navbar-toggler-btn" class="navbar-toggler" type="button" data-toggle="collapse"
+            data-target="#navbarSupportedContent"
+            aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
+      <div class="animated-icon"><span></span><span></span><span></span></div>
+    </button>
+
+    <!-- Collapsible content -->
+    <div class="collapse navbar-collapse" id="navbarSupportedContent">
+      <ul class="navbar-nav ml-auto text-center">
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/">
+                <i class="iconfont icon-home-fill"></i>
+                <span>首页</span>
+              </a>
+            </li>
+          
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/archives/">
+                <i class="iconfont icon-archive-fill"></i>
+                <span>归档</span>
+              </a>
+            </li>
+          
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/categories/">
+                <i class="iconfont icon-category-fill"></i>
+                <span>分类</span>
+              </a>
+            </li>
+          
+        
+        
+          <li class="nav-item" id="search-btn">
+            <a class="nav-link" target="_self" href="javascript:;" data-toggle="modal" data-target="#modalSearch" aria-label="Search">
+              <i class="iconfont icon-search"></i>
+            </a>
+          </li>
+          
+        
+        
+          <li class="nav-item" id="color-toggle-btn">
+            <a class="nav-link" target="_self" href="javascript:;" aria-label="Color Toggle">
+              <i class="iconfont icon-dark" id="color-toggle-icon"></i>
+            </a>
+          </li>
+        
+      </ul>
+    </div>
+  </div>
+</nav>
+
+  
+
+<div id="banner" class="banner" parallax=true
+     style="background: url('/img/default.png') no-repeat center center; background-size: cover;">
+  <div class="full-bg-img">
+    <div class="mask flex-center" style="background-color: rgba(0, 0, 0, 0.3)">
+      <div class="banner-text text-center fade-in-up">
+        <div class="h2">
+          
+            <span id="subtitle" data-typed-text="Paper Interpretation - The Part-Time Parliament"></span>
+          
+        </div>
+
+        
+          
+  <div class="mt-3">
+    
+    
+      <span class="post-meta">
+        <i class="iconfont icon-date-fill" aria-hidden="true"></i>
+        <time datetime="2022-10-05 12:00" pubdate>
+          2022年10月5日 中午
+        </time>
+      </span>
+    
+  </div>
+
+  <div class="mt-1">
+    
+      <span class="post-meta mr-2">
+        <i class="iconfont icon-chart"></i>
+        
+          37k 字
+        
+      </span>
+    
+
+    
+      <span class="post-meta mr-2">
+        <i class="iconfont icon-clock-fill"></i>
+        
+        
+        
+          312 分钟
+        
+      </span>
+    
+
+    
+    
+  </div>
+
+
+        
+      </div>
+
+      
+    </div>
+  </div>
+</div>
+
+</div>
+
+  </header>
+
+  <main>
+    
+      
+
+<div class="container-fluid nopadding-x">
+  <div class="row nomargin-x">
+    <div class="side-col d-none d-lg-block col-lg-2">
+      
+
+    </div>
+
+    <div class="col-lg-8 nopadding-x-md">
+      <div class="container nopadding-x-md" id="board-ctn">
+        <div id="board">
+          <article class="post-content mx-auto">
+            <!-- SEO header -->
+            <h1 style="display: none">Paper Interpretation - The Part-Time Parliament</h1>
+            
+            
+              <div class="markdown-body">
+                
+                <h2 id="introduction">Introduction</h2>
+<p>Honestly, it took me at least a year to develop a solid understanding of the Paxos consensus algorithm. As the authors of <a target="_blank" rel="noopener" href="https://www.usenix.org/system/files/conference/atc14/atc14-paper-ongaro.pdf">Raft: In Search of an Understandable Consensus Algorithm</a> wrote:</p>
+<blockquote>
+<p>We struggled with Paxos ourselves; we were not able to understand the complete protocol until after reading several simplified explanations and designing our own alternative protocol, a process that took almost a year.</p>
+</blockquote>
+<h2 id="the-problem">The Problem</h2>
+<h3 id="requirements">Requirements</h3>
+<ul>
+<li>The first requirement of the parliamentary protocol was the <strong>consistency</strong> of ledgers, meaning that no two ledgers could contain contradictory information. If legislator <span class="math inline">\(\Phi \iota \sigma \partial \epsilon \rho\)</span> had the entry 132: Lamps must use only olive oil, then no other legislator's ledger could have a different entry for decree 132.</li>
+<li>Progress condition: If a <strong>majority</strong> of the legislators were in the Chamber and no one entered or left the Chamber for a <strong>sufficiently long</strong> period of time then any decree proposed by a legislator in the Chamber would be passed, and every decree that had been passed would appear in the ledger of every legislator in the Chamber.</li>
+</ul>
+<h3 id="assumptions">Assumptions</h3>
+<ul>
+<li>Each legislator received a <strong>sturdy ledger</strong> in which to record the decrees, a pen, and a supply of <strong>indelible ink</strong>.</li>
+<li>A legislator would write other notes on a slip of <strong>paper</strong>, which he might (or might not) lose if he left the Chamber.</li>
+<li>Achieving the progress condition required that legislators be able to measure the passage of time, so they were given simple hourglass <strong>timers</strong>.</li>
+<li>A messenger could be counted on not to garble messages, but he might forget that he had already delivered a message, and <strong>deliver it again</strong>. A messenger might leave the Chamber to conduct some business—perhaps taking a six-month voyage—before delivering a message. He might even leave forever, in which case the message would <strong>never be delivered</strong>.</li>
+</ul>
+<h2 id="the-single-decree-synod">The Single-Decree Synod</h2>
+<p>Let us consider a simple consensus algorithm named Synod, a precursor to the Parliament protocol. The protocol’s requirements and assumptions were essentially the same as those of the later Parliament except that instead of containing a sequence of decrees, a ledger would have at most one decree. The Synod targets priests, not legislators, as its users.</p>
+<p>Mathematicians derived the Synod protocol in a series of steps:</p>
+<ul>
+<li>First, they proved results showing that a protocol satisfying certain constraints would guarantee consistency and <strong>allow</strong> progress (not deadlock). A preliminary protocol was then derived directly from these constraints.</li>
+<li>A restricted version of the preliminary protocol provided the basic protocol that guaranteed consistency, but <strong>not progress</strong>.</li>
+<li>The complete Synod protocol, <strong>satisfying the consistency and progress requirements</strong>, was obtained by restricting the basic protocol.</li>
+</ul>
+<h3 id="mathematical-results">Mathematical Results</h3>
+<p>The Synod’s decree was chosen through a series of numbered <strong>ballots</strong>, where a ballot was a referendum on a single decree. Formally, a ballot <span class="math inline">\(B\)</span> consisted of the following four components:</p>
+<ul>
+<li><span class="math inline">\(B_{dec}\)</span>: A decree (the one being voted on).</li>
+<li><span class="math inline">\(B_{qrm}\)</span>: A nonempty set of priests (the ballot's quorum).</li>
+<li><span class="math inline">\(B_{vot}\)</span>: A set of priests (the ones who cast votes for the decree).</li>
+<li><span class="math inline">\(B_{bal}\)</span>: A ballot number.</li>
+</ul>
+<p>A ballot succeeded iff (if and only if) <strong>every</strong> priest in the quorum voted for the decree. A ballot <span class="math inline">\(B\)</span> was said to be <strong>successful</strong> iff $<span class="math inline">\(B_{qrm} \subseteq B_{vot}\)</span>, so a successful ballot was one in which every quorum member voted.</p>
+<p>Paxon mathematicians defined three conditions on a set <span class="math inline">\(\mathcal{B}\)</span> of ballots, and then showed that consistency was guaranteed and progress was possible if the set of ballots that had taken place satisfied those conditions:</p>
+<ul>
+<li><span class="math inline">\(\operatorname{B1}(\mathcal{B})\)</span>: Each ballot in <span class="math inline">\(\mathcal{B}\)</span> has a unique ballot number.</li>
+<li><span class="math inline">\(\operatorname{B2}(\mathcal{B})\)</span>: The quorums of <strong>any two</strong> ballots in <span class="math inline">\(\mathcal{B}\)</span> have <strong>at least one</strong> priest in common.</li>
+<li><span class="math inline">\(\operatorname{B3}(\mathcal{B})\)</span>: For every ballot <span class="math inline">\(B\)</span> in <span class="math inline">\(\mathcal{B}\)</span>, if any priest in <span class="math inline">\(B\)</span>'s quorum <strong>voted in an earlier ballot</strong> in <span class="math inline">\(\mathcal{B}\)</span>, then the decree of <span class="math inline">\(B\)</span> equals the decree of the latest of those earlier ballots.
+<ul>
+<li>Ballot numbers were chosen from an unbounded ordered set of numbers. If <span class="math inline">\(B_{bal}^{\prime} &gt; B_{bal}\)</span>, then ballot <span class="math inline">\(B_{bal}^{\prime}\)</span> was said to be later than ballot <span class="math inline">\(B\)</span>.</li>
+<li>However, this indicated <strong>nothing</strong> about the order in which ballots were conducted; a later ballot could actually have taken place before an earlier one.</li>
+</ul></li>
+</ul>
+<p>Let us illustrates condition <span class="math inline">\(\operatorname{B3}(\mathcal{B})\)</span> with a set <span class="math inline">\(\mathcal{B}\)</span> of five ballots for a Synod consisting of the five priests <span class="math inline">\(\mathrm{A}, \mathrm{B}, \Gamma, \Delta, \mathrm{E}\)</span>. This set <span class="math inline">\(\mathcal{B}\)</span> contains five ballots. For each ballot and priest, I mark Q if the priest is in the quorum, and QV if the priest votes, since voting implies quorum membership.</p>
+<table>
+<thead>
+<tr class="header">
+<th style="text-align: left;">Ballot Number</th>
+<th style="text-align: center;">Decree</th>
+<th style="text-align: center;"><span class="math inline">\(\mathrm{A}\)</span></th>
+<th style="text-align: center;"><span class="math inline">\(\mathrm{B}\)</span></th>
+<th style="text-align: center;"><span class="math inline">\(\Gamma\)</span></th>
+<th style="text-align: center;"><span class="math inline">\(\Delta\)</span></th>
+<th style="text-align: center;"><span class="math inline">\(\mathrm{E}\)</span></th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">2</td>
+<td style="text-align: center;"><span class="math inline">\(\alpha\)</span></td>
+<td style="text-align: center;">Q</td>
+<td style="text-align: center;">Q</td>
+<td style="text-align: center;">Q</td>
+<td style="text-align: center;">QV</td>
+<td style="text-align: center;"></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">5</td>
+<td style="text-align: center;"><span class="math inline">\(\beta\)</span></td>
+<td style="text-align: center;">Q</td>
+<td style="text-align: center;">Q</td>
+<td style="text-align: center;">QV</td>
+<td style="text-align: center;"></td>
+<td style="text-align: center;">Q</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">14</td>
+<td style="text-align: center;"><span class="math inline">\(\alpha\)</span></td>
+<td style="text-align: center;"></td>
+<td style="text-align: center;">QV</td>
+<td style="text-align: center;"></td>
+<td style="text-align: center;">Q</td>
+<td style="text-align: center;">QV</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">27</td>
+<td style="text-align: center;"><span class="math inline">\(\beta\)</span></td>
+<td style="text-align: center;">QV</td>
+<td style="text-align: center;"></td>
+<td style="text-align: center;">QV</td>
+<td style="text-align: center;">QV</td>
+<td style="text-align: center;"></td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">29</td>
+<td style="text-align: center;"><span class="math inline">\(\beta\)</span></td>
+<td style="text-align: center;"></td>
+<td style="text-align: center;">QV</td>
+<td style="text-align: center;">Q</td>
+<td style="text-align: center;">Q</td>
+<td style="text-align: center;"></td>
+</tr>
+</tbody>
+</table>
+<ul>
+<li>Ballot number 2 is the earliest ballot, so the condition on that ballot is trivially true.</li>
+<li>None of ballot 5's four quorum members <strong>voted</strong> in an earlier ballot, so the condition on ballot 5 is also trivially true.</li>
+<li>The only member of ballot 14's quorum to vote in an earlier ballot is <span class="math inline">\(\Delta\)</span>, who <strong>voted</strong> in ballot number 2, so the condition requires that ballot 14's decree must equal ballot 2's decree.</li>
+<li>(This is a successful ballot.) The members of ballot 27's quorum are <span class="math inline">\(\mathrm{A}\)</span>, <span class="math inline">\(\Gamma\)</span>, and <span class="math inline">\(\Delta\)</span>. Priest <span class="math inline">\(\mathrm{A}\)</span> did not vote in an earlier ballot, the only earlier ballot <span class="math inline">\(\Gamma\)</span> <strong>voted</strong> in was ballot 5, and the only earlier ballot <span class="math inline">\(\Delta\)</span> <strong>voted</strong> in was ballot 2. The <strong>latest</strong> of these two earlier ballots is ballot 5, so the condition requires that ballot 27's decree must equal ballot 5's decree.</li>
+<li>The members of ballot 29's quorum are <span class="math inline">\(\mathrm{B}\)</span>, <span class="math inline">\(\Gamma\)</span>, and <span class="math inline">\(\Delta\)</span>. The only earlier ballot that <span class="math inline">\(\mathrm{B}\)</span> voted in was number 14, priest <span class="math inline">\(\Gamma\)</span> voted in ballots 5 and 27, and <span class="math inline">\(\Delta\)</span> voted in ballots 2 and 27. The latest of these four earlier ballots is number 27, so the condition requires that ballot 29's decree must equal ballot 27's decree.</li>
+</ul>
+<h4 id="a-formal-statement-of-three-conditions">A Formal Statement of Three Conditions</h4>
+<p>To state <span class="math inline">\(\operatorname{B1}(\mathcal{B})\)</span> - <span class="math inline">\(\operatorname{B3}(\mathcal{B})\)</span> formally requires some more notation. A vote <span class="math inline">\(v\)</span> was defined to be a quantity consisting of three components: a priest <span class="math inline">\(v_{pst}\)</span>, a ballot number <span class="math inline">\(v_{bal}\)</span>, and a decree <span class="math inline">\(v_{dec}\)</span>. It represents a vote cast by priest <span class="math inline">\(v_{pst}\)</span> for decree <span class="math inline">\(v_{dec}\)</span> in ballot number <span class="math inline">\(v_{bal}\)</span>. The Paxons also defined null votes to be votes <span class="math inline">\(v\)</span> with <span class="math inline">\(v_{bal} = -\infty\)</span> and <span class="math inline">\(v_{dec} = \text{BLANK}\)</span>, where <span class="math inline">\(-\infty &lt; b &lt; \infty\)</span> for any ballot number <span class="math inline">\(b\)</span>, and <span class="math inline">\(\text{BLANK}\)</span> is not a decree. For any priest <span class="math inline">\(p\)</span>, they defined <span class="math inline">\(null_p\)</span> to be the unique null vote <span class="math inline">\(v\)</span> with <span class="math inline">\(v_{pst} = p\)</span>.</p>
+<p>For any votes <span class="math inline">\(v\)</span> and <span class="math inline">\(v^{\prime}\)</span>, if <span class="math inline">\(v_{bal} &lt; v_{bal}^{\prime}\)</span> then <span class="math inline">\(v &lt; v^{\prime}\)</span>. It is not known how the relative order of <span class="math inline">\(v\)</span> and <span class="math inline">\(v^{\prime}\)</span> was defined if <span class="math inline">\(v_{bal} = v_{bal}^{\prime}\)</span>.</p>
+<p>For any set <span class="math inline">\(\mathcal{B}\)</span> of ballots, the set <span class="math inline">\(\operatorname{Votes}(\mathcal{B})\)</span> of votes in <span class="math inline">\(\mathcal{B}\)</span> was defined to consist of all votes <span class="math inline">\(v\)</span> such that <span class="math inline">\(v_{pst} \in B_{vot}\)</span>, <span class="math inline">\(v_{bal} = B_{bal}\)</span>, and <span class="math inline">\(v_{dec} = B_{dec}\)</span> for some <span class="math inline">\(B \in \mathcal{B}\)</span>.</p>
+<p>If <span class="math inline">\(p\)</span> is a priest and <span class="math inline">\(b\)</span> is either a ballot number or <span class="math inline">\(\pm \infty\)</span>, then <span class="math inline">\(\operatorname{MaxVote}(b, p, \mathcal{B})\)</span> was defined to be the largest vote <span class="math inline">\(v\)</span> in <span class="math inline">\(\operatorname{Votes}(\mathcal{B})\)</span> cast by <span class="math inline">\(p\)</span> with <span class="math inline">\(v_{bal} &lt; b\)</span>, or to be <span class="math inline">\(null_p\)</span> if there was no such vote. Since <span class="math inline">\(null_p\)</span> is smaller than any real vote cast by <span class="math inline">\(p\)</span>, this means that <span class="math inline">\(\operatorname{MaxVote}(b, p, \mathcal{B})\)</span> is the largest vote in the set:</p>
+<p><span class="math display">\[
+  \left\{
+    v \in \operatorname{Votes}(\mathcal{B}):
+      \left(v_{pst}=p\right)
+    \wedge
+      \left(v_{bal}&lt;b\right)
+  \right\}
+\cup
+  \left\{null_p\right\}
+\]</span></p>
+<p>Conditions <span class="math inline">\(\operatorname{B1}(\mathcal{B})\)</span> – <span class="math inline">\(\operatorname{B3}(\mathcal{B})\)</span> are stated formally as follows:</p>
+<span class="math display">\[\begin{aligned}
+&amp;B1(\mathcal{B}) \triangleq
+  \forall B, B^{\prime} \in \mathcal{B}:
+    \left(B \neq B^{\prime}\right)
+    \Rightarrow
+    \left(B_{bal} \neq B_{bal}^{\prime}\right)   \\
+
+&amp;B2(\mathcal{B}) \triangleq
+  \forall B, B^{\prime} \in \mathcal{B}:
+    B_{qrm} \cap B_{qrm}^{\prime} \neq \emptyset \\
+
+&amp;B3(\mathcal{B}) \triangleq
+  \forall B \in \mathcal{B}:
+    \left(\operatorname{MaxVote}(B_{bal}, B_{qrm}, \mathcal{B})_{bal} \neq -\infty\right)
+    \Rightarrow                                  \\
+    &amp;\quad\left(B_{dec}=\operatorname{MaxVote}(B_{bal}, B_{qrm}, \mathcal{B})_{dec}\right)
+\end{aligned}\]</span>
+<h4 id="lemma">Lemma</h4>
+<p>To show that these conditions imply consistency, the Paxons first showed that <span class="math inline">\(\operatorname{B1}(\mathcal{B})\)</span> – <span class="math inline">\(\operatorname{B3}(\mathcal{B})\)</span> imply that, if a ballot <span class="math inline">\(B\)</span> in <span class="math inline">\(\mathcal{B}\)</span> is <strong>successful</strong>, then any later ballot in <span class="math inline">\(\mathcal{B}\)</span> is for the same decree as <span class="math inline">\(B\)</span>. If <span class="math inline">\(\operatorname{B1}(\mathcal{B})\)</span>, <span class="math inline">\(\operatorname{B2}(\mathcal{B})\)</span>, and <span class="math inline">\(\operatorname{B3}(\mathcal{B})\)</span> hold, then:</p>
+<p><span class="math display">\[
+\forall B, B^{\prime} \in \mathcal{B}:
+    \left(
+        \left(B_{qrm} \subseteq B_{vot}\right)
+      \wedge
+        \left(B_{bal}^{\prime} &gt; B_{bal}\right)
+    \right)
+  \Rightarrow
+    \left(B_{dec}^{\prime} = B_{dec}\right)
+\]</span></p>
+<h5 id="proof-of-lemma">Proof of Lemma</h5>
+<p>The author uses <span class="math inline">\(B_{qrm} \subseteq B_{vot}\)</span> instead of <span class="math inline">\(B_{qrm} = B_{vot}\)</span> to express a successful ballot <span class="math inline">\(B\)</span>. This is because <span class="math inline">\(B_{qrm} = B_{vot}\)</span> is logically equivalent to <span class="math inline">\(\left(B_{vot} \subseteq B_{qrm}\right) \wedge \left(B_{qrm} \subseteq B_{vot}\right)\)</span>, but only the condition <span class="math inline">\(B_{qrm} \subseteq B_{vot}\)</span> is required to prove the lemma.</p>
+<p>For any ballot <span class="math inline">\(B\)</span> in <span class="math inline">\(\mathcal{B}\)</span>, let <span class="math inline">\(\operatorname{\Psi}(B, \mathcal{B})\)</span> be the set of ballots in <span class="math inline">\(\mathcal{B}\)</span> later than <span class="math inline">\(B\)</span> for a decree different from <span class="math inline">\(B\)</span>'s:</p>
+<p><span class="math display">\[
+\operatorname{\Psi}(B, \mathcal{B}) \triangleq
+    \left\{
+      B^{\prime} \in \mathcal{B}:
+          \left(B_{bal}^{\prime} &gt; B_{bal}\right)
+        \wedge
+          \left(B_{dec}^{\prime} \neq B_{dec}\right)
+    \right\}
+\]</span></p>
+<p>To prove the lemma, it suffices to show that if <span class="math inline">\(B_{qrm} \subseteq B_{vot}\)</span> then <span class="math inline">\(\operatorname{\Psi}(B, \mathcal{B})\)</span> is empty. The Paxons gave a proof by contradiction. They assumed the existence of a <span class="math inline">\(B\)</span> with <span class="math inline">\(B_{qrm} \subseteq B_{vot}\)</span> and <span class="math inline">\(\operatorname{\Psi}(B, \mathcal{B}) \neq \emptyset\)</span>, and obtained a contradiction as follows:</p>
+<ol type="1">
+<li>Choose <span class="math inline">\(C \in \operatorname{\Psi}(B, \mathcal{B})\)</span> such that <span class="math inline">\(C_{bal} = \min \left\{B_{bal}^{\prime}: B^{\prime} \in \Psi(B, \mathcal{B})\right\}\)</span>. Proof:
+<ul>
+<li><span class="math inline">\(C\)</span> exists because <span class="math inline">\(\operatorname{\Psi}(B, \mathcal{B})\)</span> is nonempty and finite.</li>
+</ul></li>
+<li><span class="math inline">\(C_{bal} &gt; B_{bal}\)</span>. Proof:
+<ul>
+<li>By the definition of <span class="math inline">\(\operatorname{\Psi}(B, \mathcal{B})\)</span> and 1.</li>
+</ul></li>
+<li><span class="math inline">\(B_{vot} \cap C_{qrm} \neq \emptyset\)</span>. Proof:
+<ul>
+<li>Given ballot <span class="math inline">\(B\)</span> is successful, then <span class="math inline">\(B_{qrm} \subseteq B_{vot}\)</span> (by definition of a successful ballot).</li>
+<li>By <span class="math inline">\(\operatorname{B2}(\mathcal{B})\)</span>, <span class="math inline">\(B_{qrm} \cap C_{qrm} \neq \emptyset\)</span>.</li>
+<li>Therefore, <span class="math inline">\(B_{vot} \cap C_{qrm} \neq \emptyset\)</span>.</li>
+</ul></li>
+<li><span class="math inline">\(\operatorname{MaxVote}(C_{bal}, C_{qrm}, \mathcal{B})_{bal} \geq B_{bal}\)</span>. Proof:
+<ul>
+<li>By definition, <span class="math inline">\(\operatorname{MaxVote}(C_{bal}, C_{qrm}, \mathcal{B})\)</span> is the largest vote in the set <span class="math inline">\(\eqref{proof-of-lemma:step-4:by-definition}\)</span>.</li>
+<li>There exists at least one vote <span class="math inline">\(v\)</span> by priest <span class="math inline">\(p\)</span> in ballot <span class="math inline">\(B\)</span> satisfying the following conditions:
+<ul>
+<li>By 2, <span class="math inline">\(v_{bal} = B_{bal} &lt; C_{bal}\)</span>.</li>
+<li>By 3, <span class="math inline">\((p \in B_{vot}) \wedge (p \in C_{qrm})\)</span>.</li>
+<li>Therefore, <span class="math inline">\(v\)</span> is a valid element of the set denoted by Equation <span class="math inline">\(\eqref{proof-of-lemma:step-4:by-definition}\)</span>.</li>
+</ul></li>
+</ul></li>
+<li><span class="math inline">\(\operatorname{MaxVote}(C_{bal}, C_{qrm}, \mathcal{B}) \in \operatorname{Votes}(\mathcal{B})\)</span>. Proof:
+<ul>
+<li>By 4, <span class="math inline">\(\operatorname{MaxVote}(C_{bal}, C_{qrm}, \mathcal{B})\)</span> is not a null vote.</li>
+<li>By the definition of <span class="math inline">\(\operatorname{MaxVote}(C_{bal}, C_{qrm}, \mathcal{B})\)</span>.</li>
+</ul></li>
+<li><span class="math inline">\(C_{dec} = \operatorname{MaxVote}(C_{bal}, C_{qrm}, \mathcal{B})_{dec}\)</span>. Proof:
+<ul>
+<li>By 5, <span class="math inline">\(\operatorname{MaxVote}(C_{bal}, C_{qrm}, \mathcal{B})_{bal} \neq -\infty\)</span>.</li>
+<li>By <span class="math inline">\(B3(\mathcal{B})\)</span>.</li>
+</ul></li>
+<li><ol type="i">
+<li><span class="math inline">\(\operatorname{MaxVote}(C_{bal}, C_{qrm}, \mathcal{B})_{dec} \neq B_{dec}\)</span>. Proof:
+<ul>
+<li>By the definition of <span class="math inline">\(\operatorname{\Psi}(B, \mathcal{B})\)</span> and 1, <span class="math inline">\(C_{dec} \neq B_{dec}\)</span>.</li>
+<li>By 6, <span class="math inline">\(\operatorname{MaxVote}(C_{bal}, C_{qrm}, \mathcal{B})_{dec} \neq B_{dec}\)</span>.</li>
+</ul></li>
+<li><span class="math inline">\(\operatorname{MaxVote}(C_{bal}, C_{qrm}, \mathcal{B})_{bal} \neq B_{bal}\)</span>. Proof:
+<ul>
+<li>By <span class="math inline">\(\left(B_{dec}^{\prime} \neq B_{dec}\right) \Rightarrow \left(B^{\prime} \neq B\right)\)</span>, <span class="math inline">\(\operatorname{MaxVote}(C_{bal}, C_{qrm}, \mathcal{B}) \neq B\)</span>.</li>
+<li>By <span class="math inline">\(\operatorname{B1}(\mathcal{B})\)</span>, <span class="math inline">\(\operatorname{MaxVote}(C_{bal}, C_{qrm}, \mathcal{B})_{bal} \neq B_{bal}\)</span>.</li>
+</ul></li>
+</ol></li>
+<li><span class="math inline">\(\operatorname{MaxVote}(C_{bal}, C_{qrm}, \mathcal{B})_{bal} &gt; B_{bal}\)</span>. Proof:
+<ul>
+<li>By 4 and 7.ii.</li>
+</ul></li>
+<li><span class="math inline">\(\operatorname{MaxVote}(C_{bal}, C_{qrm}, \mathcal{B}) \in \operatorname{Votes}(\Psi(B, \mathcal{B}))\)</span>. Proof:
+<ul>
+<li>By the definition of <span class="math inline">\(\operatorname{\Psi}(B, \mathcal{B})\)</span>, 8 and 7.i.</li>
+</ul></li>
+<li><span class="math inline">\(\operatorname{MaxVote}(C_{bal}, C_{qrm}, \mathcal{B})_{bal} &lt; C_{bal}\)</span>. Proof:
+<ul>
+<li>By definition of <span class="math inline">\(\operatorname{MaxVote}(C_{bal}, C_{qrm}, \mathcal{B})\)</span>.</li>
+</ul></li>
+<li>Contradiction. Proof:
+<ul>
+<li>Ballot <span class="math inline">\(C\)</span> does not have the minimum ballot ID in the set <span class="math inline">\(\operatorname{\Psi}(B, \mathcal{B})\)</span>.
+<ul>
+<li>By 8, <span class="math inline">\(B_{bal} &lt; \operatorname{MaxVote}(C_{bal}, C_{qrm}, \mathcal{B})_{bal}\)</span>.</li>
+<li>By 10, <span class="math inline">\(\operatorname{MaxVote}(C_{bal}, C_{qrm}, \mathcal{B})_{bal} &lt; C_{bal}\)</span>.</li>
+<li>By 7.i., <span class="math inline">\(\operatorname{MaxVote}(C_{bal}, C_{qrm}, \mathcal{B})_{dec} \neq B_{dec}\)</span>.</li>
+</ul></li>
+<li>By 1.</li>
+<li>By 9. Why do we need step 9 to prove the contradiction in this case?</li>
+</ul></li>
+</ol>
+<p><span class="math display">\[\begin{align}
+  \left\{
+    v \in \operatorname{Votes}(\mathcal{B}):
+      \left(v_{pst} \in C_{qrm}\right)
+    \wedge
+      \left(v_{bal} &lt; C_{bal}\right)
+  \right\}
+\cup
+  \left\{null_p\right\}
+\label{proof-of-lemma:step-4:by-definition}
+\end{align}\]</span></p>
+<h5 id="understanding-the-proof-of-the-lemma">Understanding the Proof of the Lemma</h5>
+<p>The author proves the Lemma in the section "Proof of Lemma". I would like to analyze how the author constructed the proof in a new section. However, constructing the proof <strong>from scratch</strong> is too difficult. The key idea is that the author proves the Lemma by contradiction.</p>
+<p>The contradiction is that we assume <span class="math inline">\(C\)</span> is the "first" ballot whose decree differs from <span class="math inline">\(B_{dec}\)</span> (step 1). However, we can find another ballot whose number is <span class="math inline">\(\operatorname{MaxVote}(C_{bal}, C_{qrm}, \mathcal{B})_{bal}\)</span> that occurs "between" <span class="math inline">\(B\)</span> and <span class="math inline">\(C\)</span> and satisfies the required condition (step 11).</p>
+<ul>
+<li><span class="math inline">\(\operatorname{MaxVote}(C_{bal}, C_{qrm}, \mathcal{B})_{dec} \neq B_{dec}\)</span> (step 7.i)
+<ul>
+<li><span class="math inline">\(\operatorname{MaxVote}(C_{bal}, C_{qrm}, \mathcal{B})_{dec} = C_{dec}\)</span> (step 6)
+<ul>
+<li><span class="math inline">\(\operatorname{MaxVote}(C_{bal}, C_{qrm}, \mathcal{B})\)</span> is not a null vote (step 5)
+<ul>
+<li><span class="math inline">\(\operatorname{MaxVote}(C_{bal}, C_{qrm}, \mathcal{B})_{bal} \ge B_{bal}\)</span> (step 4)</li>
+</ul></li>
+<li><span class="math inline">\(\operatorname{B3}(\mathcal{B})\)</span></li>
+</ul></li>
+</ul></li>
+<li><span class="math inline">\(\operatorname{MaxVote}(C_{bal}, C_{qrm}, \mathcal{B})_{bal} \gt B_{bal}\)</span> (step 8)
+<ul>
+<li><span class="math inline">\(\operatorname{MaxVote}(C_{bal}, C_{qrm}, \mathcal{B})_{bal} \ge B_{bal}\)</span> (step 4)
+<ul>
+<li>At least one priest in the quorum <span class="math inline">\(C_{qrm}\)</span> has cast a vote for ballot <span class="math inline">\(B\)</span>.
+<ul>
+<li><span class="math inline">\(B_{vot} \cap C_{qrm} \neq \emptyset\)</span> (step 3)</li>
+<li><span class="math inline">\(C_{bal} &gt; B_{bal}\)</span> (step 2)</li>
+</ul></li>
+<li>By the definition of <span class="math inline">\(\operatorname{MaxVote}(C_{bal}, C_{qrm}, \mathcal{B})\)</span>.</li>
+</ul></li>
+<li><span class="math inline">\(\operatorname{MaxVote}(C_{bal}, C_{qrm}, \mathcal{B})_{bal} \neq B_{bal}\)</span> (step 7.ii)</li>
+</ul></li>
+<li><span class="math inline">\(\operatorname{MaxVote}(C_{bal}, C_{qrm}, \mathcal{B})_{bal} \lt C_{bal}\)</span> (step 10)</li>
+</ul>
+<h4 id="theorem-1">Theorem 1</h4>
+<p>With this lemma, it was easy to show that, if <span class="math inline">\(\operatorname{B1}(\mathcal{B})\)</span> – <span class="math inline">\(\operatorname{B3}(\mathcal{B})\)</span> hold, then any two <strong>successful</strong> ballots are for the <strong>same</strong> decree.</p>
+<p><span class="math display">\[
+\forall B, B^{\prime} \in \mathcal{B}:
+    \left(
+        \left(B_{qrm} \subseteq B_{vot}\right)
+      \wedge
+        \left(B_{qrm}^{\prime} \subseteq B_{vot}^{\prime}\right)
+    \right)
+  \Rightarrow
+    \left(B_{dec}^{\prime} = B_{dec}\right)
+\]</span></p>
+<h5 id="proof-of-theorem-1">Proof of Theorem 1</h5>
+<ul>
+<li>If <span class="math inline">\(B_{bal}^{\prime} = B_{bal}\)</span>, then <span class="math inline">\(\operatorname{B1}(\mathcal{B})\)</span> implies <span class="math inline">\(B^{\prime} = B\)</span>.</li>
+<li>If <span class="math inline">\(B_{bal}^{\prime} \neq B_{bal}\)</span>, then the theorem follows immediately from the lemma.</li>
+</ul>
+<h4 id="theorem-2">Theorem 2</h4>
+<p>The Paxons then proved a theorem asserting that if there are enough priests in the Chamber, then it is <strong>possible</strong> to conduct a successful ballot while preserving <span class="math inline">\(\operatorname{B1}\)</span> – <span class="math inline">\(\operatorname{B3}\)</span>. Although this <strong>does not guarantee progress</strong>, it at least shows that a balloting protocol based on <span class="math inline">\(\operatorname{B1}\)</span> – <span class="math inline">\(\operatorname{B3}\)</span> <strong>will not deadlock</strong>.</p>
+<p>Let <span class="math inline">\(b\)</span> be a ballot number and <span class="math inline">\(Q\)</span> a set of priests such that <span class="math inline">\(b &gt; B_{bal}\)</span> and <span class="math inline">\(Q \cap B_{qrm} \neq \emptyset\)</span> for all <span class="math inline">\(B \in \mathcal{B}\)</span>. If <span class="math inline">\(\operatorname{B1}(\mathcal{B})\)</span>, <span class="math inline">\(\operatorname{B2}(\mathcal{B})\)</span>, and <span class="math inline">\(\operatorname{B3}(\mathcal{B})\)</span> hold, then there <strong>is</strong> a ballot <span class="math inline">\(B^{\prime}\)</span> with <span class="math inline">\(B_{bal}^{\prime} = b\)</span> and <span class="math inline">\(B_{qrm}^{\prime} = B_{vot}^{\prime} = Q\)</span> such that <span class="math inline">\(\operatorname{B1}(\mathcal{B} \cup \{B^\prime\})\)</span>, <span class="math inline">\(\operatorname{B2}(\mathcal{B} \cup \{B^\prime\})\)</span> and <span class="math inline">\(\operatorname{B3}(\mathcal{B} \cup \{B^\prime\})\)</span> hold.</p>
+<ul>
+<li>Condition <span class="math inline">\(\operatorname{B1}(\mathcal{B} \cup \{B^\prime\})\)</span> follows from <span class="math inline">\(\operatorname{B1}(\mathcal{B})\)</span>, the choice of <span class="math inline">\(B_{bal}^{\prime}\)</span>, and the assumption about <span class="math inline">\(b\)</span>.</li>
+<li>Condition <span class="math inline">\(\operatorname{B2}(\mathcal{B} \cup \{B^\prime\})\)</span> follows from <span class="math inline">\(\operatorname{B2}(\mathcal{B})\)</span>, the choice of <span class="math inline">\(B_{qrm}^{\prime}\)</span> , and the assumption about <span class="math inline">\(Q\)</span>.</li>
+<li>If <span class="math inline">\(\operatorname{MaxVote}(b, Q, \mathcal{B})_{bal} = −\infty\)</span> then let <span class="math inline">\(B_{dec}^{\prime}\)</span> be any decree, else <strong>let it equal</strong> <span class="math inline">\(\operatorname{MaxVote}(b, Q, \mathcal{B})_{dec}\)</span>. Condition <span class="math inline">\(\operatorname{B3}(\mathcal{B} \cup \{B^\prime\})\)</span> then follows from <span class="math inline">\(\operatorname{B3}(\mathcal{B})\)</span>.</li>
+</ul>
+<h3 id="the-preliminary-protocol">The Preliminary Protocol</h3>
+<p>The definition of the protocol specified how the set <span class="math inline">\(\mathcal{B}\)</span> changed, but the set was never explicitly calculated. The Paxons referred to <span class="math inline">\(\mathcal{B}\)</span> as a quantity observed only by the gods, since it might never be known to any mortal.</p>
+<ul>
+<li>To maintain <span class="math inline">\(\operatorname{B1}(\mathcal{B})\)</span>, each ballot had to receive a unique number. An obvious method would have been to let a ballot number be a pair consisting of an integer and a priest, using a lexicographical ordering, where <span class="math inline">\((13, \Gamma \rho \alpha \breve{\iota}) &lt; (13, \Lambda \iota \nu \sigma \epsilon \breve{\iota}) &lt; (15, \Gamma \rho \alpha \breve{\imath})\)</span>.</li>
+<li>To maintain <span class="math inline">\(\operatorname{B2}(\mathcal{B})\)</span>, a ballot's quorum was chosen to contain a <span class="math inline">\(\mu \alpha \delta \zeta \partial \omega \rho \iota \tau \breve{\sigma} \sigma \tau\)</span> of priests.
+<ul>
+<li>Initially, <span class="math inline">\(\mu \alpha \delta \zeta \partial \omega \rho \iota \tau \breve{\sigma} \sigma \tau\)</span> just meant a simple majority.</li>
+<li>Later, it was observed that fat priests were less mobile and spent more time in the Chamber than thin ones, so a <span class="math inline">\(\mu \alpha \delta \zeta \partial \omega \rho \iota \tau \breve{\sigma} \sigma \tau\)</span> was taken to mean any set of priests whose total weight was more than half the total weight of all priests, rather than a simple majority of the priests.</li>
+<li>When a group of thin priests complained that this was unfair, actual weights were replaced with symbolic weights based on a priest’s attendance record.</li>
+</ul></li>
+<li>To maintain <span class="math inline">\(\operatorname{B3}(\mathcal{B})\)</span>, before initiating a new ballot with ballot number <span class="math inline">\(b\)</span> and quorum <span class="math inline">\(Q\)</span>, a priest <span class="math inline">\(p\)</span> had to find <span class="math inline">\(\operatorname{MaxVote}(b, Q, \mathcal{B})_{dec}\)</span>. To do this, <span class="math inline">\(p\)</span> had to find <span class="math inline">\(\operatorname{MaxVote}(b, q, \mathcal{B})\)</span> for <strong>each</strong> priest <span class="math inline">\(q\)</span> in <span class="math inline">\(Q\)</span>.
+<ul>
+<li>Priest <span class="math inline">\(p\)</span> obtains <span class="math inline">\(\operatorname{MaxVote}(b, q, \mathcal{B})\)</span> from <span class="math inline">\(q\)</span> by an <strong>exchange of messages</strong>.</li>
+<li>Therefore, the first two steps in the protocol for conducting a single ballot initiated by <span class="math inline">\(p\)</span> are:
+<ul>
+<li>(1) Priest <span class="math inline">\(p\)</span> chooses a new ballot number <span class="math inline">\(b\)</span> and sends a <span class="math inline">\(\operatorname{NextBallot}(b)\)</span> message to <strong>some</strong> set of priests.</li>
+<li>(2) A priest <span class="math inline">\(q\)</span> responds to the receipt of a <span class="math inline">\(\operatorname{NextBallot}(b)\)</span> message by sending a <span class="math inline">\(\operatorname{LastVote}(b, v)\)</span> message to <span class="math inline">\(p\)</span>, where <span class="math inline">\(v\)</span> is the vote with the largest ballot number less than <span class="math inline">\(b\)</span> that <span class="math inline">\(q\)</span> has cast, or his null vote <span class="math inline">\(null_q\)</span> if <span class="math inline">\(q\)</span> did not vote in any ballot numbered less than <span class="math inline">\(b\)</span>.</li>
+<li>When <span class="math inline">\(q\)</span> sends the <span class="math inline">\(\operatorname{LastVote}(b, v)\)</span> message, <span class="math inline">\(v\)</span> equals <span class="math inline">\(\operatorname{MaxVote}(b, q, \mathcal{B})\)</span>. But the set <span class="math inline">\(\mathcal{B}\)</span> of ballots changes as new ballots are initiated and votes are cast. To keep <span class="math inline">\(\operatorname{MaxVote}(b, q, \mathcal{B})\)</span> from changing, <span class="math inline">\(q\)</span> <strong>must cast no new votes</strong> with ballot numbers between <span class="math inline">\(v_{bal}\)</span> and <span class="math inline">\(b\)</span>.</li>
+</ul></li>
+</ul></li>
+</ul>
+<p>The next two steps in the balloting protocol (begun in step 1 by priest <span class="math inline">\(p\)</span>) are:</p>
+<ul>
+<li>(3) After receiving a <span class="math inline">\(\operatorname{LastVote}(b, v)\)</span> message from every priest in some <strong>majority</strong> set <span class="math inline">\(Q\)</span>, priest <span class="math inline">\(p\)</span> initiates a new ballot with number <span class="math inline">\(b\)</span>, quorum <span class="math inline">\(Q\)</span>, and decree <span class="math inline">\(d\)</span>, where <span class="math inline">\(d\)</span> is chosen to satisfy <span class="math inline">\(\operatorname{B3}(\mathcal{B})\)</span>. He then records the ballot in the back of his ledger and sends a <span class="math inline">\(\operatorname{BeginBallot}(b, d)\)</span> message to <strong>every</strong> priest in <span class="math inline">\(Q\)</span>.
+<ul>
+<li>The execution of step (3) is considered to add a ballot <span class="math inline">\(B\)</span> to <span class="math inline">\(\mathcal{B}\)</span>, where <span class="math inline">\(B_{bal} = b\)</span>, <span class="math inline">\(B_{qrm} = Q\)</span>, <span class="math inline">\(B_{vot} = \emptyset\)</span> (no one has yet voted in this ballot), and <span class="math inline">\(B_{dec} = d\)</span>.</li>
+<li>In step (4), if priest <span class="math inline">\(q\)</span> decides to vote in the ballot, then executing that step is considered to change the set <span class="math inline">\(\mathcal{B}\)</span> of ballots by adding <span class="math inline">\(q\)</span> to the set <span class="math inline">\(B_{vot}\)</span> of voters in the ballot <span class="math inline">\(B \in \mathcal{B}\)</span>.</li>
+</ul></li>
+<li>(4) Upon receipt of the <span class="math inline">\(\operatorname{BeginBallot}(b, d)\)</span> message, priest <span class="math inline">\(q\)</span> decides whether or not to cast his vote in ballot number <span class="math inline">\(b\)</span>.
+<ul>
+<li>He may not cast the vote if doing so would violate a promise implied by a <span class="math inline">\(\operatorname{LastVote}(b^{\prime}, v^{\prime})\)</span> message he has sent for some other ballot.</li>
+<li>A priest has the option not to vote in step (4), even if casting a vote would not violate any previous promise.</li>
+<li>If <span class="math inline">\(q\)</span> decides to vote for ballot number <span class="math inline">\(b\)</span>, then he sends a <span class="math inline">\(\operatorname{Voted}(b, q)\)</span> message to <span class="math inline">\(p\)</span> and records the vote in the back of his ledger.</li>
+</ul></li>
+</ul>
+<p>Steps (1) – (4) describe the complete protocol for initiating a ballot and voting on it. All that remains is to determine the results of the balloting and announce when a decree has been selected. Recall that a ballot is successful iff <strong>every</strong> priest in the quorum has voted.</p>
+<ul>
+<li>(5) If <span class="math inline">\(p\)</span> has received a <span class="math inline">\(\operatorname{Voted}(b, q)\)</span> message from <strong>every</strong> priest <span class="math inline">\(q\)</span> in <span class="math inline">\(Q\)</span> (the quorum for ballot number <span class="math inline">\(b\)</span>), then he writes <span class="math inline">\(d\)</span> (the decree of that ballot) in his ledger and sends a <span class="math inline">\(\operatorname{Success}(d)\)</span> message to every priest.</li>
+<li>(6) Upon receiving a <span class="math inline">\(\operatorname{Success}(d)\)</span> message, a priest enters decree <span class="math inline">\(d\)</span> in his ledger.</li>
+</ul>
+<p>Since a priest enters a decree in his ledger only if it is the decree of a successful ballot, Theorem 1 implies that the priests' ledgers are consistent.</p>
+<ul>
+<li>The protocol does not address the question of progress. All the steps in this protocol are optional. For example, a priest <span class="math inline">\(q\)</span> can ignore a <span class="math inline">\(\operatorname{NextBallot}(b)\)</span> message instead of executing step (2). Failure to take an action can prevent progress, but it cannot cause any inconsistency because it cannot make <span class="math inline">\(\operatorname{B1}(\mathcal{B})\)</span> – <span class="math inline">\(\operatorname{B3}(\mathcal{B})\)</span> false.</li>
+<li>Receiving multiple copies of a message can cause an action to be repeated.
+<ul>
+<li>Except in step (3), performing the action a second time has no effect. For example, sending several <span class="math inline">\(\operatorname{Voted}(b, q)\)</span> messages in step (4) has the same effect as sending just one.</li>
+<li>By executing step (3) more than once, priest <span class="math inline">\(p\)</span> may initiate multiple ballots with the same ballot number <span class="math inline">\(b\)</span> but with different quorums <span class="math inline">\(Q\)</span>, <span class="math inline">\(Q&#39;\)</span>, ... and decrees <span class="math inline">\(d\)</span>, <span class="math inline">\(d&#39;\)</span>, ... The repetition of step (3) is prevented by using the entry made in the back of the ledger when it is executed.</li>
+<li>Thus, the consistency condition is maintained even if a messenger delivers the same message several times.</li>
+</ul></li>
+</ul>
+<h3 id="the-basic-protocol">The Basic Protocol</h3>
+<p>One problem with the preliminary protocol was that keeping track of all this information would have been difficult for the busy priests. The Paxons therefore <strong>restricted</strong> the preliminary protocol to obtain the more practical basic protocol in which each priest <span class="math inline">\(p\)</span> had to maintain only the following information in the back of his ledger:</p>
+<ul>
+<li><span class="math inline">\(\operatorname{lastTried}(p)\)</span>: The number of the last ballot that <span class="math inline">\(p\)</span> tried to initiate, or <span class="math inline">\(-\infty\)</span> if there was none.
+<ul>
+<li>Though the author does not explicitly state this, I believe the intent of introducing <span class="math inline">\(\operatorname{lastTried}(p)\)</span> is to prevent executing step (3) more than once, which would result in initiating multiple ballots with the same ballot number <span class="math inline">\(b\)</span> but with different quorums <span class="math inline">\(Q\)</span>, <span class="math inline">\(Q&#39;\)</span> and decrees <span class="math inline">\(d\)</span>, <span class="math inline">\(d&#39;\)</span>.</li>
+<li>The preliminary protocol allows <span class="math inline">\(p\)</span> to conduct any number of ballots concurrently. In the basic protocol, he conducts only one ballot at a time — ballot number <span class="math inline">\(\operatorname{lastTried}(p)\)</span>. After <span class="math inline">\(p\)</span> initiates this ballot, he ignores messages that pertain to any other ballot that he had previously initiated.</li>
+<li>Priest <span class="math inline">\(p\)</span> keeps all information about the progress of ballot number <span class="math inline">\(\operatorname{lastTried}(p)\)</span> on a slip of <strong>paper</strong>. If he loses that slip of paper, then he stops conducting the ballot.</li>
+</ul></li>
+<li><span class="math inline">\(\operatorname{prevVote}(p)\)</span>: The <strong>vote</strong> cast by <span class="math inline">\(p\)</span> in the <strong>highest</strong>-numbered ballot in which he voted, or <span class="math inline">\(-\infty\)</span> if he never voted.
+<ul>
+<li>Upon receipt of a <span class="math inline">\(\operatorname{NextBallot}(b)\)</span> message from <span class="math inline">\(q\)</span> with <span class="math inline">\((b &gt; \operatorname{prevVote}(p)_{bal}) \wedge (b &gt; \operatorname{nextBal}(p))\)</span>, priest <span class="math inline">\(p\)</span> sends a <span class="math inline">\(\operatorname{LastVote}(b, v)\)</span> message to <span class="math inline">\(q\)</span>, where <span class="math inline">\(v\)</span> equals <span class="math inline">\(\operatorname{prevVote}(p)\)</span>.</li>
+<li>If <span class="math inline">\(b \le \operatorname{prevVote}(p)_{bal}\)</span>, then priest <span class="math inline">\(p\)</span> does not remember the vote with the largest ballot number less than <span class="math inline">\(b\)</span> that he has cast. Therefore, priest <span class="math inline">\(p\)</span> cannot respond.</li>
+<li>If <span class="math inline">\(b \le \operatorname{nextBal}(p)\)</span>, then priest <span class="math inline">\(p\)</span> will not vote due to his promise. Therefore, it is meaningless for priest <span class="math inline">\(p\)</span> to respond with a <span class="math inline">\(\operatorname{LastVote}(b, v)\)</span> message.</li>
+<li>Before priest <span class="math inline">\(p\)</span> votes for ballot <span class="math inline">\(b\)</span> and updates <span class="math inline">\(\operatorname{preVote}(p)\)</span> to <span class="math inline">\(b\)</span>, priest <span class="math inline">\(p\)</span> must have sent a <span class="math inline">\(\operatorname{LastVote}(b, v)\)</span> message to priest <span class="math inline">\(q\)</span> and updated <span class="math inline">\(\operatorname{nextBal}(p)\)</span> to <span class="math inline">\(b\)</span>. Therefore, we have <span class="math inline">\(\operatorname{nextBal}(p) \ge \operatorname{preVote}(p)\)</span>.</li>
+<li>By <span class="math inline">\(\eqref{the-basic-protocol:prev-vote}\)</span>, the following statements by the author make sense:
+<ul>
+<li>Upon receipt of a <span class="math inline">\(\operatorname{NextBallot}(b)\)</span> message from <span class="math inline">\(q\)</span> with <span class="math inline">\(b &gt; \operatorname{nextBal}(p)\)</span>, priest <span class="math inline">\(p\)</span> sets <span class="math inline">\(\operatorname{nextBal}(p)\)</span> to <span class="math inline">\(b\)</span> and sends a <span class="math inline">\(\operatorname{LastVote}(b, v)\)</span> message to <span class="math inline">\(q\)</span>, where <span class="math inline">\(v\)</span> equals <span class="math inline">\(\operatorname{prevVote}(p)\)</span>.</li>
+<li>A <span class="math inline">\(\operatorname{NextBallot}(b)\)</span> message is ignored if <span class="math inline">\(b \le \operatorname{nextBal}(p)\)</span>.</li>
+</ul></li>
+</ul></li>
+<li><span class="math inline">\(\operatorname{nextBal}(p)\)</span>: The largest value of <span class="math inline">\(b\)</span> for which <span class="math inline">\(p\)</span> has sent a <span class="math inline">\(\operatorname{LastVote}(b, v)\)</span> message, or <span class="math inline">\(-\infty\)</span> if he has never sent such a message.
+<ul>
+<li>In the preliminary protocol, each <span class="math inline">\(\operatorname{LastVote}(b, v)\)</span> message sent by a priest <span class="math inline">\(q\)</span> represents a promise not to vote in any ballot numbered between <span class="math inline">\(v_{bal}\)</span> and <span class="math inline">\(b\)</span>.</li>
+<li>In the basic protocol, it represents the <strong>stronger</strong> promise not to cast a new vote in any ballot numbered less than <span class="math inline">\(b\)</span>.</li>
+</ul></li>
+</ul>
+<p><span class="math display">\[\begin{align}
+\label{the-basic-protocol:prev-vote}
+    &amp;\quad\quad\left(
+        \left(
+            \left(b &gt; \operatorname{prevVote}(p)_{bal}\right)
+          \wedge
+            \left(b &gt; \operatorname{nextBal}(p)\right)
+        \right) \nonumber
+      \right.             \\
+      &amp;\quad\left.
+      \wedge
+        \left(
+          \operatorname{nextBal}(p) \ge \operatorname{preVote}(p)
+        \right)
+    \right)     \nonumber \\
+  &amp;\Rightarrow
+    \left(
+      b &gt; \operatorname{nextBal}(p)
+    \right)
+\end{align}\]</span></p>
+<p>Steps 1–6 of the preliminary protocol become the following six steps for conducting a ballot in the basic protocol:</p>
+<ol type="1">
+<li>Priest <span class="math inline">\(p\)</span> chooses a new ballot number <span class="math inline">\(b\)</span> greater than <span class="math inline">\(\operatorname{lastTried}(p)\)</span>,sets <span class="math inline">\(\operatorname{lastTried}(p)\)</span> to <span class="math inline">\(b\)</span>, and sends a <span class="math inline">\(\operatorname{NextBallot}(b)\)</span> message to some set of priests. Please notice that the quorum <span class="math inline">\(Q\)</span> has not yet been determined.</li>
+<li>Upon receipt of a <span class="math inline">\(\operatorname{NextBallot}(b)\)</span> message from <span class="math inline">\(p\)</span> with <span class="math inline">\(b &gt; \operatorname{nextBal}(q)\)</span>, priest <span class="math inline">\(q\)</span> sets <span class="math inline">\(\operatorname{nextBal}(q)\)</span> to <span class="math inline">\(b\)</span> and sends a <span class="math inline">\(\operatorname{LastVote}(b, v)\)</span> message to <span class="math inline">\(p\)</span>, where <span class="math inline">\(v\)</span> equals <span class="math inline">\(\operatorname{prevVote}(q)\)</span>. A <span class="math inline">\(\operatorname{NextBallot}(b)\)</span> message is ignored if <span class="math inline">\(b \le \operatorname{nextBal}(q)\)</span>.</li>
+<li>After receiving a <span class="math inline">\(\operatorname{LastVote}(b, v)\)</span> message from every priest in <strong>some majority set</strong> <span class="math inline">\(Q\)</span>, where <span class="math inline">\(b = \operatorname{lastTried}(p)\)</span>, priest <span class="math inline">\(p\)</span> initiates a new ballot with number <span class="math inline">\(b\)</span>, quorum <span class="math inline">\(Q\)</span>, and decree <span class="math inline">\(d\)</span>, where <span class="math inline">\(d\)</span> is chosen to satisfy <span class="math inline">\(\operatorname{B3}\)</span>. He then sends a <span class="math inline">\(\operatorname{BeginBallot}(b, d)\)</span> message to <strong>every</strong> priest in <span class="math inline">\(Q\)</span>. (If <span class="math inline">\(b \neq \operatorname{lastTried}(p)\)</span>, the <span class="math inline">\(\operatorname{LastVote}(b, v)\)</span> message is a response to a <strong>previous</strong> <span class="math inline">\(\operatorname{NextBallot}(b)\)</span> conducted by priest <span class="math inline">\(p\)</span>; so, priest <span class="math inline">\(p\)</span> just ignores it.)</li>
+<li>Upon receipt of a <span class="math inline">\(\operatorname{BeginBallot}(b, d)\)</span> message with <span class="math inline">\(b = \operatorname{nextBal}(q)\)</span>, priest <span class="math inline">\(q\)</span> casts his vote in ballot number <span class="math inline">\(b\)</span>, sets <span class="math inline">\(\operatorname{prevVote}(q)\)</span> to this vote, and sends a <span class="math inline">\(\operatorname{Voted}(b, q)\)</span> message to <span class="math inline">\(p\)</span>. (A <span class="math inline">\(\operatorname{BeginBallot}(b, d)\)</span> message is ignored if <span class="math inline">\(b \neq \operatorname{nextBal}(q)\)</span>.)
+<ol type="1">
+<li>We first prove that <span class="math inline">\(\operatorname{nextBal}(q)\)</span> is greater than or equal to the ballot number <span class="math inline">\(b\)</span> in the <span class="math inline">\(\operatorname{BeginBallot}(b, d)\)</span> message from priest <span class="math inline">\(p\)</span> to priest <span class="math inline">\(q\)</span>. The proof is as follows: If priest <span class="math inline">\(p\)</span> sends an <span class="math inline">\(\operatorname{BeginBallot}(b, d)\)</span> message to priest <span class="math inline">\(q\)</span>, it means priest <span class="math inline">\(p\)</span> has received an <span class="math inline">\(\operatorname{LastVote}(b, v)\)</span> message from priest <span class="math inline">\(q\)</span> and chosen priest <span class="math inline">\(q\)</span> as a member of the majority quorum set <span class="math inline">\(Q\)</span>. Then, priest <span class="math inline">\(q\)</span> must have set <span class="math inline">\(\operatorname{nextBal}(q)\)</span> to <span class="math inline">\(b\)</span>. In addition, we already know <span class="math inline">\(\operatorname{nextBal}(q)\)</span> increases monotonically. Therefore, we can conclude that <span class="math inline">\(\operatorname{nextBal}(q)\)</span> is greater than or equal to the ballot number <span class="math inline">\(b\)</span> in the <span class="math inline">\(\operatorname{BeginBallot}(b, d)\)</span> message from priest <span class="math inline">\(p\)</span> to priest <span class="math inline">\(q\)</span>.</li>
+<li>Then, we can say <span class="math inline">\(b \neq \operatorname{nextBal}(q)\)</span> if and only if <span class="math inline">\(b &lt; \operatorname{nextBal}(q)\)</span>. By the requirement that <span class="math inline">\(\operatorname{nextBal}(q)\)</span> represents that priest <span class="math inline">\(q\)</span> cannot cast a new vote in any ballot numbered less than <span class="math inline">\(\operatorname{nextBal}(q)\)</span>, priest <span class="math inline">\(q\)</span> should not cast a vote. In conclusion, priest <span class="math inline">\(q\)</span> ignores an <span class="math inline">\(\operatorname{BeginBallot}(b, d)\)</span> message with <span class="math inline">\(b \neq \operatorname{nextBal}(q)\)</span>.</li>
+</ol></li>
+<li>If <span class="math inline">\(p\)</span> has received a <span class="math inline">\(\operatorname{Voted}(b, q)\)</span> message from <strong>every</strong> priest <span class="math inline">\(q\)</span> in <span class="math inline">\(Q\)</span> (the quorum for ballot number <span class="math inline">\(b\)</span>), where <span class="math inline">\(b = \operatorname{lastTried}(p)\)</span>, then he writes <span class="math inline">\(d\)</span> (the decree of that ballot) in his ledger and sends a <span class="math inline">\(\operatorname{Success}(d)\)</span> message to <strong>every</strong> priest.
+<ol type="1">
+<li>We first prove that <span class="math inline">\(\operatorname{lastTried}(p)\)</span> is greater than or equal to the ballot number <span class="math inline">\(b\)</span> in the <span class="math inline">\(\operatorname{Voted}(b, q)\)</span> message. This is because priest <span class="math inline">\(p\)</span> sets <span class="math inline">\(\operatorname{lastTried}(p)\)</span> to a new ballot number <span class="math inline">\(b^{\prime}\)</span> before performing all the following steps.</li>
+<li>Then, we can say <span class="math inline">\(b \neq \operatorname{lastTried}(p)\)</span> if and only if <span class="math inline">\(b &lt; \operatorname{lastTried}(p)\)</span>, where <span class="math inline">\(b\)</span> comes from the <span class="math inline">\(\operatorname{Voted}(b, q)\)</span> message. Though the author does not explicitly state this, I believe that when priest <span class="math inline">\(p\)</span> initiates a new ballot, all information about the progress of the old ballot (e.g., quorum <span class="math inline">\(Q\)</span>) on a slip of paper is forgotten. So, <span class="math inline">\(\operatorname{Voted}(b, q)\)</span> messages where <span class="math inline">\(b &lt; \operatorname{lastTried}(p)\)</span> are ignored by priest <span class="math inline">\(p\)</span>.</li>
+</ol></li>
+<li>Upon receiving a <span class="math inline">\(\operatorname{Success}(d)\)</span> message, a priest enters decree <span class="math inline">\(d\)</span> in his ledger.</li>
+</ol>
+<h4 id="proof-of-consistency-of-the-basic-synodic-protocol">Proof of Consistency of the Basic Synodic Protocol</h4>
+<h3 id="the-complete-synod-protocol">The Complete Synod Protocol</h3>
+<p>To help achieve progress, the complete protocol includes the obvious additional requirement that priests perform steps 2–6 of the protocol as soon as possible. The key to the complete protocol lay in determining <strong>when</strong> a priest should initiate a ballot. Achieving the progress condition requires that new ballots be initiated until one succeeds, but that they not be initiated too frequently.</p>
+<ul>
+<li>Never initiating a ballot will certainly prevent progress.</li>
+<li>However, initiating too may ballots can also prevent progress. This can be best illustrated with a potential livelock scenario:
+<ul>
+<li>Priest <span class="math inline">\(p1\)</span> executes step 1, sends out <span class="math inline">\(\operatorname{NextBallot}(b1)\)</span> msgs to other priests.</li>
+<li>Priest <span class="math inline">\(p2\)</span> executes step 1, sends out <span class="math inline">\(\operatorname{NextBallot}(b2)\)</span> msgs to other priests, and <span class="math inline">\(b2 &gt; b1\)</span>.</li>
+<li>Priests which received <span class="math inline">\(\operatorname{NextBallot}(b2)\)</span> msgs cannot vote for <span class="math inline">\(b1\)</span> anymore. So <span class="math inline">\(b1\)</span> fails.</li>
+<li>Priest <span class="math inline">\(p1\)</span> xecutes step 1 again, but with a larger ballot ID.</li>
+</ul></li>
+</ul>
+<h4 id="liveness-t-99min">Liveness: T + 99min</h4>
+<p>The preceding sections have discussed the safety aspects of the Synod protocol. This section, however, delves into its liveness. Liveness, in the context of the Synod protocol, signifies that under certain conditions, the protocol can execute to completion within a finite timeframe.</p>
+<p>By extending the protocol to require that if a priest <span class="math inline">\(q\)</span> received a <span class="math inline">\(\operatorname{NextBallot}(b)\)</span> or a <span class="math inline">\(\operatorname{BeginBallot}(b, d)\)</span> message from <span class="math inline">\(p\)</span> with <span class="math inline">\(b &lt; \operatorname{nextBal}(q)\)</span>, then he sent <span class="math inline">\(p\)</span> a message containing <span class="math inline">\(\operatorname{nextBal}(q)\)</span>. Priest <span class="math inline">\(p\)</span> would then initiate a new ballot with a larger ballot number.</p>
+<p>Let's assume that the following condition is met starting from time T:</p>
+<ul>
+<li>A messenger who did not leave the Chamber would always deliver a message within 4 minutes, and a priest who remained in the Chamber would always perform an action within 7 minutes of the event that caused the action.</li>
+<li>No priest or message exits.</li>
+<li><span class="math inline">\(p\)</span> is the only priest initiating ballots.</li>
+</ul>
+<table>
+
+<thead>
+<tr class="header">
+<th style="text-align: left;">Time</th>
+<th style="text-align: left;">Event</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">T</td>
+<td style="text-align: left;"><span class="math inline">\(p\)</span> starts executing step 1.</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">T + 7m</td>
+<td style="text-align: left;"><span class="math inline">\(p\)</span> sends a <span class="math inline">\(\operatorname{NextBallot}(b1)\)</span> message to some set of priests.</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">T + 11m</td>
+<td style="text-align: left;"><span class="math inline">\(q\)</span> receives a <span class="math inline">\(\operatorname{NextBallot}(b1)\)</span> message from <span class="math inline">\(p\)</span>.</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">T + 18m</td>
+<td style="text-align: left;"><span class="math inline">\(q\)</span> sends a <span class="math inline">\(\operatorname{LastVote}(b1, v)\)</span> message to <span class="math inline">\(p\)</span>.</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">T + 22m</td>
+<td style="text-align: left;"><span class="math inline">\(p\)</span> receives a <span class="math inline">\(\operatorname{LastVote}(b1, v)\)</span> message from <span class="math inline">\(q\)</span>.</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">T + 29m</td>
+<td style="text-align: left;"><span class="math inline">\(p\)</span> sends a <span class="math inline">\(\operatorname{BeginBallot}(b1, d)\)</span> message to <span class="math inline">\(q\)</span>.</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">T + 33m</td>
+<td style="text-align: left;"><span class="math inline">\(q\)</span> receives a <span class="math inline">\(\operatorname{BeginBallot}(b1, d)\)</span> message from <span class="math inline">\(p\)</span>.</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">T + 40m</td>
+<td style="text-align: left;"><span class="math inline">\(q\)</span> sends a message containing <span class="math inline">\(\operatorname{nextBal}(q)\)</span> to <span class="math inline">\(p\)</span>.</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">T + 44m</td>
+<td style="text-align: left;"><span class="math inline">\(p\)</span> receives a message containing <span class="math inline">\(\operatorname{nextBal}(q)\)</span> from <span class="math inline">\(q\)</span>.</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">T + 51m</td>
+<td style="text-align: left;"><span class="math inline">\(q\)</span> initiates a new ballot with a larger ballot number <span class="math inline">\(b2\)</span>.</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"></td>
+<td style="text-align: left;"><span class="math inline">\(p\)</span> sends a <span class="math inline">\(\operatorname{NextBallot}(b2)\)</span> message.</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">T + 55m</td>
+<td style="text-align: left;"><span class="math inline">\(q\)</span> receives a <span class="math inline">\(\operatorname{NextBallot}(b2)\)</span> message from <span class="math inline">\(p\)</span>.</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">T + 62m</td>
+<td style="text-align: left;"><span class="math inline">\(q\)</span> sends a <span class="math inline">\(\operatorname{LastVote}(b2, v)\)</span> message to <span class="math inline">\(p\)</span>.</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">T + 66m</td>
+<td style="text-align: left;"><span class="math inline">\(p\)</span> receives a <span class="math inline">\(\operatorname{LastVote}(b2, v)\)</span> message from <span class="math inline">\(q\)</span>.</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">T + 73m</td>
+<td style="text-align: left;"><span class="math inline">\(p\)</span> sends a <span class="math inline">\(\operatorname{BeginBallot}(b2, d)\)</span> message to <span class="math inline">\(q\)</span>.</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">T + 77m</td>
+<td style="text-align: left;"><span class="math inline">\(q\)</span> receives a <span class="math inline">\(\operatorname{BeginBallot}(b2, d)\)</span> message from <span class="math inline">\(p\)</span>.</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">T + 84m</td>
+<td style="text-align: left;"><span class="math inline">\(q\)</span> sends a <span class="math inline">\(\operatorname{Voted}(b2, q)\)</span> message to <span class="math inline">\(p\)</span>.</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">T + 88m</td>
+<td style="text-align: left;"><span class="math inline">\(p\)</span> receives a <span class="math inline">\(\operatorname{Voted}(b2, q)\)</span> message from <span class="math inline">\(q\)</span>.</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">T + 95m</td>
+<td style="text-align: left;"><span class="math inline">\(p\)</span> writes <span class="math inline">\(d\)</span> in his ledger.</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"></td>
+<td style="text-align: left;"><span class="math inline">\(p\)</span> sends a <span class="math inline">\(\operatorname{Success}(d)\)</span> message to every priest.</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">T + 99m</td>
+<td style="text-align: left;"><span class="math inline">\(q\)</span> receives a <span class="math inline">\(\operatorname{Success}(d)\)</span> message.</td>
+</tr>
+</tbody>
+</table>
+<h4 id="presidential-selection-requirement">Presidential Selection Requirement</h4>
+<p>Presidential selection requirement: If no one entered or left the Chamber, then after T minutes exactly one priest in the Chamber would consider himself to be the president.</p>
+<p>The Paxons chose as president the priest whose name was last in alphabetical order among the names of all priests in the Chamber, though we don't know exactly how this was done. The presidential selection requirement would have been satisfied if a priest in the Chamber sent a message containing his name to every other priest at least once every T − 11 minutes, and a priest considered himself to be president iff he received no message from a "higher-named" priest for T minutes.</p>
+<h2 id="the-multi-decree-parliament">The Multi-Decree Parliament</h2>
+<p>Logically, the parliamentary protocol used a separate instance of the complete Synod protocol for each decree number. This raises two questions:</p>
+<ul>
+<li>What criteria should be used to determine the unique number for every Synod instance?
+<ul>
+<li>The number are assigned in a monotonically increasing order, incrementing by one with each new instance.</li>
+<li>When a priest is selected as president, he carries out the first two steps of the Synod protocol for all instances.</li>
+<li>Subsequently, he chooses the decree with the lowest number that he is still free to choose, and he performs step 3 for that decree number (instance of the Synod protocol) to try to pass the decree.</li>
+</ul></li>
+<li>How to to establish the sequence of various Synod instances?
+<ul>
+<li>For further details, please refer to the 'Ordering of Decrees' section.</li>
+</ul></li>
+</ul>
+<h3 id="the-protocol">The Protocol</h3>
+<p>The following modifications to this simple protocol lead to the actual Paxon Parliament’s protocol:</p>
+<ul>
+<li>A single president was selected for all these instances, and he performed the first two steps of the protocol just once. The key to deriving the parliamentary protocol is the observation that, in the Synod protocol, the president does not choose the decree or the quorum until step 3. A newly elected president <span class="math inline">\(p\)</span> can send to some set of legislators a single message that serves as the <span class="math inline">\(\operatorname{NextBallot}(b)\)</span> message for all instances of the Synod protocol. (There are an infinite number of instances - one for each decree number.) A legislator <span class="math inline">\(q\)</span> can reply with a single message that serves as the <span class="math inline">\(\operatorname{LastVote}\)</span> messages for step 2 of all instances of the Synod protocol. This message contains only a finite amount of information, since <span class="math inline">\(q\)</span> can have voted in only a finite number of instances.</li>
+<li>There is no reason to go through the Synod protocol for a decree number whose outcome is already known. Therefore, if a newly elected president <span class="math inline">\(p\)</span> has all decrees with numbers less than or equal to <span class="math inline">\(n\)</span> written in his ledger, then he sends a <span class="math inline">\(\operatorname{NextBallot}(b, n)\)</span> message that serves as a <span class="math inline">\(\operatorname{NextBallot}(b)\)</span> message in all instances of the Synod protocol for decree numbers larger than <span class="math inline">\(n\)</span>. In his response to this message, legislator <span class="math inline">\(q\)</span> informs <span class="math inline">\(p\)</span> of all decrees numbered greater than <span class="math inline">\(n\)</span> that already appear in <span class="math inline">\(q\)</span>'s ledger (in addition to sending the usual <span class="math inline">\(\operatorname{LastVote}\)</span> information for decrees not in his ledger), and he asks <span class="math inline">\(p\)</span> to send him any decrees numbered <span class="math inline">\(n\)</span> or less that are not in his ledger.</li>
+<li>Suppose decrees 125 and 126 are introduced late Friday afternoon, decree 126 is passed and is written in one or two ledgers, but before anything else happens, the legislators all go home for the weekend. Suppose also that the following Monday, <span class="math inline">\(\Delta \phi \omega \rho \kappa\)</span> is elected the new president and learns about decree 126, but she has no knowledge of decree 125 because the previous president and all legislators who had voted for it are still out of the Chamber. She will hold a ballot that passes decree 126, which leaves a gap in the ledgers. Assigning number 125 to a new decree would cause it to appear earlier in the ledger than decree 126, which had been passed the previous week. Passing decrees out of order in this way might cause confusion - for example, if the citizen who proposed the new decree did so because he knew decree 126 had already passed. Instead, <span class="math inline">\(\Delta \phi \omega \rho \kappa\)</span> would attempt to pass a traditional decree that made absolutely no difference to anyone in Paxos. In general, a new president would fill any gaps in his ledger by passing the "olive-day" decree (The ides of February is national olive day).</li>
+</ul>
+<p>You can find the specification in my other post <a href="https://clcanny.github.io/2023/07/24/computer-science/programming-language/tla+/implementing-multi-decree-parliament-in-tla/">Implementing Multi-Decree Parliament In TLA+</a>.</p>
+<h3 id="properties-of-the-protocol">Properties of the Protocol</h3>
+<h4 id="the-ordering-of-decrees">The Ordering of Decrees</h4>
+<p>Balloting could take place concurrently for many different decree numbers, with ballots initiated by different legislators - each thinking he was president when he initiated the ballot. We cannot say precisely in what order decrees would be passed, especially without knowing how a president was selected.</p>
+<ul>
+<li>A decree was said to to be proposed when it was chosen by the president in <strong>step 3</strong> of the corresponding instance of the Synod protocol.</li>
+<li>The decree was said to be <strong>passed</strong> when it was written for the <strong>first time</strong> in a ledger.</li>
+</ul>
+<p>If decrees <span class="math inline">\(A\)</span> and <span class="math inline">\(B\)</span> are important and decree <span class="math inline">\(A\)</span> was passed before decree <span class="math inline">\(B\)</span> was proposed, then <span class="math inline">\(A\)</span> has a lower decree number than <span class="math inline">\(B\)</span>.</p>
+<ul>
+<li>Before a president could propose any new decrees, he had to learn from all the members of a majority set what decrees they had voted for.</li>
+<li>Any decree that had already been passed must have been voted for by at least one legislator in the majority set.</li>
+<li>Therefore, the president must have learned about all previously passed decrees before initiating any new decree.</li>
+<li>The president would not fill a gap in the ledgers with an important decree—that is, with any decree other than the "olive-day" decree.</li>
+<li>He would also not propose decrees out of order.</li>
+</ul>
+<h4 id="behind-closed-doors">Behind Closed Doors</h4>
+<h3 id="further-developments">Further Developments</h3>
+<h4 id="picking-a-president">Picking a President</h4>
+<h4 id="long-ledgers">Long Ledgers</h4>
+<h4 id="bureaucrats">Bureaucrats</h4>
+<p>As Paxos prospered, legislators became very busy. Parlia- ment could no longer handle all details of government, so a bureaucracy was established.</p>
+<ul>
+<li>To prevent such confusion, the Paxons had to guarantee that a position could be held by at most one bureaucrat at any time. To do this, a president included as part of each decree the time and date when it was proposed.</li>
+<li>A bureaucrat was appointed for a short term, so he could be replaced quickly — for example, if he left the island. Parliament would pass a decree to extend the bureaucrat's term if he was doing a satisfactory job.</li>
+<li>The following out-of-order proposal times are easily prevented because the parliamentary protocol satisfies this property: If two decrees are passed by different presidents, then one of the presidents proposed his decree after learning that the other decree had been proposed.</li>
+</ul>
+<p>2854: 9:45 9 Apr 78 - <span class="math inline">\(\Phi \rho \alpha \nu \sigma \epsilon \zeta\)</span> is wine taster for 2 months.</p>
+<p>2855: 9:20 9 Apr 78 - <span class="math inline">\(\Pi \nu v \epsilon \lambda \breve{l}\)</span> is wine taster for 1 month.</p>
+<h4 id="learning-the-law">Learning the Law</h4>
+<p>Monotonicity condition: If one inquiry precedes a second inquiry, then the second inquiry cannot reveal an earlier state of the law than the first.</p>
+<p>Initially, the monotonicity condition was achieved by passing a decree for each inquiry. If <span class="math inline">\(\Sigma \partial \nu \breve{\iota} \delta \epsilon \rho\)</span> wanted to know the current tax on olives, he would get Parlia- ment to pass a decree such as "87: Citizen <span class="math inline">\(\Sigma \partial \nu \breve{\iota} \delta \epsilon \rho\)</span> is reading the law". He would then read any ledger complete at least through decree 86 to learn the olive tax as of that decree. If citizen <span class="math inline">\(\Gamma \rho \epsilon \epsilon \varsigma\)</span> then inquired about the olive tax, the decree for his inquiry was proposed after decree 87 was passed, so the decree-ordering property implies that it received a decree number greater than 87.</p>
+<h4 id="dishonest-legislators-and-honest-mistakes">Dishonest Legislators and Honest Mistakes</h4>
+<h4 id="choosing-new-legislators">Choosing New Legislators</h4>
+<h2 id="reference">Reference</h2>
+<ul>
+<li><a target="_blank" rel="noopener" href="https://www.microsoft.com/en-us/research/uploads/prod/2016/12/The-Part-Time-Parliament.pdf">The Part-Time Parliament</a></li>
+<li><a target="_blank" rel="noopener" href="https://lamport.azurewebsites.net/pubs/paxos-simple.pdf">Paxos Made Simple</a></li>
+<li><a target="_blank" rel="noopener" href="https://www.microsoft.com/en-us/research/wp-content/uploads/2016/02/tr-2005-112.pdf">Fast Paxos</a></li>
+<li><a target="_blank" rel="noopener" href="https://lamport.azurewebsites.net/tla/paxos-algorithm.html">The Paxos Algorithm or How to Win a Turing Award</a></li>
+<li><a href="https://clcanny.github.io/2023/07/24/computer-science/programming-language/tla+/implementing-multi-decree-parliament-in-tla/">Implementing Multi-Decree Parliament In TLA+</a></li>
+<li><a target="_blank" rel="noopener" href="https://www.usenix.org/system/files/conference/atc14/atc14-paper-ongaro.pdf">In Search of an Understandable Consensus Algorithm</a></li>
+<li><a target="_blank" rel="noopener" href="https://matklad.github.io/2020/11/01/notes-on-paxos.html">matklad: Notes on Paxos</a></li>
+</ul>
+
+                
+              </div>
+            
+            <hr/>
+            <div>
+              <div class="post-metas my-3">
+  
+    <div class="post-meta mr-3 d-flex align-items-center">
+      <i class="iconfont icon-category"></i>
+      
+
+<span class="category-chains">
+  
+  
+    
+      <span class="category-chain">
+        
+  <a href="/categories/Computer-Science/" class="category-chain-item">Computer Science</a>
+  
+  
+    <span>></span>
+    
+  <a href="/categories/Computer-Science/Consensus/" class="category-chain-item">Consensus</a>
+  
+  
+
+  
+
+      </span>
+    
+  
+</span>
+
+    </div>
+  
+  
+</div>
+
+
+              
+  
+
+  <div class="license-box my-3">
+    <div class="license-title">
+      <div>Paper Interpretation - The Part-Time Parliament</div>
+      <div>https://clcanny.github.io/2022/10/05/computer-science/consensus/paper-interpretation-the-part-time-parliament/</div>
+    </div>
+    <div class="license-meta">
+      
+        <div class="license-meta-item">
+          <div>作者</div>
+          <div>JunBin</div>
+        </div>
+      
+      
+        <div class="license-meta-item license-meta-date">
+          <div>发布于</div>
+          <div>2022年10月5日</div>
+        </div>
+      
+      
+      
+        <div class="license-meta-item">
+          <div>许可协议</div>
+          <div>
+            
+              
+              
+                <a target="_blank" href="https://creativecommons.org/licenses/by/4.0/">
+                  <span class="hint--top hint--rounded" aria-label="BY - 署名">
+                    <i class="iconfont icon-by"></i>
+                  </span>
+                </a>
+              
+            
+          </div>
+        </div>
+      
+    </div>
+    <div class="license-icon iconfont"></div>
+  </div>
+
+
+
+              
+                <div class="post-prevnext my-3">
+                  <article class="post-prev col-6">
+                    
+                    
+                      <a href="/2023/01/03/computer-science/programming-language/c++/callback-to-c-20-coroutine/" title="Callback To C++20 Coroutine">
+                        <i class="iconfont icon-arrowleft"></i>
+                        <span class="hidden-mobile">Callback To C++20 Coroutine</span>
+                        <span class="visible-mobile">上一篇</span>
+                      </a>
+                    
+                  </article>
+                  <article class="post-next col-6">
+                    
+                    
+                      <a href="/2022/07/30/computer-science/programming-language/c++/explore-c++-20-coroutine/" title="Explore C++20 Coroutine">
+                        <span class="hidden-mobile">Explore C++20 Coroutine</span>
+                        <span class="visible-mobile">下一篇</span>
+                        <i class="iconfont icon-arrowright"></i>
+                      </a>
+                    
+                  </article>
+                </div>
+              
+            </div>
+
+            
+          </article>
+        </div>
+      </div>
+    </div>
+
+    <div class="side-col d-none d-lg-block col-lg-2">
+      
+  <aside class="sidebar" style="margin-left: -1rem">
+    <div id="toc">
+  <p class="toc-header">
+    <i class="iconfont icon-list"></i>
+    <span>目录</span>
+  </p>
+  <div class="toc-body" id="toc-body"></div>
+</div>
+
+
+
+  </aside>
+
+
+    </div>
+  </div>
+</div>
+
+
+
+
+
+  
+
+
+
+  
+
+
+
+  
+
+
+
+  
+
+
+
+  
+
+
+  
+  
+
+
+
+
+
+  <script>
+  Fluid.utils.createScript('https://lib.baomitu.com/mermaid/8.14.0/mermaid.min.js', function() {
+    mermaid.initialize({"theme":"default"});
+
+    Fluid.events.registerRefreshCallback(function() {
+      if ('mermaid' in window) {
+        mermaid.init();
+      }
+    });
+  });
+</script>
+
+
+
+
+
+
+    
+
+    
+      <a id="scroll-top-button" aria-label="TOP" href="#" role="button">
+        <i class="iconfont icon-arrowup" aria-hidden="true"></i>
+      </a>
+    
+
+    
+      <div class="modal fade" id="modalSearch" tabindex="-1" role="dialog" aria-labelledby="ModalLabel"
+     aria-hidden="true">
+  <div class="modal-dialog modal-dialog-scrollable modal-lg" role="document">
+    <div class="modal-content">
+      <div class="modal-header text-center">
+        <h4 class="modal-title w-100 font-weight-bold">搜索</h4>
+        <button type="button" id="local-search-close" class="close" data-dismiss="modal" aria-label="Close">
+          <span aria-hidden="true">&times;</span>
+        </button>
+      </div>
+      <div class="modal-body mx-3">
+        <div class="md-form mb-5">
+          <input type="text" id="local-search-input" class="form-control validate">
+          <label data-error="x" data-success="v" for="local-search-input">关键词</label>
+        </div>
+        <div class="list-group" id="local-search-result"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+    
+
+    
+  </main>
+
+  <footer>
+    <div class="footer-inner">
+  
+    <div class="footer-content">
+       <a href="https://hexo.io" target="_blank" rel="nofollow noopener"><span>Hexo</span></a> <i class="iconfont icon-love"></i> <a href="https://github.com/fluid-dev/hexo-theme-fluid" target="_blank" rel="nofollow noopener"><span>Fluid</span></a> 
+    </div>
+  
+  
+  
+  
+</div>
+
+  </footer>
+
+  <!-- Scripts -->
+  
+  <script  src="https://lib.baomitu.com/nprogress/0.2.0/nprogress.min.js" ></script>
+  <link  rel="stylesheet" href="https://lib.baomitu.com/nprogress/0.2.0/nprogress.min.css" />
+
+  <script>
+    NProgress.configure({"showSpinner":false,"trickleSpeed":100})
+    NProgress.start()
+    window.addEventListener('load', function() {
+      NProgress.done();
+    })
+  </script>
+
+
+<script  src="https://lib.baomitu.com/jquery/3.6.0/jquery.min.js" ></script>
+<script  src="https://lib.baomitu.com/twitter-bootstrap/4.6.1/js/bootstrap.min.js" ></script>
+<script  src="/js/events.js" ></script>
+<script  src="/js/plugins.js" ></script>
+
+
+  <script  src="https://lib.baomitu.com/typed.js/2.0.12/typed.min.js" ></script>
+  <script>
+    (function (window, document) {
+      var typing = Fluid.plugins.typing;
+      var subtitle = document.getElementById('subtitle');
+      if (!subtitle || !typing) {
+        return;
+      }
+      var text = subtitle.getAttribute('data-typed-text');
+      
+        typing(text);
+      
+    })(window, document);
+  </script>
+
+
+
+
+  
+    <script  src="/js/img-lazyload.js" ></script>
+  
+
+
+
+
+  
+<script>
+  Fluid.utils.createScript('https://lib.baomitu.com/tocbot/4.18.2/tocbot.min.js', function() {
+    var toc = jQuery('#toc');
+    if (toc.length === 0 || !window.tocbot) { return; }
+    var boardCtn = jQuery('#board-ctn');
+    var boardTop = boardCtn.offset().top;
+
+    window.tocbot.init(Object.assign({
+      tocSelector     : '#toc-body',
+      contentSelector : '.markdown-body',
+      linkClass       : 'tocbot-link',
+      activeLinkClass : 'tocbot-active-link',
+      listClass       : 'tocbot-list',
+      isCollapsedClass: 'tocbot-is-collapsed',
+      collapsibleClass: 'tocbot-is-collapsible',
+      scrollSmooth    : true,
+      includeTitleTags: true,
+      headingsOffset  : -boardTop,
+    }, CONFIG.toc));
+    if (toc.find('.toc-list-item').length > 0) {
+      toc.css('visibility', 'visible');
+    }
+
+    Fluid.events.registerRefreshCallback(function() {
+      if ('tocbot' in window) {
+        tocbot.refresh();
+        var toc = jQuery('#toc');
+        if (toc.length === 0 || !tocbot) {
+          return;
+        }
+        if (toc.find('.toc-list-item').length > 0) {
+          toc.css('visibility', 'visible');
+        }
+      }
+    });
+  });
+</script>
+
+
+  <script src=https://lib.baomitu.com/clipboard.js/2.0.11/clipboard.min.js></script>
+
+  <script>Fluid.plugins.codeWidget();</script>
+
+
+  
+<script>
+  Fluid.utils.createScript('https://lib.baomitu.com/anchor-js/4.3.1/anchor.min.js', function() {
+    window.anchors.options = {
+      placement: CONFIG.anchorjs.placement,
+      visible  : CONFIG.anchorjs.visible
+    };
+    if (CONFIG.anchorjs.icon) {
+      window.anchors.options.icon = CONFIG.anchorjs.icon;
+    }
+    var el = (CONFIG.anchorjs.element || 'h1,h2,h3,h4,h5,h6').split(',');
+    var res = [];
+    for (var item of el) {
+      res.push('.markdown-body > ' + item.trim());
+    }
+    if (CONFIG.anchorjs.placement === 'left') {
+      window.anchors.options.class = 'anchorjs-link-left';
+    }
+    window.anchors.add(res.join(', '));
+
+    Fluid.events.registerRefreshCallback(function() {
+      if ('anchors' in window) {
+        anchors.removeAll();
+        var el = (CONFIG.anchorjs.element || 'h1,h2,h3,h4,h5,h6').split(',');
+        var res = [];
+        for (var item of el) {
+          res.push('.markdown-body > ' + item.trim());
+        }
+        if (CONFIG.anchorjs.placement === 'left') {
+          anchors.options.class = 'anchorjs-link-left';
+        }
+        anchors.add(res.join(', '));
+      }
+    });
+  });
+</script>
+
+
+  
+<script>
+  Fluid.utils.createScript('https://lib.baomitu.com/fancybox/3.5.7/jquery.fancybox.min.js', function() {
+    Fluid.plugins.fancyBox();
+  });
+</script>
+
+
+  <script>Fluid.plugins.imageCaption();</script>
+
+  
+      <script>
+        if (!window.MathJax) {
+          window.MathJax = {
+            tex    : {
+              inlineMath: { '[+]': [['$', '$']] }
+            },
+            loader : {
+              load: ['ui/lazy']
+            },
+            options: {
+              renderActions: {
+                insertedScript: [200, () => {
+                  document.querySelectorAll('mjx-container').forEach(node => {
+                    let target = node.parentNode;
+                    if (target.nodeName.toLowerCase() === 'li') {
+                      target.parentNode.classList.add('has-jax');
+                    }
+                  });
+                }, '', false]
+              }
+            }
+          };
+        } else {
+          MathJax.startup.document.state(0);
+          MathJax.texReset();
+          MathJax.typeset();
+          MathJax.typesetPromise();
+        }
+
+        Fluid.events.registerRefreshCallback(function() {
+          if ('MathJax' in window && MathJax.startup.document && typeof MathJax.startup.document.state === 'function') {
+            MathJax.startup.document.state(0);
+            MathJax.texReset();
+            MathJax.typeset();
+            MathJax.typesetPromise();
+          }
+        });
+      </script>
+    
+
+  <script  src="https://lib.baomitu.com/mathjax/3.2.2/es5/tex-mml-chtml.js" ></script>
+
+  <script  src="/js/local-search.js" ></script>
+
+
+
+
+
+<!-- 主题的启动项，将它保持在最底部 -->
+<!-- the boot of the theme, keep it at the bottom -->
+<script  src="/js/boot.js" ></script>
+
+
+  
+
+  <noscript>
+    <div class="noscript-warning">博客在允许 JavaScript 运行的环境下浏览效果更佳</div>
+  </noscript>
+</body>
+</html>

@@ -1,0 +1,831 @@
+
+
+<!DOCTYPE html>
+<html lang="zh-CN" data-default-color-scheme=auto>
+
+
+
+<head>
+  <meta charset="UTF-8">
+  <link rel="apple-touch-icon" sizes="76x76" href="/img/fluid.png">
+  <link rel="icon" href="/img/fluid.png">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, shrink-to-fit=no">
+  <meta http-equiv="x-ua-compatible" content="ie=edge">
+  
+  <meta name="theme-color" content="#2f4154">
+  <meta name="author" content="JunBin">
+  <meta name="keywords" content="">
+  
+    <meta name="description" content="无编程 perf perf 是快速定位问题的利器，由于缺乏系统的理解，笔者在工作中未能用好 perf 。 这篇文章会由概述至细节地探讨 perf 、探讨 perf 与 kprobe &#x2F; uprobe ... 之间的关系，介绍无编程情况下如何使用 perf 定位问题，若有错漏，敬请指出。 Brief Introduction      Dynamic Tracing Static Tracing C">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Perf Without Programming">
+<meta property="og:url" content="https://clcanny.github.io/2020/06/19/computer-science/performance-analysis/perf-without-programming/index.html">
+<meta property="og:site_name" content="On The Road">
+<meta property="og:description" content="无编程 perf perf 是快速定位问题的利器，由于缺乏系统的理解，笔者在工作中未能用好 perf 。 这篇文章会由概述至细节地探讨 perf 、探讨 perf 与 kprobe &#x2F; uprobe ... 之间的关系，介绍无编程情况下如何使用 perf 定位问题，若有错漏，敬请指出。 Brief Introduction      Dynamic Tracing Static Tracing C">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="http://junbin-hexo-img.oss-cn-beijing.aliyuncs.com/perf-without-programming/perf-events-map-2.jpg">
+<meta property="og:image" content="http://junbin-hexo-img.oss-cn-beijing.aliyuncs.com/perf-without-programming/perf-events-map.png">
+<meta property="og:image" content="http://junbin-hexo-img.oss-cn-beijing.aliyuncs.com/perf-without-programming/registers.png">
+<meta property="article:published_time" content="2020-06-19T15:29:20.000Z">
+<meta property="article:modified_time" content="2024-10-30T15:47:28.515Z">
+<meta property="article:author" content="JunBin">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="http://junbin-hexo-img.oss-cn-beijing.aliyuncs.com/perf-without-programming/perf-events-map-2.jpg">
+  
+  
+  
+  <title>Perf Without Programming - On The Road</title>
+
+  <link  rel="stylesheet" href="https://lib.baomitu.com/twitter-bootstrap/4.6.1/css/bootstrap.min.css" />
+
+
+
+  <link  rel="stylesheet" href="https://lib.baomitu.com/github-markdown-css/4.0.0/github-markdown.min.css" />
+
+  <link  rel="stylesheet" href="https://lib.baomitu.com/hint.css/2.7.0/hint.min.css" />
+
+  <link  rel="stylesheet" href="https://lib.baomitu.com/fancybox/3.5.7/jquery.fancybox.min.css" />
+
+
+
+<!-- 主题依赖的图标库，不要自行修改 -->
+<!-- Do not modify the link that theme dependent icons -->
+
+<link rel="stylesheet" href="//at.alicdn.com/t/font_1749284_hj8rtnfg7um.css">
+
+
+
+<link rel="stylesheet" href="//at.alicdn.com/t/font_1736178_lbnruvf0jn.css">
+
+
+<link  rel="stylesheet" href="/css/main.css" />
+
+
+  <link id="highlight-css" rel="stylesheet" href="/css/highlight.css" />
+  
+    <link id="highlight-css-dark" rel="stylesheet" href="/css/highlight-dark.css" />
+  
+
+
+
+
+  <script id="fluid-configs">
+    var Fluid = window.Fluid || {};
+    Fluid.ctx = Object.assign({}, Fluid.ctx)
+    var CONFIG = {"hostname":"clcanny.github.io","root":"/","version":"1.9.4","typing":{"enable":true,"typeSpeed":70,"cursorChar":"_","loop":false,"scope":[]},"anchorjs":{"enable":true,"element":"h1,h2,h3,h4,h5,h6","placement":"left","visible":"hover","icon":""},"progressbar":{"enable":true,"height_px":3,"color":"#29d","options":{"showSpinner":false,"trickleSpeed":100}},"code_language":{"enable":true,"default":"TEXT"},"copy_btn":true,"image_caption":{"enable":true},"image_zoom":{"enable":true,"img_url_replace":["",""]},"toc":{"enable":true,"placement":"right","headingSelector":"h1,h2,h3,h4,h5,h6","collapseDepth":0},"lazyload":{"enable":true,"loading_img":"/img/loading.gif","onlypost":false,"offset_factor":2},"web_analytics":{"enable":false,"follow_dnt":true,"baidu":null,"google":null,"gtag":null,"tencent":{"sid":null,"cid":null},"woyaola":null,"cnzz":null,"leancloud":{"app_id":null,"app_key":null,"server_url":null,"path":"window.location.pathname","ignore_local":false}},"search_path":"/local-search.xml"};
+
+    if (CONFIG.web_analytics.follow_dnt) {
+      var dntVal = navigator.doNotTrack || window.doNotTrack || navigator.msDoNotTrack;
+      Fluid.ctx.dnt = dntVal && (dntVal.startsWith('1') || dntVal.startsWith('yes') || dntVal.startsWith('on'));
+    }
+  </script>
+  <script  src="/js/utils.js" ></script>
+  <script  src="/js/color-schema.js" ></script>
+  
+
+
+  
+<meta name="generator" content="Hexo 7.0.0-rc1"></head>
+
+
+<body>
+  
+
+  <header>
+    
+
+<div class="header-inner" style="height: 70vh;">
+  <nav id="navbar" class="navbar fixed-top  navbar-expand-lg navbar-dark scrolling-navbar">
+  <div class="container">
+    <a class="navbar-brand" href="/">
+      <strong>Fluid</strong>
+    </a>
+
+    <button id="navbar-toggler-btn" class="navbar-toggler" type="button" data-toggle="collapse"
+            data-target="#navbarSupportedContent"
+            aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
+      <div class="animated-icon"><span></span><span></span><span></span></div>
+    </button>
+
+    <!-- Collapsible content -->
+    <div class="collapse navbar-collapse" id="navbarSupportedContent">
+      <ul class="navbar-nav ml-auto text-center">
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/">
+                <i class="iconfont icon-home-fill"></i>
+                <span>首页</span>
+              </a>
+            </li>
+          
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/archives/">
+                <i class="iconfont icon-archive-fill"></i>
+                <span>归档</span>
+              </a>
+            </li>
+          
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/categories/">
+                <i class="iconfont icon-category-fill"></i>
+                <span>分类</span>
+              </a>
+            </li>
+          
+        
+        
+          <li class="nav-item" id="search-btn">
+            <a class="nav-link" target="_self" href="javascript:;" data-toggle="modal" data-target="#modalSearch" aria-label="Search">
+              <i class="iconfont icon-search"></i>
+            </a>
+          </li>
+          
+        
+        
+          <li class="nav-item" id="color-toggle-btn">
+            <a class="nav-link" target="_self" href="javascript:;" aria-label="Color Toggle">
+              <i class="iconfont icon-dark" id="color-toggle-icon"></i>
+            </a>
+          </li>
+        
+      </ul>
+    </div>
+  </div>
+</nav>
+
+  
+
+<div id="banner" class="banner" parallax=true
+     style="background: url('/img/default.png') no-repeat center center; background-size: cover;">
+  <div class="full-bg-img">
+    <div class="mask flex-center" style="background-color: rgba(0, 0, 0, 0.3)">
+      <div class="banner-text text-center fade-in-up">
+        <div class="h2">
+          
+            <span id="subtitle" data-typed-text="Perf Without Programming"></span>
+          
+        </div>
+
+        
+          
+  <div class="mt-3">
+    
+    
+      <span class="post-meta">
+        <i class="iconfont icon-date-fill" aria-hidden="true"></i>
+        <time datetime="2020-06-19 23:29" pubdate>
+          2020年6月19日 晚上
+        </time>
+      </span>
+    
+  </div>
+
+  <div class="mt-1">
+    
+      <span class="post-meta mr-2">
+        <i class="iconfont icon-chart"></i>
+        
+          13k 字
+        
+      </span>
+    
+
+    
+      <span class="post-meta mr-2">
+        <i class="iconfont icon-clock-fill"></i>
+        
+        
+        
+          110 分钟
+        
+      </span>
+    
+
+    
+    
+  </div>
+
+
+        
+      </div>
+
+      
+    </div>
+  </div>
+</div>
+
+</div>
+
+  </header>
+
+  <main>
+    
+      
+
+<div class="container-fluid nopadding-x">
+  <div class="row nomargin-x">
+    <div class="side-col d-none d-lg-block col-lg-2">
+      
+
+    </div>
+
+    <div class="col-lg-8 nopadding-x-md">
+      <div class="container nopadding-x-md" id="board-ctn">
+        <div id="board">
+          <article class="post-content mx-auto">
+            <!-- SEO header -->
+            <h1 style="display: none">Perf Without Programming</h1>
+            
+            
+              <div class="markdown-body">
+                
+                <h1 id="无编程-perf">无编程 perf</h1>
+<p>perf 是快速定位问题的利器，由于缺乏系统的理解，笔者在工作中未能用好 perf 。</p>
+<p>这篇文章会由概述至细节地探讨 perf 、探讨 perf 与 kprobe / uprobe ... 之间的关系，介绍无编程情况下如何使用 perf 定位问题，若有错漏，敬请指出。</p>
+<h2 id="brief-introduction">Brief Introduction</h2>
+<p><img src="http://junbin-hexo-img.oss-cn-beijing.aliyuncs.com/perf-without-programming/perf-events-map-2.jpg" srcset="/img/loading.gif" lazyload /></p>
+<table>
+<thead>
+<tr class="header">
+<th style="text-align: center;"></th>
+<th style="text-align: center;">Dynamic Tracing</th>
+<th style="text-align: center;">Static Tracing</th>
+<th style="text-align: center;">Counters</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: center;">User space</td>
+<td style="text-align: center;"><strong>uprobes</strong></td>
+<td style="text-align: center;"><strong>User Staticlly-Defined Tracing</strong></td>
+<td style="text-align: center;"></td>
+</tr>
+<tr class="even">
+<td style="text-align: center;">Kernel space</td>
+<td style="text-align: center;"><strong>kprobes</strong></td>
+<td style="text-align: center;"><strong>Kernel Tracepoint Events</strong></td>
+<td style="text-align: center;">Software Events</td>
+</tr>
+<tr class="odd">
+<td style="text-align: center;">Hardware</td>
+<td style="text-align: center;"></td>
+<td style="text-align: center;"></td>
+<td style="text-align: center;">CPU performance monitoring counters</td>
+</tr>
+<tr class="even">
+<td style="text-align: center;"></td>
+<td style="text-align: center;"></td>
+<td style="text-align: center;"></td>
+<td style="text-align: center;"><strong>Timed Profiling</strong></td>
+</tr>
+</tbody>
+</table>
+<p>笔者对<a target="_blank" rel="noopener" href="http://brendangregg.com/perf_events/perf_events_map.png">原图</a>稍作改动：用 Kernel Tracepoint Events 取代 Software Events ；这样做的理由是：Counters 在实际工作中较少应用，且 Software Events 和 Kernel Tracepoint Events 都在内核空间工作，容易搞混，所以在初识 perf 的过程中不妨先放下 Counters 。</p>
+<p>表格中加粗部分是本篇文章着重探讨的 5 中 trace 方法。</p>
+<p>另外，Timed Profiling 是一种非常特殊的 Counters ，它是从外部侵入的、基于采样的 Counters ，与 Software Events （内核自行计数）和 PMCs （硬件自行计数）都有所不同。</p>
+<h2 id="timed-profiling">Timed Profiling</h2>
+<p>Timed Profiling 应该是大多数人对 perf 的第一印象：检查程序慢在何处。</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><code class="hljs cpp"><span class="hljs-comment">// g++ -std=c++11 -O0 main.cpp -o main</span><br><span class="hljs-meta">#<span class="hljs-keyword">include</span> <span class="hljs-string">&lt;iostream&gt;</span></span><br><span class="hljs-function"><span class="hljs-type">void</span> <span class="hljs-title">f</span><span class="hljs-params">()</span> </span>&#123;<br>    std::cout &lt;&lt; <span class="hljs-string">&quot;I&#x27;m in f.&quot;</span> &lt;&lt; std::endl;<br>&#125;<br><span class="hljs-function"><span class="hljs-type">void</span> <span class="hljs-title">g</span><span class="hljs-params">()</span> </span>&#123;<br>    <span class="hljs-built_in">f</span>();<br>    std::cout &lt;&lt; <span class="hljs-string">&quot;I&#x27;m in g.&quot;</span> &lt;&lt; std::endl;<br>&#125;<br><span class="hljs-function"><span class="hljs-type">int</span> <span class="hljs-title">main</span><span class="hljs-params">()</span> </span>&#123;<br>    <span class="hljs-keyword">for</span> (<span class="hljs-type">int</span> i = <span class="hljs-number">0</span>; i &lt; <span class="hljs-number">10000</span>; i++) &#123;<br>        <span class="hljs-built_in">g</span>();<br>    &#125;<br>&#125;<br></code></pre></td></tr></table></figure>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><code class="hljs bash">sudo perf record --call-graph dwarf -F 99 ./main<br>sudo <span class="hljs-built_in">chmod</span> 777 perf.data<br>perf script | ./FlameGraph/stackcollapse-perf.pl | ./FlameGraph/flamegraph.pl &gt; out.svg<br></code></pre></td></tr></table></figure>
+<blockquote>
+<p>The choice of 99 Hertz, instead of 100 Hertz, is to avoid accidentally sampling in lockstep with some periodic activity, which would produce skewed results. This is also coarse: you may want to increase that to higher rates (eg, up to 997 Hertz) for finer resolution, especially if you are sampling short bursts of activity and you'd still like enough resolution to be useful. Bear in mind that higher frequencies means higher overhead.</p>
+</blockquote>
+<p>采样频率尽量避免类似于 100 这样的整百数。</p>
+<h2 id="kernel-tracepoint-events">Kernel Tracepoint Events</h2>
+<p>Kernel Tracepoint Events 是内核事先埋好的点，结合 stack trace 能定位一些问题，如内存分配。</p>
+<p>检查 Kernel Tracepoint Events 的命令：<code>sudo perf list | awk -F: '/Tracepoint event/ &#123; print $1 &#125;' | sort | uniq</code></p>
+<p><img src="http://junbin-hexo-img.oss-cn-beijing.aliyuncs.com/perf-without-programming/perf-events-map.png" srcset="/img/loading.gif" lazyload /></p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><code class="hljs bash"><span class="hljs-comment"># sudo perf list | awk -F: &#x27;/Tracepoint event/ &#123; print $1 &#125;&#x27; | sort | uniq | grep &quot;syscalls&quot;</span><br>raw_syscalls<br>syscalls<br></code></pre></td></tr></table></figure>
+<blockquote>
+<p>These are grouped into libraries of tracepoints; eg, "sock:" for socket events, "sched:" for CPU scheduler events. A key value of tracepoints is that they should have a stable API, so if you write tools that use them on one kernel version, they should work on later versions as well.</p>
+</blockquote>
+<p>syscalls 也是一组事件。</p>
+<h3 id="example">Example</h3>
+<p>假设我们有一个因 mmap 导致虚存快速增长的程序，如何将泄漏点查出来呢？</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><code class="hljs cpp"><span class="hljs-comment">// g++ -std=c++11 mmapButNotWritten.cpp -O3 -ggdb -o mmapButNotWritten</span><br><span class="hljs-meta">#<span class="hljs-keyword">include</span> <span class="hljs-string">&lt;sys/mman.h&gt;</span></span><br><span class="hljs-meta">#<span class="hljs-keyword">include</span> <span class="hljs-string">&lt;iostream&gt;</span></span><br><span class="hljs-function"><span class="hljs-type">int</span> <span class="hljs-title">main</span><span class="hljs-params">()</span> </span>&#123;<br>    <span class="hljs-keyword">auto</span> p = <span class="hljs-built_in">mmap</span>(<span class="hljs-literal">nullptr</span>, <span class="hljs-number">8</span> * <span class="hljs-number">1024</span>, PROT_NONE, MAP_PRIVATE | MAP_ANONYMOUS, <span class="hljs-number">-1</span>, <span class="hljs-number">0</span>);<br>    std::cout &lt;&lt; p &lt;&lt; std::endl;<br>&#125;<br></code></pre></td></tr></table></figure>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><code class="hljs bash"><span class="hljs-comment"># sudo perf record --call-graph dwarf -e &quot;syscalls:sys_exit_mmap&quot; ./mmapButNotWritten</span><br>0x7f955b1b9000<br></code></pre></td></tr></table></figure>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><code class="hljs bash"><span class="hljs-comment"># sudo chmod 777 perf.data</span><br><span class="hljs-comment"># perf script</span><br><span class="hljs-comment"># perf script 的一部分输出</span><br>mmapButNotWritt 31964 [000] 885228.328547: syscalls:sys_exit_mmap: 0x7f955b1b9000<br>            7f955a935a13 mmap64 (inlined)<br>            559554b957df main (/home/demons/mmapButNotWritten)<br>            7f955a83bb96 __libc_start_main (/lib/x86_64-linux-gnu/libc-2.27.so)<br>            559554b95859 _start (/home/demons/mmapButNotWritten)<br></code></pre></td></tr></table></figure>
+<p>perf 选项说明：</p>
+<ul>
+<li><p>--call-graph: fp / dwarf / lbr / no</p>
+<p>fp 是 frame pointer 的缩写，使用 fp 要求编译时加上 -fno-omit-frame-pointer 选项</p>
+<p>dwarf 使用 libunwind 处理缺少 frame pointer 的情况</p></li>
+<li><p>-e: events</p></li>
+<li><p>-p: pid</p></li>
+</ul>
+<h3 id="进阶">进阶</h3>
+<p>如何获取 mmap 的参数和返回值？具体参见“ kprobes - Example 2 —— 打印参数”小节。</p>
+<h2 id="kprobes">kprobes</h2>
+<p>根据文章<a target="_blank" rel="noopener" href="https://superuser.com/questions/287371/obtain-kernel-config-from-currently-running-linux-system">如何获取内核配置</a>，查看内核是否开启 kprobes 的命令为：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><code class="hljs bash"><span class="hljs-comment"># sudo cat /boot/config-$(uname -r) | grep -i kprobe</span><br>CONFIG_KPROBES=y<br>CONFIG_KPROBES_ON_FTRACE=y<br>CONFIG_HAVE_KPROBES=y<br>CONFIG_HAVE_KPROBES_ON_FTRACE=y<br>CONFIG_KPROBE_EVENTS=y<br><span class="hljs-comment"># CONFIG_KPROBES_SANITY_TEST is not set</span><br></code></pre></td></tr></table></figure>
+<h3 id="example-1-打印调用栈">Example 1 —— 打印调用栈</h3>
+<p>借用“ Kernel Tracepoint Events - Example ”中的例子，应该如何用 kprobes 调查类似问题呢？</p>
+<p>根据文章 <a target="_blank" rel="noopener" href="https://stackoverflow.com/questions/9798008/connection-between-mmap-user-call-to-mmap-kernel-call">connection between mmap user call to mmap kernal call</a> ，mmap 最终会调用 mmap_region ，函数原型如下：</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><code class="hljs cpp"><span class="hljs-function"><span class="hljs-type">unsigned</span> <span class="hljs-type">long</span> <span class="hljs-title">mmap_region</span><span class="hljs-params">(<span class="hljs-keyword">struct</span> file* file,</span></span><br><span class="hljs-params"><span class="hljs-function">                          <span class="hljs-type">unsigned</span> <span class="hljs-type">long</span> addr,</span></span><br><span class="hljs-params"><span class="hljs-function">                          <span class="hljs-type">unsigned</span> <span class="hljs-type">long</span> len,</span></span><br><span class="hljs-params"><span class="hljs-function">                          <span class="hljs-type">unsigned</span> <span class="hljs-type">long</span> flags,</span></span><br><span class="hljs-params"><span class="hljs-function">                          <span class="hljs-type">vm_flags_t</span> vm_flags,</span></span><br><span class="hljs-params"><span class="hljs-function">                          <span class="hljs-type">unsigned</span> <span class="hljs-type">long</span> pgoff)</span></span>;<br></code></pre></td></tr></table></figure>
+<p>通过 perf 添加 kprobes 的命令如下：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><code class="hljs bash"><span class="hljs-comment"># sudo perf probe --add mmap_region</span><br>Added new event:<br>  probe:mmap_region    (on mmap_region)<br><span class="hljs-comment"># sudo perf list | grep mmap_region</span><br>probe:mmap_region                                  [Tracepoint event]<br></code></pre></td></tr></table></figure>
+<p>添加的 kprobe 会在 <code>/sys/kernel/debug/</code> 中显示出来：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><code class="hljs bash"><span class="hljs-comment"># sudo cat /sys/kernel/debug/tracing/kprobe_events</span><br>p:probe/mmap_region _text+2238544<br><span class="hljs-comment"># sudo cat /sys/kernel/debug/kprobes/list</span><br>0000000044a2daff  k  mmap_region+0x0    [DISABLED][FTRACE]<br></code></pre></td></tr></table></figure>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><code class="hljs bash"><span class="hljs-comment"># sudo perf record --call-graph dwarf -e probe:mmap_region ./mmapButNotWritten</span><br>0x7f1aedf48000<br><span class="hljs-comment"># sudo chmod 777 perf.data</span><br><span class="hljs-comment"># perf script</span><br>mmapButNotWritt  3547 [000] 951782.708116: probe:mmap_region: (ffffffffb5622850)<br>        ffffffffb5622851 [unknown] ([kernel.kallsyms])<br>        ffffffffb55feeac [unknown] ([kernel.kallsyms])<br>        ffffffffb56209fa [unknown] ([kernel.kallsyms])<br>        ffffffffb5433f6b [unknown] ([kernel.kallsyms])<br>        ffffffffb5403bb3 [unknown] ([kernel.kallsyms])<br>        ffffffffb5e00081 [unknown] ([kernel.kallsyms])<br>            7f1aed6c4a13 mmap64 (inlined)<br>            55f96b80b7df main (/home/demons/mmapButNotWritten)<br>            7f1aed5cab96 __libc_start_main (/lib/x86_64-linux-gnu/libc-2.27.so)<br>            55f96b80b859 _start (/home/demons/mmapButNotWritten)<br></code></pre></td></tr></table></figure>
+<p>通过 perf 删除 kprobe ：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><code class="hljs bash"><span class="hljs-comment"># sudo perf probe --del mmap_region</span><br>Removed event: probe:mmap_region<br></code></pre></td></tr></table></figure>
+<h3 id="example-2-打印参数">Example 2 —— 打印参数</h3>
+<p>笔者按照 <a target="_blank" rel="noopener" href="http://brendangregg.com/perf.html#DynamicTracingEg">DynamicTracingEg</a> 的示例，要求 kprobe 打印 addr 参数：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><code class="hljs bash"><span class="hljs-comment"># sudo perf probe --add &#x27;mmap_region addr&#x27;</span><br>Failed to find the path <span class="hljs-keyword">for</span> kernel: Invalid ELF file<br>  Error: Failed to add events.<br></code></pre></td></tr></table></figure>
+<p>由于找不到 debug 信息，无法确认 addr 参数在函数调用中的位置（貌似？），直接指定 addr 参数报错。</p>
+<h4 id="指定参数名">指定参数名</h4>
+<p>根据<a target="_blank" rel="noopener" href="https://www.zhihu.com/people/radioactivezx">知乎用户：基本无害</a>的评论：</p>
+<blockquote>
+<p>这一段 perf 找不到 kprobe 函数名外的参数、返回值信息是因为缺少 vmlinux ，可以使用命令 <code>--vmlinux=&lt;vmlinux_path&gt;</code> 指定 vmlinux 。发行版一般也会提供官方 kernel 对应的文件，比如 Debian/Ubuntu 下 linux-image-5.8.0-3-amd 包会有一个对应的 linux-image-5.8.0-3-amd-dbg 包，安装之后 perf probe 可以自动找到。安装后 <code>perf probe -V printk</code> 能列出参数。</p>
+</blockquote>
+<p>依据 <a target="_blank" rel="noopener" href="https://superuser.com/questions/62575/where-is-vmlinux-on-my-ubuntu-installation">Stack Exchange: Where is vmlinux on my Ubuntu installation?</a> 的指导安装 vmlinux ：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><code class="hljs bash"><span class="hljs-comment"># sudo apt-get install linux-image-4.19-amd64 linux-image-4.19-amd64-dbg</span><br><span class="hljs-comment"># uname -r</span><br>4.19.0-0.bpo.17-amd64<br><span class="hljs-comment"># ls /usr/lib/debug/boot/vmlinux-4.19.0-0.bpo.17-amd64</span><br>/usr/lib/debug/boot/vmlinux-4.19.0-0.bpo.17-amd64<br></code></pre></td></tr></table></figure>
+<p>4.9.0 版本的内核使用 kprobes 时会报错 <code>mmap_region is out of .text, skip it.</code> ，不建议使用。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br></pre></td><td class="code"><pre><code class="hljs bash"><span class="hljs-comment"># sudo perf probe -V mmap_region</span><br>Available variables at mmap_region<br>        @&lt;mmap_region+0&gt;<br>                char*   __func__<br>                long unsigned int       addr<br>                long unsigned int       len<br>                long unsigned int       pgoff<br>                struct file*    file<br>                vm_flags_t      vm_flags<br><span class="hljs-comment"># sudo perf probe --add &#x27;mmap_region addr&#x27;</span><br>Added new event:<br>  probe:mmap_region    (on mmap_region with addr)<br>You can now use it <span class="hljs-keyword">in</span> all perf tools, such as:<br>       perf record -e probe:mmap_region -aR <span class="hljs-built_in">sleep</span> 1<br><span class="hljs-comment"># sudo perf record --call-graph dwarf -e probe:mmap_region ./mmapButNotWritten</span><br>0x7f8eb7a04000<br>[ perf record: Woken up 1 <span class="hljs-built_in">times</span> to write data ]<br>[ perf record: Captured and wrote 0.217 MB perf.data (25 samples) ]<br></code></pre></td></tr></table></figure>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><code class="hljs bash"><span class="hljs-comment"># sudo chmod 777 perf.data</span><br><span class="hljs-comment"># perf script</span><br>mmapButNotWritt  4032 [000]  2222.246366: probe:mmap_region: (ffffffffa5211e40) addr=0x555c53d86000<br>        ffffffffa5211e41 mmap_region+0x1<br>        ffffffffa52128bd do_mmap+0x46d<br>        ffffffffa51ef312 vm_mmap_pgoff+0xd2<br>        ffffffffa52cf1d8 elf_map+0x98<br>        ffffffffa52d1121 load_elf_binary+0x661<br>        ffffffffa5270f56 search_binary_handler+0xa6<br>        ffffffffa5272a38 __do_execve_file.isra.34+0x578<br>        ffffffffa5272e64 __x64_sys_execve+0x34<br>        ffffffffa5004105 do_syscall_64+0x55<br>        ffffffffa5800088 entry_SYSCALL_64_after_hwframe+0x44<br></code></pre></td></tr></table></figure>
+<p>删除 kprobe ：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><code class="hljs bash"><span class="hljs-comment"># sudo perf probe --del mmap_region</span><br>Removed event: probe:mmap_region<br></code></pre></td></tr></table></figure>
+<h4 id="指定寄存器">指定寄存器</h4>
+<p>我们可以根据 <a target="_blank" rel="noopener" href="https://en.wikipedia.org/wiki/X86_calling_conventions">X86 calling conventions</a> 手动指定参数：</p>
+<table>
+
+<thead>
+<tr class="header">
+<th style="text-align: center;">Architecture</th>
+<th style="text-align: center;">Name</th>
+<th style="text-align: center;">Operation system, compiler</th>
+<th style="text-align: center;">Parameters (Registers)</th>
+<th style="text-align: center;">Parameters (Stack order)</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: center;">x86-64</td>
+<td style="text-align: center;">System V AMD64 ABI</td>
+<td style="text-align: center;">Solaris, Linux, BSD, OS X (GCC, Intel C++ Compiler)</td>
+<td style="text-align: center;">RDI, RSI, RDX, RCX, R8, R9, [XYZ]MM0–7</td>
+<td style="text-align: center;">RTL (C)</td>
+</tr>
+</tbody>
+</table>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><code class="hljs cpp"><span class="hljs-function"><span class="hljs-type">unsigned</span> <span class="hljs-type">long</span> <span class="hljs-title">mmap_region</span><span class="hljs-params">(<span class="hljs-keyword">struct</span> file* file,    <span class="hljs-comment">// RDI</span></span></span><br><span class="hljs-params"><span class="hljs-function">                          <span class="hljs-type">unsigned</span> <span class="hljs-type">long</span> addr,   <span class="hljs-comment">// RSI</span></span></span><br><span class="hljs-params"><span class="hljs-function">                          <span class="hljs-type">unsigned</span> <span class="hljs-type">long</span> len,    <span class="hljs-comment">// RDX</span></span></span><br><span class="hljs-params"><span class="hljs-function">                          <span class="hljs-type">unsigned</span> <span class="hljs-type">long</span> flags,  <span class="hljs-comment">// RCX</span></span></span><br><span class="hljs-params"><span class="hljs-function">                          <span class="hljs-type">vm_flags_t</span> vm_flags,  <span class="hljs-comment">// R8 vm_flags_t = unsigned long</span></span></span><br><span class="hljs-params"><span class="hljs-function">                          <span class="hljs-type">unsigned</span> <span class="hljs-type">long</span> pgoff)</span></span>; <span class="hljs-comment">// R9</span><br></code></pre></td></tr></table></figure>
+<p>在笔者机器上，perf 采用的寄存器名称都以 16-bit 寄存器名称为准，长度通过寄存器名称后的类型来指定。</p>
+<p><a target="_blank" rel="noopener" href="https://en.wikibooks.org/wiki/X86_Assembly/X86_Architecture">X86 架构</a> 寄存器对应表：</p>
+<p><img src="http://junbin-hexo-img.oss-cn-beijing.aliyuncs.com/perf-without-programming/registers.png" srcset="/img/loading.gif" lazyload /></p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><code class="hljs bash"><span class="hljs-comment"># sudo su</span><br><span class="hljs-comment"># echo &#x27;p:mmap_region mmap_region file=%di:u64 addr=%si:u64 len=%dx:u64 flags=%cx:u64 vm_flags=%r8:u64 pgoff=%r9:u64&#x27; &gt; /sys/kernel/debug/tracing/kprobe_events</span><br><span class="hljs-comment"># cat /sys/kernel/debug/tracing/kprobe_events</span><br>p:kprobes/mmap_region mmap_region file=%di:u64 addr=%si:u64 len=%dx:u64 flags=%cx:u64 vm_flags=%r8:u64 pgoff=%r9:u64<br><span class="hljs-comment"># exit</span><br><span class="hljs-comment"># sudo perf record --call-graph dwarf -e kprobes:mmap_region ./mmapButNotWritten</span><br>0x7f74dc178000<br></code></pre></td></tr></table></figure>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><code class="hljs bash"><span class="hljs-comment"># sudo chmod 777 perf.data</span><br><span class="hljs-comment"># perf script</span><br>mmapButNotWritt  3781 [000] 967984.290594: kprobes:mmap_region: (ffffffffb5622850) file=0 addr=140139885461504 len=8192 flags=112 vm_flags=34213839224 pgoff=18446662055947353720<br>    ffffffffb5622851 [unknown] ([kernel.kallsyms])<br>    ffffffffb55feeac [unknown] ([kernel.kallsyms])<br>    ffffffffb56209fa [unknown] ([kernel.kallsyms])<br>    ffffffffb5433f6b [unknown] ([kernel.kallsyms])<br>    ffffffffb5403bb3 [unknown] ([kernel.kallsyms])<br>    ffffffffb5e00081 [unknown] ([kernel.kallsyms])<br>        7f74db8f4a13 mmap64 (inlined)<br>        5593b07117df main (/home/demons/mmapButNotWritten)<br>        7f74db7fab96 __libc_start_main (/lib/x86_64-linux-gnu/libc-2.27.so)<br>        5593b0711859 _start (/home/demons/mmapButNotWritten)<br></code></pre></td></tr></table></figure>
+<p>删除 kprobe ：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><code class="hljs bash"><span class="hljs-comment"># sudo su</span><br><span class="hljs-comment"># echo &gt; /sys/kernel/debug/tracing/kprobe_events</span><br><span class="hljs-comment"># exit</span><br></code></pre></td></tr></table></figure>
+<p>kprobes 可以分为两类：普通 kprobes 和 return kprobes 。普通 kprobes 以 p 开头， 在函数执行之前调用，因而可以获取到参数；return kprobes 以 r 开头，在函数执行之后调用，因而不能获取到参数。</p>
+<h2 id="user-statically-defined-tracing">User Statically-Defined Tracing</h2>
+<p>USDT 是用户代码事先埋好的点，以下实验需要先安装 systemtap-sdt-dev 。</p>
+<p>Support was added in later 4.x series kernels.</p>
+<h3 id="埋点">埋点</h3>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><code class="hljs cpp"><span class="hljs-meta">#<span class="hljs-keyword">include</span> <span class="hljs-string">&lt;sys/sdt.h&gt;</span></span><br><span class="hljs-comment">// g++ -std=c++11 -shared -fPIC -O3 -ggdb math.cpp -o libmath.so</span><br><span class="hljs-function"><span class="hljs-type">int</span> <span class="hljs-title">funcInLib</span><span class="hljs-params">(<span class="hljs-type">int</span> x, <span class="hljs-type">int</span> y)</span> </span>&#123;<br>    <span class="hljs-built_in">DTRACE_PROBE2</span>(math, funcInLib, x, y);<br>    <span class="hljs-keyword">return</span> x + y;<br>&#125;<br></code></pre></td></tr></table></figure>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><code class="hljs cpp"><span class="hljs-comment">// dtrace -G -64 -s math.d libmath.so</span><br>provider math &#123;<br>    <span class="hljs-function">probe <span class="hljs-title">funcInLib</span><span class="hljs-params">(<span class="hljs-type">int</span>, <span class="hljs-type">int</span>)</span></span>;<br>&#125;<br></code></pre></td></tr></table></figure>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><code class="hljs bash"><span class="hljs-comment"># readelf -n libmath.so</span><br>Displaying notes found <span class="hljs-keyword">in</span>: .note.gnu.build-id<br>  Owner                 Data size   Description<br>  GNU                  0x00000014   NT_GNU_BUILD_ID (unique build ID bitstring)<br>    Build ID: e40dccf6baa20b96206670d5a52b770f5df98608<br><br>Displaying notes found <span class="hljs-keyword">in</span>: .note.stapsdt<br>  Owner                 Data size   Description<br>  stapsdt              0x00000037   NT_STAPSDT (SystemTap probe descriptors)<br>    Provider: math<br>    Name: funcInLib<br>    Location: 0x0000000000000580, Base: 0x0000000000000591, Semaphore: 0x0000000000000000<br>    Arguments: -4@%edi -4@%esi<br></code></pre></td></tr></table></figure>
+<h3 id="监听">监听</h3>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><code class="hljs bash"><span class="hljs-comment"># sudo perf buildid-cache --add libmath.so</span><br><span class="hljs-comment"># sudo perf list | grep sdt_math</span><br>sdt_math:funcInLib                                 [SDT event]<br><span class="hljs-comment"># sudo perf probe sdt_math:funcInLib</span><br>Added new event:<br>  sdt_math:funcInLib   (on %funcInLib <span class="hljs-keyword">in</span> /home/demons/uprobe/libmath.so)<br><span class="hljs-comment"># sudo perf list | grep sdt_math</span><br>sdt_math:funcInLib                                 [Tracepoint event]<br>sdt_math:funcInLib                                 [SDT event]<br></code></pre></td></tr></table></figure>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><code class="hljs bash"><span class="hljs-comment"># sudo perf record --call-graph dwarf -e sdt_math:funcInLib ./main</span><br><span class="hljs-comment"># sudo chmod 777 perf.data</span><br><span class="hljs-comment"># perf script</span><br>main  4146 [000] 970663.914768: sdt_math:funcInLib: (7f7ef2391580) arg1=1 arg2=2<br>            7f7ef2391580 funcInLib (/home/demons/uprobe/libmath.so)<br>            55e4d885b632 main (/home/demons/uprobe/main)<br>            7f7ef1fc1b96 __libc_start_main (/lib/x86_64-linux-gnu/libc-2.27.so)<br>            55e4d885b669 _start (/home/demons/uprobe/main)<br></code></pre></td></tr></table></figure>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><code class="hljs bash"><span class="hljs-comment"># sudo perf probe --del sdt_math:funcInLib</span><br>Removed event: sdt_math:funcInLib<br><span class="hljs-comment"># sudo perf buildid-cache --remove libmath.so</span><br></code></pre></td></tr></table></figure>
+<h2 id="uprobes">uprobes</h2>
+<p>根据文章<a target="_blank" rel="noopener" href="https://superuser.com/questions/287371/obtain-kernel-config-from-currently-running-linux-system">如何获取内核参数</a>，查看内核是否开启 uprobes 的命令：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><code class="hljs bash">// sudo <span class="hljs-built_in">cat</span> /boot/config-$(<span class="hljs-built_in">uname</span> -r) | grep -i uprobe<br>CONFIG_ARCH_SUPPORTS_UPROBES=y<br>CONFIG_UPROBES=y<br>CONFIG_UPROBE_EVENTS=y<br></code></pre></td></tr></table></figure>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><code class="hljs cpp"><span class="hljs-comment">// g++ -std=c++11 -shared -fPIC -O3 -ggdb math.cpp -o libmath.so</span><br><span class="hljs-function"><span class="hljs-type">int</span> <span class="hljs-title">funcInLib</span><span class="hljs-params">(<span class="hljs-type">int</span> x, <span class="hljs-type">int</span> y)</span> </span>&#123;<br>    <span class="hljs-keyword">return</span> x + y;<br>&#125;<br></code></pre></td></tr></table></figure>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><code class="hljs cpp"><span class="hljs-comment">// g++ -std=c++11 -O3 -ggdb main.cpp -L$PWD -lmath -Wl,-rpath=$PWD -o main</span><br><span class="hljs-function"><span class="hljs-type">int</span> <span class="hljs-title">funcInLib</span><span class="hljs-params">(<span class="hljs-type">int</span> x, <span class="hljs-type">int</span> y)</span></span>;<br><span class="hljs-function"><span class="hljs-type">int</span> <span class="hljs-title">main</span><span class="hljs-params">()</span> </span>&#123;<br>    <span class="hljs-built_in">funcInLib</span>(<span class="hljs-number">1</span>, <span class="hljs-number">2</span>);<br>&#125;<br></code></pre></td></tr></table></figure>
+<h3 id="example-1-通过-perf-插入-uprobes">Example 1 —— 通过 perf 插入 uprobes</h3>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><code class="hljs bash"><span class="hljs-comment"># sudo perf probe -x libmath.so &#x27;--add=funcInLib x y&#x27;</span><br>Probe on address 0x580 to force probing at the <span class="hljs-keyword">function</span> entry.<br>Added new event:<br>  probe_libmath:funcInLib (on funcInLib <span class="hljs-keyword">in</span> /home/demons/uprobe/libmath.so with x y)<br></code></pre></td></tr></table></figure>
+<p>Linux 3.13.1 kernel 可以使用以下命令创建 uprobes ：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><code class="hljs bash"><span class="hljs-comment"># sudo perf probe -x libmath.so &#x27;--add=funcInLib x=%di:s32 y=%si:s32&#x27;</span><br></code></pre></td></tr></table></figure>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><code class="hljs bash"><span class="hljs-comment"># sudo perf record --call-graph dwarf -e probe_libmath:funcInLib ./main</span><br><span class="hljs-comment"># sudo chmod 777 perf.data</span><br><span class="hljs-comment"># perf script</span><br>main  3998 [000] 969778.093408: probe_libmath:funcInLib: (7f1ed04b2580) x=1 y=2<br>            7f1ed04b2580 funcInLib (/home/demons/uprobe/libmath.so)<br>            559fa97b6632 main (/home/demons/uprobe/main)<br>            7f1ed00e2b96 __libc_start_main (/lib/x86_64-linux-gnu/libc-2.27.so)<br>            559fa97b6669 _start (/home/demons/uprobe/main)<br></code></pre></td></tr></table></figure>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><code class="hljs bash"><span class="hljs-comment"># sudo perf probe -x libmath.so --del funcInLib</span><br>Removed event: probe_libmath:funcInLib<br></code></pre></td></tr></table></figure>
+<h3 id="example-2-原始-uprobes">Example 2 —— 原始 uprobes</h3>
+<p>本小节参考 <a target="_blank" rel="noopener" href="https://www.kernel.org/doc/Documentation/trace/uprobetracer.txt">uprobe 文档</a></p>
+<p>根据 <a target="_blank" rel="noopener" href="https://stackoverflow.com/questions/40237321/find-functions-start-offset-in-elf">find functions start offset in elf</a> ，函数相对于 ELF 文件的偏移量为：</p>
+<blockquote>
+<p>function symbol offset = function symbol visual address - .text virtual address + .text offset</p>
+</blockquote>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><code class="hljs bash"><span class="hljs-comment"># readelf -S libmath.so</span><br>Section Headers:<br>  [Nr] Name              Type             Address           Offset<br>       Size              EntSize          Flags  Link  Info  Align<br>  [ 9] .text             PROGBITS         00000000000004a0  000004a0<br>       00000000000000e5  0000000000000000  AX       0     0     16<br><span class="hljs-comment"># readelf -s libmath.so | grep funcInLib</span><br> 9: 0000000000000580     5 FUNC    GLOBAL DEFAULT    9 _Z9funcInLibii<br>54: 0000000000000580     5 FUNC    GLOBAL DEFAULT    9 _Z9funcInLibii<br></code></pre></td></tr></table></figure>
+<p>funcInLib offset = 0x580 - 0x4a0 + 0x4a0 = 0x580</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><code class="hljs bash"><span class="hljs-comment"># sudo su</span><br><span class="hljs-comment"># echo &#x27;p:funcInLib /home/demons/uprobe/libmath.so:0x580 x=%di:s32 y=%si:s32&#x27; &gt; /sys/kernel/debug/tracing/uprobe_events</span><br><span class="hljs-comment"># cat /sys/kernel/debug/tracing/uprobe_events</span><br>p:uprobes/funcInLib /home/demons/uprobe/libmath.so:0x0000000000000580 x=%di:s32 y=%si:s32<br><span class="hljs-comment"># exit</span><br></code></pre></td></tr></table></figure>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><code class="hljs bash"><span class="hljs-comment"># sudo perf list | grep funcInLib</span><br>uprobes:funcInLib                                  [Tracepoint event]<br><span class="hljs-comment"># sudo perf record --call-graph dwarf -e uprobes:funcInLib ./main</span><br><span class="hljs-comment"># sudo chmod 777 perf.data</span><br><span class="hljs-comment"># perf script</span><br>main  3939 [000] 969570.321259: uprobes:funcInLib: (7ff377544580) x=1 y=2<br>            7ff377544580 funcInLib (/home/demons/uprobe/libmath.so)<br>            562707b8b632 main (/home/demons/uprobe/main)<br>            7ff377174b96 __libc_start_main (/lib/x86_64-linux-gnu/libc-2.27.so)<br>            562707b8b669 _start (/home/demons/uprobe/main)<br></code></pre></td></tr></table></figure>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><code class="hljs bash"><span class="hljs-comment"># sudo su</span><br><span class="hljs-comment"># echo &gt; /sys/kernel/debug/tracing/uprobe_events</span><br><span class="hljs-comment"># exit</span><br></code></pre></td></tr></table></figure>
+<h2 id="software-events">Software Events</h2>
+<blockquote>
+<p>Software events may have a default period. This means that when you use them for sampling, you're sampling a subset of events, not tracing every event. You can check with perf record -vv:</p>
+</blockquote>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><code class="hljs bash"><span class="hljs-comment"># perf record -vv -e context-switches /bin/true</span><br>perf_event_attr:<br>  &#123; sample_period, sample_freq &#125;   4000<br>  freq                             1<br></code></pre></td></tr></table></figure>
+<blockquote>
+<p>This default means is that the kernel adjusts the rate of sampling so that it's capturing about 4,000 context switch events per second. If you really meant to record them all, use -c 1:</p>
+</blockquote>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><code class="hljs bash"><span class="hljs-comment"># perf record -vv -e context-switches -c 1 /bin/true</span><br>perf_event_attr:<br>  &#123; sample_period, sample_freq &#125;   1<br></code></pre></td></tr></table></figure>
+<blockquote>
+<p>Many other events (like tracepoints) have a default of 1 anyway. You'll encounter a non-1 default for many software and hardware events.</p>
+</blockquote>
+<h1 id="reference">Reference</h1>
+<p><a target="_blank" rel="noopener" href="http://brendangregg.com/perf.html">perf Examples</a></p>
+<p><a target="_blank" rel="noopener" href="https://superuser.com/questions/287371/obtain-kernel-config-from-currently-running-linux-system">obtain kernel config</a></p>
+<p><a target="_blank" rel="noopener" href="https://www.kernel.org/doc/Documentation/trace/kprobetrace.txt">kprobe documentation</a></p>
+<p><a target="_blank" rel="noopener" href="https://www.kernel.org/doc/Documentation/trace/uprobetracer.txt">uprobe documentation</a></p>
+<p><a target="_blank" rel="noopener" href="http://dtrace.org/guide/chp-usdt.html#:~:text=Statically%20Defined%20Tracing%20for%20User%20Applications,capabilities%20of%20the%20pid%20provider.">Statically Defined Tracing for User Applications</a></p>
+<p><a target="_blank" rel="noopener" href="https://en.wikibooks.org/wiki/X86_Assembly/X86_Architecture">X86 Architecture</a></p>
+<p><a target="_blank" rel="noopener" href="https://www.agner.org/optimize/calling_conventions.pdf">Calling Conventions</a></p>
+<p><a target="_blank" rel="noopener" href="https://www.zhihu.com/people/radioactivezx">知乎用户：基本无害</a>的评论</p>
+<p><a target="_blank" rel="noopener" href="https://superuser.com/questions/62575/where-is-vmlinux-on-my-ubuntu-installation">Stack Exchange: Where is vmlinux on my Ubuntu installation?</a></p>
+
+                
+              </div>
+            
+            <hr/>
+            <div>
+              <div class="post-metas my-3">
+  
+    <div class="post-meta mr-3 d-flex align-items-center">
+      <i class="iconfont icon-category"></i>
+      
+
+<span class="category-chains">
+  
+  
+    
+      <span class="category-chain">
+        
+  <a href="/categories/Computer-Science/" class="category-chain-item">Computer Science</a>
+  
+  
+    <span>></span>
+    
+  <a href="/categories/Computer-Science/Performance-Analysis/" class="category-chain-item">Performance Analysis</a>
+  
+  
+
+  
+
+      </span>
+    
+  
+</span>
+
+    </div>
+  
+  
+</div>
+
+
+              
+  
+
+  <div class="license-box my-3">
+    <div class="license-title">
+      <div>Perf Without Programming</div>
+      <div>https://clcanny.github.io/2020/06/19/computer-science/performance-analysis/perf-without-programming/</div>
+    </div>
+    <div class="license-meta">
+      
+        <div class="license-meta-item">
+          <div>作者</div>
+          <div>JunBin</div>
+        </div>
+      
+      
+        <div class="license-meta-item license-meta-date">
+          <div>发布于</div>
+          <div>2020年6月19日</div>
+        </div>
+      
+      
+      
+        <div class="license-meta-item">
+          <div>许可协议</div>
+          <div>
+            
+              
+              
+                <a target="_blank" href="https://creativecommons.org/licenses/by/4.0/">
+                  <span class="hint--top hint--rounded" aria-label="BY - 署名">
+                    <i class="iconfont icon-by"></i>
+                  </span>
+                </a>
+              
+            
+          </div>
+        </div>
+      
+    </div>
+    <div class="license-icon iconfont"></div>
+  </div>
+
+
+
+              
+                <div class="post-prevnext my-3">
+                  <article class="post-prev col-6">
+                    
+                    
+                      <a href="/2020/09/13/computer-science/programming-language/c++/a-simple-example-of-antlr4-and-c++/" title="A Simple Example of ANTLR4 and C++">
+                        <i class="iconfont icon-arrowleft"></i>
+                        <span class="hidden-mobile">A Simple Example of ANTLR4 and C++</span>
+                        <span class="visible-mobile">上一篇</span>
+                      </a>
+                    
+                  </article>
+                  <article class="post-next col-6">
+                    
+                    
+                      <a href="/2020/06/14/computer-science/tools/vim/useful-vim-plugins/" title="Useful Vim Plugins">
+                        <span class="hidden-mobile">Useful Vim Plugins</span>
+                        <span class="visible-mobile">下一篇</span>
+                        <i class="iconfont icon-arrowright"></i>
+                      </a>
+                    
+                  </article>
+                </div>
+              
+            </div>
+
+            
+          </article>
+        </div>
+      </div>
+    </div>
+
+    <div class="side-col d-none d-lg-block col-lg-2">
+      
+  <aside class="sidebar" style="margin-left: -1rem">
+    <div id="toc">
+  <p class="toc-header">
+    <i class="iconfont icon-list"></i>
+    <span>目录</span>
+  </p>
+  <div class="toc-body" id="toc-body"></div>
+</div>
+
+
+
+  </aside>
+
+
+    </div>
+  </div>
+</div>
+
+
+
+
+
+  
+
+
+
+  
+
+
+
+  
+
+
+
+  
+
+
+
+  
+
+
+
+  <script>
+  Fluid.utils.createScript('https://lib.baomitu.com/mermaid/8.14.0/mermaid.min.js', function() {
+    mermaid.initialize({"theme":"default"});
+
+    Fluid.events.registerRefreshCallback(function() {
+      if ('mermaid' in window) {
+        mermaid.init();
+      }
+    });
+  });
+</script>
+
+
+
+
+
+
+    
+
+    
+      <a id="scroll-top-button" aria-label="TOP" href="#" role="button">
+        <i class="iconfont icon-arrowup" aria-hidden="true"></i>
+      </a>
+    
+
+    
+      <div class="modal fade" id="modalSearch" tabindex="-1" role="dialog" aria-labelledby="ModalLabel"
+     aria-hidden="true">
+  <div class="modal-dialog modal-dialog-scrollable modal-lg" role="document">
+    <div class="modal-content">
+      <div class="modal-header text-center">
+        <h4 class="modal-title w-100 font-weight-bold">搜索</h4>
+        <button type="button" id="local-search-close" class="close" data-dismiss="modal" aria-label="Close">
+          <span aria-hidden="true">&times;</span>
+        </button>
+      </div>
+      <div class="modal-body mx-3">
+        <div class="md-form mb-5">
+          <input type="text" id="local-search-input" class="form-control validate">
+          <label data-error="x" data-success="v" for="local-search-input">关键词</label>
+        </div>
+        <div class="list-group" id="local-search-result"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+    
+
+    
+  </main>
+
+  <footer>
+    <div class="footer-inner">
+  
+    <div class="footer-content">
+       <a href="https://hexo.io" target="_blank" rel="nofollow noopener"><span>Hexo</span></a> <i class="iconfont icon-love"></i> <a href="https://github.com/fluid-dev/hexo-theme-fluid" target="_blank" rel="nofollow noopener"><span>Fluid</span></a> 
+    </div>
+  
+  
+  
+  
+</div>
+
+  </footer>
+
+  <!-- Scripts -->
+  
+  <script  src="https://lib.baomitu.com/nprogress/0.2.0/nprogress.min.js" ></script>
+  <link  rel="stylesheet" href="https://lib.baomitu.com/nprogress/0.2.0/nprogress.min.css" />
+
+  <script>
+    NProgress.configure({"showSpinner":false,"trickleSpeed":100})
+    NProgress.start()
+    window.addEventListener('load', function() {
+      NProgress.done();
+    })
+  </script>
+
+
+<script  src="https://lib.baomitu.com/jquery/3.6.0/jquery.min.js" ></script>
+<script  src="https://lib.baomitu.com/twitter-bootstrap/4.6.1/js/bootstrap.min.js" ></script>
+<script  src="/js/events.js" ></script>
+<script  src="/js/plugins.js" ></script>
+
+
+  <script  src="https://lib.baomitu.com/typed.js/2.0.12/typed.min.js" ></script>
+  <script>
+    (function (window, document) {
+      var typing = Fluid.plugins.typing;
+      var subtitle = document.getElementById('subtitle');
+      if (!subtitle || !typing) {
+        return;
+      }
+      var text = subtitle.getAttribute('data-typed-text');
+      
+        typing(text);
+      
+    })(window, document);
+  </script>
+
+
+
+
+  
+    <script  src="/js/img-lazyload.js" ></script>
+  
+
+
+
+
+  
+<script>
+  Fluid.utils.createScript('https://lib.baomitu.com/tocbot/4.18.2/tocbot.min.js', function() {
+    var toc = jQuery('#toc');
+    if (toc.length === 0 || !window.tocbot) { return; }
+    var boardCtn = jQuery('#board-ctn');
+    var boardTop = boardCtn.offset().top;
+
+    window.tocbot.init(Object.assign({
+      tocSelector     : '#toc-body',
+      contentSelector : '.markdown-body',
+      linkClass       : 'tocbot-link',
+      activeLinkClass : 'tocbot-active-link',
+      listClass       : 'tocbot-list',
+      isCollapsedClass: 'tocbot-is-collapsed',
+      collapsibleClass: 'tocbot-is-collapsible',
+      scrollSmooth    : true,
+      includeTitleTags: true,
+      headingsOffset  : -boardTop,
+    }, CONFIG.toc));
+    if (toc.find('.toc-list-item').length > 0) {
+      toc.css('visibility', 'visible');
+    }
+
+    Fluid.events.registerRefreshCallback(function() {
+      if ('tocbot' in window) {
+        tocbot.refresh();
+        var toc = jQuery('#toc');
+        if (toc.length === 0 || !tocbot) {
+          return;
+        }
+        if (toc.find('.toc-list-item').length > 0) {
+          toc.css('visibility', 'visible');
+        }
+      }
+    });
+  });
+</script>
+
+
+  <script src=https://lib.baomitu.com/clipboard.js/2.0.11/clipboard.min.js></script>
+
+  <script>Fluid.plugins.codeWidget();</script>
+
+
+  
+<script>
+  Fluid.utils.createScript('https://lib.baomitu.com/anchor-js/4.3.1/anchor.min.js', function() {
+    window.anchors.options = {
+      placement: CONFIG.anchorjs.placement,
+      visible  : CONFIG.anchorjs.visible
+    };
+    if (CONFIG.anchorjs.icon) {
+      window.anchors.options.icon = CONFIG.anchorjs.icon;
+    }
+    var el = (CONFIG.anchorjs.element || 'h1,h2,h3,h4,h5,h6').split(',');
+    var res = [];
+    for (var item of el) {
+      res.push('.markdown-body > ' + item.trim());
+    }
+    if (CONFIG.anchorjs.placement === 'left') {
+      window.anchors.options.class = 'anchorjs-link-left';
+    }
+    window.anchors.add(res.join(', '));
+
+    Fluid.events.registerRefreshCallback(function() {
+      if ('anchors' in window) {
+        anchors.removeAll();
+        var el = (CONFIG.anchorjs.element || 'h1,h2,h3,h4,h5,h6').split(',');
+        var res = [];
+        for (var item of el) {
+          res.push('.markdown-body > ' + item.trim());
+        }
+        if (CONFIG.anchorjs.placement === 'left') {
+          anchors.options.class = 'anchorjs-link-left';
+        }
+        anchors.add(res.join(', '));
+      }
+    });
+  });
+</script>
+
+
+  
+<script>
+  Fluid.utils.createScript('https://lib.baomitu.com/fancybox/3.5.7/jquery.fancybox.min.js', function() {
+    Fluid.plugins.fancyBox();
+  });
+</script>
+
+
+  <script>Fluid.plugins.imageCaption();</script>
+
+  <script  src="/js/local-search.js" ></script>
+
+
+
+
+
+<!-- 主题的启动项，将它保持在最底部 -->
+<!-- the boot of the theme, keep it at the bottom -->
+<script  src="/js/boot.js" ></script>
+
+
+  
+
+  <noscript>
+    <div class="noscript-warning">博客在允许 JavaScript 运行的环境下浏览效果更佳</div>
+  </noscript>
+</body>
+</html>

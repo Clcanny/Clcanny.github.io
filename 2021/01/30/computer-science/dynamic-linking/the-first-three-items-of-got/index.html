@@ -1,0 +1,678 @@
+
+
+<!DOCTYPE html>
+<html lang="zh-CN" data-default-color-scheme=auto>
+
+
+
+<head>
+  <meta charset="UTF-8">
+  <link rel="apple-touch-icon" sizes="76x76" href="/img/fluid.png">
+  <link rel="icon" href="/img/fluid.png">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, shrink-to-fit=no">
+  <meta http-equiv="x-ua-compatible" content="ie=edge">
+  
+  <meta name="theme-color" content="#2f4154">
+  <meta name="author" content="JunBin">
+  <meta name="keywords" content="">
+  
+    <meta name="description" content="导读  本篇文章提及的 Global Offset Table 是 .got.plt section ，不是 .got section ，Dynamic Linking: Introduction To Elf File 介绍了两者的差异； GOT[0] 是 .dynamic section 的首地址，ld.so 自加载的过程会依赖于它； GOT[1] 指向 link_map ； GOT[2] 指">
+<meta property="og:type" content="article">
+<meta property="og:title" content="The First Three Items Of GOT">
+<meta property="og:url" content="https://clcanny.github.io/2021/01/30/computer-science/dynamic-linking/the-first-three-items-of-got/index.html">
+<meta property="og:site_name" content="On The Road">
+<meta property="og:description" content="导读  本篇文章提及的 Global Offset Table 是 .got.plt section ，不是 .got section ，Dynamic Linking: Introduction To Elf File 介绍了两者的差异； GOT[0] 是 .dynamic section 的首地址，ld.so 自加载的过程会依赖于它； GOT[1] 指向 link_map ； GOT[2] 指">
+<meta property="og:locale" content="zh_CN">
+<meta property="article:published_time" content="2021-01-29T16:06:34.000Z">
+<meta property="article:modified_time" content="2024-10-30T15:47:28.515Z">
+<meta property="article:author" content="JunBin">
+<meta name="twitter:card" content="summary_large_image">
+  
+  
+  
+  <title>The First Three Items Of GOT - On The Road</title>
+
+  <link  rel="stylesheet" href="https://lib.baomitu.com/twitter-bootstrap/4.6.1/css/bootstrap.min.css" />
+
+
+
+  <link  rel="stylesheet" href="https://lib.baomitu.com/github-markdown-css/4.0.0/github-markdown.min.css" />
+
+  <link  rel="stylesheet" href="https://lib.baomitu.com/hint.css/2.7.0/hint.min.css" />
+
+  <link  rel="stylesheet" href="https://lib.baomitu.com/fancybox/3.5.7/jquery.fancybox.min.css" />
+
+
+
+<!-- 主题依赖的图标库，不要自行修改 -->
+<!-- Do not modify the link that theme dependent icons -->
+
+<link rel="stylesheet" href="//at.alicdn.com/t/font_1749284_hj8rtnfg7um.css">
+
+
+
+<link rel="stylesheet" href="//at.alicdn.com/t/font_1736178_lbnruvf0jn.css">
+
+
+<link  rel="stylesheet" href="/css/main.css" />
+
+
+  <link id="highlight-css" rel="stylesheet" href="/css/highlight.css" />
+  
+    <link id="highlight-css-dark" rel="stylesheet" href="/css/highlight-dark.css" />
+  
+
+
+
+
+  <script id="fluid-configs">
+    var Fluid = window.Fluid || {};
+    Fluid.ctx = Object.assign({}, Fluid.ctx)
+    var CONFIG = {"hostname":"clcanny.github.io","root":"/","version":"1.9.4","typing":{"enable":true,"typeSpeed":70,"cursorChar":"_","loop":false,"scope":[]},"anchorjs":{"enable":true,"element":"h1,h2,h3,h4,h5,h6","placement":"left","visible":"hover","icon":""},"progressbar":{"enable":true,"height_px":3,"color":"#29d","options":{"showSpinner":false,"trickleSpeed":100}},"code_language":{"enable":true,"default":"TEXT"},"copy_btn":true,"image_caption":{"enable":true},"image_zoom":{"enable":true,"img_url_replace":["",""]},"toc":{"enable":true,"placement":"right","headingSelector":"h1,h2,h3,h4,h5,h6","collapseDepth":0},"lazyload":{"enable":true,"loading_img":"/img/loading.gif","onlypost":false,"offset_factor":2},"web_analytics":{"enable":false,"follow_dnt":true,"baidu":null,"google":null,"gtag":null,"tencent":{"sid":null,"cid":null},"woyaola":null,"cnzz":null,"leancloud":{"app_id":null,"app_key":null,"server_url":null,"path":"window.location.pathname","ignore_local":false}},"search_path":"/local-search.xml"};
+
+    if (CONFIG.web_analytics.follow_dnt) {
+      var dntVal = navigator.doNotTrack || window.doNotTrack || navigator.msDoNotTrack;
+      Fluid.ctx.dnt = dntVal && (dntVal.startsWith('1') || dntVal.startsWith('yes') || dntVal.startsWith('on'));
+    }
+  </script>
+  <script  src="/js/utils.js" ></script>
+  <script  src="/js/color-schema.js" ></script>
+  
+
+
+  
+<meta name="generator" content="Hexo 7.0.0-rc1"></head>
+
+
+<body>
+  
+
+  <header>
+    
+
+<div class="header-inner" style="height: 70vh;">
+  <nav id="navbar" class="navbar fixed-top  navbar-expand-lg navbar-dark scrolling-navbar">
+  <div class="container">
+    <a class="navbar-brand" href="/">
+      <strong>Fluid</strong>
+    </a>
+
+    <button id="navbar-toggler-btn" class="navbar-toggler" type="button" data-toggle="collapse"
+            data-target="#navbarSupportedContent"
+            aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
+      <div class="animated-icon"><span></span><span></span><span></span></div>
+    </button>
+
+    <!-- Collapsible content -->
+    <div class="collapse navbar-collapse" id="navbarSupportedContent">
+      <ul class="navbar-nav ml-auto text-center">
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/">
+                <i class="iconfont icon-home-fill"></i>
+                <span>首页</span>
+              </a>
+            </li>
+          
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/archives/">
+                <i class="iconfont icon-archive-fill"></i>
+                <span>归档</span>
+              </a>
+            </li>
+          
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/categories/">
+                <i class="iconfont icon-category-fill"></i>
+                <span>分类</span>
+              </a>
+            </li>
+          
+        
+        
+          <li class="nav-item" id="search-btn">
+            <a class="nav-link" target="_self" href="javascript:;" data-toggle="modal" data-target="#modalSearch" aria-label="Search">
+              <i class="iconfont icon-search"></i>
+            </a>
+          </li>
+          
+        
+        
+          <li class="nav-item" id="color-toggle-btn">
+            <a class="nav-link" target="_self" href="javascript:;" aria-label="Color Toggle">
+              <i class="iconfont icon-dark" id="color-toggle-icon"></i>
+            </a>
+          </li>
+        
+      </ul>
+    </div>
+  </div>
+</nav>
+
+  
+
+<div id="banner" class="banner" parallax=true
+     style="background: url('/img/default.png') no-repeat center center; background-size: cover;">
+  <div class="full-bg-img">
+    <div class="mask flex-center" style="background-color: rgba(0, 0, 0, 0.3)">
+      <div class="banner-text text-center fade-in-up">
+        <div class="h2">
+          
+            <span id="subtitle" data-typed-text="The First Three Items Of GOT"></span>
+          
+        </div>
+
+        
+          
+  <div class="mt-3">
+    
+    
+      <span class="post-meta">
+        <i class="iconfont icon-date-fill" aria-hidden="true"></i>
+        <time datetime="2021-01-30 00:06" pubdate>
+          2021年1月30日 凌晨
+        </time>
+      </span>
+    
+  </div>
+
+  <div class="mt-1">
+    
+      <span class="post-meta mr-2">
+        <i class="iconfont icon-chart"></i>
+        
+          5.6k 字
+        
+      </span>
+    
+
+    
+      <span class="post-meta mr-2">
+        <i class="iconfont icon-clock-fill"></i>
+        
+        
+        
+          47 分钟
+        
+      </span>
+    
+
+    
+    
+  </div>
+
+
+        
+      </div>
+
+      
+    </div>
+  </div>
+</div>
+
+</div>
+
+  </header>
+
+  <main>
+    
+      
+
+<div class="container-fluid nopadding-x">
+  <div class="row nomargin-x">
+    <div class="side-col d-none d-lg-block col-lg-2">
+      
+
+    </div>
+
+    <div class="col-lg-8 nopadding-x-md">
+      <div class="container nopadding-x-md" id="board-ctn">
+        <div id="board">
+          <article class="post-content mx-auto">
+            <!-- SEO header -->
+            <h1 style="display: none">The First Three Items Of GOT</h1>
+            
+            
+              <div class="markdown-body">
+                
+                <h1 id="导读">导读</h1>
+<ol type="1">
+<li>本篇文章提及的 Global Offset Table 是 .got.plt section ，不是 .got section ，<a target="_blank" rel="noopener" href="https://stackoverflow.com/questions/49812485/where-is-the-got0-global-offset-table-used">Dynamic Linking: Introduction To Elf File</a> 介绍了两者的差异；</li>
+<li>GOT[0] 是 .dynamic section 的首地址，ld.so 自加载的过程会依赖于它；</li>
+<li>GOT[1] 指向 <code>link_map</code> ；</li>
+<li>GOT[2] 指向 <code>_dl_runtime_resolve_xsave</code> 。</li>
+</ol>
+<h1 id="环境-例子">环境 &amp; 例子</h1>
+<p>本文使用的环境与 <a href="https://clcanny.github.io/2020/11/24/dynamic-linking-introduction-to-elf-file/#%E7%8E%AF%E5%A2%83">Dynamic Linking: Introduction To Elf File</a> 使用的环境一致。</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><code class="hljs cpp"><span class="hljs-comment">// gcc -fPIC -ggdb -O0 -shared -Wl,--dynamic-linker=/root/glibc/build/install/lib/ld-linux-x86-64.so.2 foo.cpp -o libfoo.so</span><br><span class="hljs-function"><span class="hljs-type">void</span> <span class="hljs-title">foo</span><span class="hljs-params">()</span> </span>&#123;&#125;<br></code></pre></td></tr></table></figure>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><code class="hljs cpp"><span class="hljs-comment">// gcc main.cpp -L$PWD -Wl,-rpath=$PWD -Wl,--dynamic-linker=/root/glibc/build/install/lib/ld-linux-x86-64.so.2 -lfoo -o main</span><br><span class="hljs-function"><span class="hljs-keyword">extern</span> <span class="hljs-type">void</span> <span class="hljs-title">foo</span><span class="hljs-params">()</span></span>;<br><span class="hljs-function"><span class="hljs-type">int</span> <span class="hljs-title">main</span><span class="hljs-params">()</span> </span>&#123;<br>    <span class="hljs-built_in">foo</span>();<br>&#125;<br></code></pre></td></tr></table></figure>
+<h1 id="got0">GOT[0]</h1>
+<p>摘抄自 <a target="_blank" rel="noopener" href="https://stackoverflow.com/questions/49812485/where-is-the-got0-global-offset-table">Stack Overflow: Where is the GOT[0] (global offset table) used?</a> ：</p>
+<blockquote>
+<p>The tables first entry (number zero) is reserved to hold the address of the dynamic structure, referenced with the symbol _DYNAMIC.</p>
+</blockquote>
+<p>摘抄自 <a target="_blank" rel="noopener" href="https://github.com/hjl-tools/x86-psABI/wiki/x86-64-psABI-1.0.pdf">System V Application Binary Interface (Version 1.0)</a> ：</p>
+<blockquote>
+<p>This (GOT[0]) allows a program, such as the dynamic linker, to find its own dynamic structure without having yet processed its relocation entries. This is especially important for the dynamic linker, because it must initialize itself without relying on other programs to relocate its memory image.</p>
+</blockquote>
+<h2 id="有人访问-ld.so-的-got0">有人访问 ld.so 的 GOT[0]</h2>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><code class="hljs bash"><span class="hljs-comment"># readelf --section-headers /root/glibc/build/install/lib/ld-2.28.so | grep -E &quot;Nr|.got.plt|.dynamic&quot; -A1 | grep -v &quot;\-\-&quot;</span><br>  [Nr] Name              Type             Address           Offset<br>       Size              EntSize          Flags  Link  Info  Align<br>  [17] .dynamic          DYNAMIC          0000000000026e78  00025e78<br>       0000000000000170  0000000000000010  WA       5     0     8<br>  [19] .got.plt          PROGBITS         0000000000027000  00026000<br>       0000000000000050  0000000000000008  WA       0     0     8<br><span class="hljs-comment"># od --skip-bytes=0x26000 --read-bytes=8 --format=xL /root/glibc/build/install/lib/ld-2.28.so</span><br>0460000 0000000000026e78<br></code></pre></td></tr></table></figure>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><code class="hljs bash"><span class="hljs-comment"># (gdb) info proc mappings</span><br>0x7ffff7fd6000     0x7ffff7fd7000     0x1000        0x0 /root/glibc/build/install/lib/ld-2.28.so<br><span class="hljs-comment"># (gdb) rwatch *(unsigned long long*)(0x7ffff7fd6000 + 0x27000)</span><br><span class="hljs-comment"># (gdb) start</span><br>Hardware <span class="hljs-built_in">read</span> watchpoint 1: *(unsigned long long*)(0x7ffff7fd6000 + 0x27000)<br>Value = 159352<br><span class="hljs-comment"># (gdb) bt</span><br>0x00007ffff7fd7e01 <span class="hljs-keyword">in</span> _dl_start (arg=0x7fffffffed40) at ../sysdeps/x86_64/dl-machine.h:59<br>0x00007ffff7fd7098 <span class="hljs-keyword">in</span> _start () from /root/glibc/build/install/lib/ld-linux-x86-64.so.2<br></code></pre></td></tr></table></figure>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br></pre></td><td class="code"><pre><code class="hljs cpp"><span class="hljs-comment">// /root/glibc/glibc-2.28/sysdeps/x86_64/dl-machine.h</span><br><span class="hljs-comment">// Return the link-time address of _DYNAMIC.  Conveniently, this is the</span><br><span class="hljs-comment">// first element of the GOT.  This must be inlined in a function which</span><br><span class="hljs-comment">// uses global data.</span><br><span class="hljs-function"><span class="hljs-type">static</span> <span class="hljs-keyword">inline</span> <span class="hljs-title">ElfW</span><span class="hljs-params">(Addr)</span> __<span class="hljs-title">attribute__</span><span class="hljs-params">((unused))</span> <span class="hljs-title">elf_machine_dynamic</span><span class="hljs-params">(<span class="hljs-type">void</span>)</span> </span>&#123;<br>    <span class="hljs-comment">// This produces an IP-relative reloc which is resolved at link time.</span><br>    <span class="hljs-function"><span class="hljs-keyword">extern</span> <span class="hljs-type">const</span> <span class="hljs-title">ElfW</span><span class="hljs-params">(Addr)</span> _GLOBAL_OFFSET_TABLE_[] attribute_hidden</span>;<br>    <span class="hljs-keyword">return</span> _GLOBAL_OFFSET_TABLE_[<span class="hljs-number">0</span>];<br>&#125;<br><br><span class="hljs-comment">// Return the run-time load address of the shared object.</span><br><span class="hljs-function"><span class="hljs-type">static</span> <span class="hljs-keyword">inline</span> <span class="hljs-title">ElfW</span><span class="hljs-params">(Addr)</span> __<span class="hljs-title">attribute__</span><span class="hljs-params">((unused))</span></span><br><span class="hljs-function"><span class="hljs-title">elf_machine_load_address</span><span class="hljs-params">(<span class="hljs-type">void</span>)</span> </span>&#123;<br>    <span class="hljs-comment">// Compute the difference between the runtime address of _DYNAMIC as seen</span><br>    <span class="hljs-comment">// by an IP-relative reference, and the link-time address found in the</span><br>    <span class="hljs-comment">// special unrelocated first GOT entry.</span><br>    <span class="hljs-function"><span class="hljs-keyword">extern</span> <span class="hljs-title">ElfW</span><span class="hljs-params">(Dyn)</span> _DYNAMIC[] attribute_hidden</span>;<br>    <span class="hljs-keyword">return</span> (<span class="hljs-built_in">ElfW</span>(Addr)) &amp; _DYNAMIC - <span class="hljs-built_in">elf_machine_dynamic</span>();<br>&#125;<br></code></pre></td></tr></table></figure>
+<h2 id="无人访问其它-elf-文件的-got0">无人访问其它 ELF 文件的 GOT[0]</h2>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><code class="hljs bash"><span class="hljs-comment"># readelf --section-headers main | grep -E &quot;Nr|.got.plt|.dynamic&quot; -A1 | grep -v &quot;\-\-&quot;</span><br>  [Nr] Name              Type             Address           Offset<br>       Size              EntSize          Flags  Link  Info  Align<br>  [21] .dynamic          DYNAMIC          0000000000003dd8  00002dd8<br>       0000000000000200  0000000000000010  WA       6     0     8<br>  [23] .got.plt          PROGBITS         0000000000004000  00003000<br>       0000000000000020  0000000000000008  WA       0     0     8<br><span class="hljs-comment"># od --skip-bytes=0x3000 --read-bytes=8 --format=xL main</span><br>0030000 0000000000003dd8<br></code></pre></td></tr></table></figure>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><code class="hljs bash"><span class="hljs-comment"># (gdb) info proc mappings</span><br>0x555555554000     0x555555555000     0x1000        0x0 /root/main<br><span class="hljs-comment"># (gdb) rwatch *(unsigned long long*)(0x555555554000 + 0x4000)</span><br><span class="hljs-comment"># (gdb) start</span><br>Temporary breakpoint 3, 0x0000555555555139 <span class="hljs-keyword">in</span> main ()<br></code></pre></td></tr></table></figure>
+<h1 id="got1-got2">GOT[1] &amp; GOT[2]</h1>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><code class="hljs bash"><span class="hljs-comment"># readelf --section-headers main | grep -E &quot;Nr|.got.plt&quot; -A1 | grep -v &quot;\-\-&quot;</span><br>  [Nr] Name              Type             Address           Offset<br>       Size              EntSize          Flags  Link  Info  Align<br>  [23] .got.plt          PROGBITS         0000000000004000  00003000<br>       0000000000000020  0000000000000008  WA       0     0     8<br></code></pre></td></tr></table></figure>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><code class="hljs bash"><span class="hljs-comment"># (gdb) watch *(unsigned long long*)(0x555555554000 + 0x4000 + 0x8)</span><br><span class="hljs-comment"># (gdb) start</span><br>Hardware watchpoint 1: *(unsigned long long*)(0x555555554000 + 0x4000 + 0x8)<br>Old value = 0<br>New value = 140737354129808<br><span class="hljs-comment"># (gdb) bt</span><br>elf_machine_runtime_setup (profile=0, lazy=1, l=0x7ffff7ffe190) at ../sysdeps/x86_64/dl-machine.h:100<br>_dl_relocate_object (scope=0x7ffff7ffe4f0, reloc_mode=&lt;optimized out&gt;, consider_profiling=consider_profiling@entry=0) at dl-reloc.c:258<br>0x00007ffff7fdb57d <span class="hljs-keyword">in</span> dl_main (phdr=&lt;optimized out&gt;, phnum=&lt;optimized out&gt;, user_entry=&lt;optimized out&gt;, auxv=&lt;optimized out&gt;) at rtld.c:2197<br></code></pre></td></tr></table></figure>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br></pre></td><td class="code"><pre><code class="hljs cpp"><span class="hljs-type">static</span> <span class="hljs-keyword">inline</span> <span class="hljs-type">int</span> __attribute__((unused, always_inline))<br><span class="hljs-built_in">elf_machine_runtime_setup</span>(<span class="hljs-keyword">struct</span> link_map* l, <span class="hljs-type">int</span> lazy, <span class="hljs-type">int</span> profile) &#123;<br>    <span class="hljs-keyword">if</span> (l-&gt;l_info[DT_JMPREL] &amp;&amp; lazy) &#123;<br>        <span class="hljs-comment">// The GOT entries for functions in the PLT have not yet been filled</span><br>        <span class="hljs-comment">// in.  Their initial contents will arrange when called to push an</span><br>        <span class="hljs-comment">// offset into the .rel.plt section, push _GLOBAL_OFFSET_TABLE_[1],</span><br>        <span class="hljs-comment">// and then jump to _GLOBAL_OFFSET_TABLE_[2].</span><br>        Elf64_Addr* got = (Elf64_Addr*)<span class="hljs-built_in">D_PTR</span>(l, l_info[DT_PLTGOT]);<br><br>        <span class="hljs-comment">// Identify this shared object.</span><br>        *(<span class="hljs-built_in">ElfW</span>(Addr)*)(got + <span class="hljs-number">1</span>) = (<span class="hljs-built_in">ElfW</span>(Addr))l;<br><br>        <span class="hljs-comment">// The got[2] entry contains the address of a function which gets</span><br>        <span class="hljs-comment">// called to get the address of a so far unresolved function and</span><br>        <span class="hljs-comment">// jump to it.  The profiling extension of the dynamic linker allows</span><br>        <span class="hljs-comment">// to intercept the calls to collect information.  In this case we</span><br>        <span class="hljs-comment">// don&#x27;t store the address in the GOT so that all future calls also</span><br>        <span class="hljs-comment">// end in this function.</span><br>        <span class="hljs-comment">//</span><br>        <span class="hljs-comment">// This function will get called to fix up the GOT entry</span><br>        <span class="hljs-comment">// indicated by the offset on the stack, and then jump to</span><br>        <span class="hljs-comment">// the resolved address.</span><br>        *(<span class="hljs-built_in">ElfW</span>(Addr)*)(got + <span class="hljs-number">2</span>) = (<span class="hljs-built_in">ElfW</span>(Addr)) &amp; _dl_runtime_resolve_xsavec;<br>    &#125;<br>    <span class="hljs-keyword">return</span> lazy;<br>&#125;<br></code></pre></td></tr></table></figure>
+<p>GOT[1] 指向 <code>link_map</code> ，GOT[2] 指向 <code>_dl_runtime_resolve_xsavec</code> ，它们由 <code>elf_machine_runtime_setup</code> 函数负责填写。</p>
+<h1 id="如何合并-elf-文件">如何合并 ELF 文件？</h1>
+<ol type="1">
+<li>.got.plt section 的前三项不要参与合并；</li>
+<li>.plt section 的跳转位置需要修正；</li>
+<li>.rela.plt section 的 <code>r_offset</code> 字段需要修正。</li>
+</ol>
+<h1 id="参考资料">参考资料</h1>
+<ul>
+<li><a target="_blank" rel="noopener" href="https://stackoverflow.com/questions/49812485/where-is-the-got0-global-offset-table-used">Stack Overflow: Where is the GOT[0] (global offset table) used?</a></li>
+<li><a target="_blank" rel="noopener" href="https://github.com/hjl-tools/x86-psABI/wiki/x86-64-psABI-1.0.pdf">System V Application Binary Interface (Version 1.0)</a></li>
+<li><a target="_blank" rel="noopener" href="https://www.ucw.cz/~hubicka/papers/abi/node22.html">System V Application Binary Interface (Draft Version 0.90): Dynamic Linking</a></li>
+</ul>
+
+                
+              </div>
+            
+            <hr/>
+            <div>
+              <div class="post-metas my-3">
+  
+    <div class="post-meta mr-3 d-flex align-items-center">
+      <i class="iconfont icon-category"></i>
+      
+
+<span class="category-chains">
+  
+  
+    
+      <span class="category-chain">
+        
+  <a href="/categories/Computer-Science/" class="category-chain-item">Computer Science</a>
+  
+  
+    <span>></span>
+    
+  <a href="/categories/Computer-Science/Dynamic-Linking/" class="category-chain-item">Dynamic Linking</a>
+  
+  
+
+  
+
+      </span>
+    
+  
+</span>
+
+    </div>
+  
+  
+</div>
+
+
+              
+  
+
+  <div class="license-box my-3">
+    <div class="license-title">
+      <div>The First Three Items Of GOT</div>
+      <div>https://clcanny.github.io/2021/01/30/computer-science/dynamic-linking/the-first-three-items-of-got/</div>
+    </div>
+    <div class="license-meta">
+      
+        <div class="license-meta-item">
+          <div>作者</div>
+          <div>JunBin</div>
+        </div>
+      
+      
+        <div class="license-meta-item license-meta-date">
+          <div>发布于</div>
+          <div>2021年1月30日</div>
+        </div>
+      
+      
+      
+        <div class="license-meta-item">
+          <div>许可协议</div>
+          <div>
+            
+              
+              
+                <a target="_blank" href="https://creativecommons.org/licenses/by/4.0/">
+                  <span class="hint--top hint--rounded" aria-label="BY - 署名">
+                    <i class="iconfont icon-by"></i>
+                  </span>
+                </a>
+              
+            
+          </div>
+        </div>
+      
+    </div>
+    <div class="license-icon iconfont"></div>
+  </div>
+
+
+
+              
+                <div class="post-prevnext my-3">
+                  <article class="post-prev col-6">
+                    
+                    
+                      <a href="/2021/03/12/computer-science/dynamic-linking/about-global-strings/" title="About Global Strings">
+                        <i class="iconfont icon-arrowleft"></i>
+                        <span class="hidden-mobile">About Global Strings</span>
+                        <span class="visible-mobile">上一篇</span>
+                      </a>
+                    
+                  </article>
+                  <article class="post-next col-6">
+                    
+                    
+                      <a href="/2020/12/22/computer-science/dynamic-linking/compatibility-of-hash-tables/" title="Compatibility Of Hash Tables">
+                        <span class="hidden-mobile">Compatibility Of Hash Tables</span>
+                        <span class="visible-mobile">下一篇</span>
+                        <i class="iconfont icon-arrowright"></i>
+                      </a>
+                    
+                  </article>
+                </div>
+              
+            </div>
+
+            
+          </article>
+        </div>
+      </div>
+    </div>
+
+    <div class="side-col d-none d-lg-block col-lg-2">
+      
+  <aside class="sidebar" style="margin-left: -1rem">
+    <div id="toc">
+  <p class="toc-header">
+    <i class="iconfont icon-list"></i>
+    <span>目录</span>
+  </p>
+  <div class="toc-body" id="toc-body"></div>
+</div>
+
+
+
+  </aside>
+
+
+    </div>
+  </div>
+</div>
+
+
+
+
+
+  
+
+
+
+  
+
+
+
+  
+
+
+
+  
+
+
+
+  
+
+
+
+  <script>
+  Fluid.utils.createScript('https://lib.baomitu.com/mermaid/8.14.0/mermaid.min.js', function() {
+    mermaid.initialize({"theme":"default"});
+
+    Fluid.events.registerRefreshCallback(function() {
+      if ('mermaid' in window) {
+        mermaid.init();
+      }
+    });
+  });
+</script>
+
+
+
+
+
+
+    
+
+    
+      <a id="scroll-top-button" aria-label="TOP" href="#" role="button">
+        <i class="iconfont icon-arrowup" aria-hidden="true"></i>
+      </a>
+    
+
+    
+      <div class="modal fade" id="modalSearch" tabindex="-1" role="dialog" aria-labelledby="ModalLabel"
+     aria-hidden="true">
+  <div class="modal-dialog modal-dialog-scrollable modal-lg" role="document">
+    <div class="modal-content">
+      <div class="modal-header text-center">
+        <h4 class="modal-title w-100 font-weight-bold">搜索</h4>
+        <button type="button" id="local-search-close" class="close" data-dismiss="modal" aria-label="Close">
+          <span aria-hidden="true">&times;</span>
+        </button>
+      </div>
+      <div class="modal-body mx-3">
+        <div class="md-form mb-5">
+          <input type="text" id="local-search-input" class="form-control validate">
+          <label data-error="x" data-success="v" for="local-search-input">关键词</label>
+        </div>
+        <div class="list-group" id="local-search-result"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+    
+
+    
+  </main>
+
+  <footer>
+    <div class="footer-inner">
+  
+    <div class="footer-content">
+       <a href="https://hexo.io" target="_blank" rel="nofollow noopener"><span>Hexo</span></a> <i class="iconfont icon-love"></i> <a href="https://github.com/fluid-dev/hexo-theme-fluid" target="_blank" rel="nofollow noopener"><span>Fluid</span></a> 
+    </div>
+  
+  
+  
+  
+</div>
+
+  </footer>
+
+  <!-- Scripts -->
+  
+  <script  src="https://lib.baomitu.com/nprogress/0.2.0/nprogress.min.js" ></script>
+  <link  rel="stylesheet" href="https://lib.baomitu.com/nprogress/0.2.0/nprogress.min.css" />
+
+  <script>
+    NProgress.configure({"showSpinner":false,"trickleSpeed":100})
+    NProgress.start()
+    window.addEventListener('load', function() {
+      NProgress.done();
+    })
+  </script>
+
+
+<script  src="https://lib.baomitu.com/jquery/3.6.0/jquery.min.js" ></script>
+<script  src="https://lib.baomitu.com/twitter-bootstrap/4.6.1/js/bootstrap.min.js" ></script>
+<script  src="/js/events.js" ></script>
+<script  src="/js/plugins.js" ></script>
+
+
+  <script  src="https://lib.baomitu.com/typed.js/2.0.12/typed.min.js" ></script>
+  <script>
+    (function (window, document) {
+      var typing = Fluid.plugins.typing;
+      var subtitle = document.getElementById('subtitle');
+      if (!subtitle || !typing) {
+        return;
+      }
+      var text = subtitle.getAttribute('data-typed-text');
+      
+        typing(text);
+      
+    })(window, document);
+  </script>
+
+
+
+
+  
+    <script  src="/js/img-lazyload.js" ></script>
+  
+
+
+
+
+  
+<script>
+  Fluid.utils.createScript('https://lib.baomitu.com/tocbot/4.18.2/tocbot.min.js', function() {
+    var toc = jQuery('#toc');
+    if (toc.length === 0 || !window.tocbot) { return; }
+    var boardCtn = jQuery('#board-ctn');
+    var boardTop = boardCtn.offset().top;
+
+    window.tocbot.init(Object.assign({
+      tocSelector     : '#toc-body',
+      contentSelector : '.markdown-body',
+      linkClass       : 'tocbot-link',
+      activeLinkClass : 'tocbot-active-link',
+      listClass       : 'tocbot-list',
+      isCollapsedClass: 'tocbot-is-collapsed',
+      collapsibleClass: 'tocbot-is-collapsible',
+      scrollSmooth    : true,
+      includeTitleTags: true,
+      headingsOffset  : -boardTop,
+    }, CONFIG.toc));
+    if (toc.find('.toc-list-item').length > 0) {
+      toc.css('visibility', 'visible');
+    }
+
+    Fluid.events.registerRefreshCallback(function() {
+      if ('tocbot' in window) {
+        tocbot.refresh();
+        var toc = jQuery('#toc');
+        if (toc.length === 0 || !tocbot) {
+          return;
+        }
+        if (toc.find('.toc-list-item').length > 0) {
+          toc.css('visibility', 'visible');
+        }
+      }
+    });
+  });
+</script>
+
+
+  <script src=https://lib.baomitu.com/clipboard.js/2.0.11/clipboard.min.js></script>
+
+  <script>Fluid.plugins.codeWidget();</script>
+
+
+  
+<script>
+  Fluid.utils.createScript('https://lib.baomitu.com/anchor-js/4.3.1/anchor.min.js', function() {
+    window.anchors.options = {
+      placement: CONFIG.anchorjs.placement,
+      visible  : CONFIG.anchorjs.visible
+    };
+    if (CONFIG.anchorjs.icon) {
+      window.anchors.options.icon = CONFIG.anchorjs.icon;
+    }
+    var el = (CONFIG.anchorjs.element || 'h1,h2,h3,h4,h5,h6').split(',');
+    var res = [];
+    for (var item of el) {
+      res.push('.markdown-body > ' + item.trim());
+    }
+    if (CONFIG.anchorjs.placement === 'left') {
+      window.anchors.options.class = 'anchorjs-link-left';
+    }
+    window.anchors.add(res.join(', '));
+
+    Fluid.events.registerRefreshCallback(function() {
+      if ('anchors' in window) {
+        anchors.removeAll();
+        var el = (CONFIG.anchorjs.element || 'h1,h2,h3,h4,h5,h6').split(',');
+        var res = [];
+        for (var item of el) {
+          res.push('.markdown-body > ' + item.trim());
+        }
+        if (CONFIG.anchorjs.placement === 'left') {
+          anchors.options.class = 'anchorjs-link-left';
+        }
+        anchors.add(res.join(', '));
+      }
+    });
+  });
+</script>
+
+
+  
+<script>
+  Fluid.utils.createScript('https://lib.baomitu.com/fancybox/3.5.7/jquery.fancybox.min.js', function() {
+    Fluid.plugins.fancyBox();
+  });
+</script>
+
+
+  <script>Fluid.plugins.imageCaption();</script>
+
+  <script  src="/js/local-search.js" ></script>
+
+
+
+
+
+<!-- 主题的启动项，将它保持在最底部 -->
+<!-- the boot of the theme, keep it at the bottom -->
+<script  src="/js/boot.js" ></script>
+
+
+  
+
+  <noscript>
+    <div class="noscript-warning">博客在允许 JavaScript 运行的环境下浏览效果更佳</div>
+  </noscript>
+</body>
+</html>

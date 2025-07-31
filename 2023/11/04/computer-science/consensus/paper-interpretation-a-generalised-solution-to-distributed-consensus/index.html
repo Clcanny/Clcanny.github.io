@@ -1,0 +1,807 @@
+
+
+<!DOCTYPE html>
+<html lang="zh-CN" data-default-color-scheme=auto>
+
+
+
+<head>
+  <meta charset="UTF-8">
+  <link rel="apple-touch-icon" sizes="76x76" href="/img/fluid.png">
+  <link rel="icon" href="/img/fluid.png">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, shrink-to-fit=no">
+  <meta http-equiv="x-ua-compatible" content="ie=edge">
+  
+  <meta name="theme-color" content="#2f4154">
+  <meta name="author" content="JunBin">
+  <meta name="keywords" content="">
+  
+    <meta name="description" content="Introduction This paper presents an inspiring piece of work. Creating a distributed consensus algorithm from scratch is no easy task, as Leslie Lamport, the Turing Award winner, once said: &quot;...this co">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Paper Interpretation - A Generalised Solution to Distributed Consensus">
+<meta property="og:url" content="https://clcanny.github.io/2023/11/04/computer-science/consensus/paper-interpretation-a-generalised-solution-to-distributed-consensus/index.html">
+<meta property="og:site_name" content="On The Road">
+<meta property="og:description" content="Introduction This paper presents an inspiring piece of work. Creating a distributed consensus algorithm from scratch is no easy task, as Leslie Lamport, the Turing Award winner, once said: &quot;...this co">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="http://junbin-hexo-img.oss-cn-beijing.aliyuncs.com/paper-interpretation-a-generalised-solution-to-distributed-consensus/single-server-1.png">
+<meta property="og:image" content="http://junbin-hexo-img.oss-cn-beijing.aliyuncs.com/paper-interpretation-a-generalised-solution-to-distributed-consensus/single-server-2.png">
+<meta property="og:image" content="http://junbin-hexo-img.oss-cn-beijing.aliyuncs.com/paper-interpretation-a-generalised-solution-to-distributed-consensus/multi-server-each-with-a-sginle-register-split-votes.png">
+<meta property="og:image" content="http://junbin-hexo-img.oss-cn-beijing.aliyuncs.com/paper-interpretation-a-generalised-solution-to-distributed-consensus/multi-server-each-with-multi-registers.png">
+<meta property="og:image" content="http://junbin-hexo-img.oss-cn-beijing.aliyuncs.com/paper-interpretation-a-generalised-solution-to-distributed-consensus/figure-1-sample-configurations-for-systems-of-three-or-four-servers.png">
+<meta property="og:image" content="http://junbin-hexo-img.oss-cn-beijing.aliyuncs.com/paper-interpretation-a-generalised-solution-to-distributed-consensus/figure-2-sample-state-tables-for-a-system-using-the-configuration-in-figure-1a.png">
+<meta property="og:image" content="http://junbin-hexo-img.oss-cn-beijing.aliyuncs.com/paper-interpretation-a-generalised-solution-to-distributed-consensus/figure-4-sample-round-robin-allocation-of-register-sets-to-clients.png">
+<meta property="og:image" content="http://junbin-hexo-img.oss-cn-beijing.aliyuncs.com/paper-interpretation-a-generalised-solution-to-distributed-consensus/figure-6-sample-client-state-tables-left-and-decision-tables-right.png">
+<meta property="article:published_time" content="2023-11-04T14:56:34.000Z">
+<meta property="article:modified_time" content="2024-10-30T15:47:28.507Z">
+<meta property="article:author" content="JunBin">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="http://junbin-hexo-img.oss-cn-beijing.aliyuncs.com/paper-interpretation-a-generalised-solution-to-distributed-consensus/single-server-1.png">
+  
+  
+  
+  <title>Paper Interpretation - A Generalised Solution to Distributed Consensus - On The Road</title>
+
+  <link  rel="stylesheet" href="https://lib.baomitu.com/twitter-bootstrap/4.6.1/css/bootstrap.min.css" />
+
+
+
+  <link  rel="stylesheet" href="https://lib.baomitu.com/github-markdown-css/4.0.0/github-markdown.min.css" />
+
+  <link  rel="stylesheet" href="https://lib.baomitu.com/hint.css/2.7.0/hint.min.css" />
+
+  <link  rel="stylesheet" href="https://lib.baomitu.com/fancybox/3.5.7/jquery.fancybox.min.css" />
+
+
+
+<!-- 主题依赖的图标库，不要自行修改 -->
+<!-- Do not modify the link that theme dependent icons -->
+
+<link rel="stylesheet" href="//at.alicdn.com/t/font_1749284_hj8rtnfg7um.css">
+
+
+
+<link rel="stylesheet" href="//at.alicdn.com/t/font_1736178_lbnruvf0jn.css">
+
+
+<link  rel="stylesheet" href="/css/main.css" />
+
+
+  <link id="highlight-css" rel="stylesheet" href="/css/highlight.css" />
+  
+    <link id="highlight-css-dark" rel="stylesheet" href="/css/highlight-dark.css" />
+  
+
+
+
+
+  <script id="fluid-configs">
+    var Fluid = window.Fluid || {};
+    Fluid.ctx = Object.assign({}, Fluid.ctx)
+    var CONFIG = {"hostname":"clcanny.github.io","root":"/","version":"1.9.4","typing":{"enable":true,"typeSpeed":70,"cursorChar":"_","loop":false,"scope":[]},"anchorjs":{"enable":true,"element":"h1,h2,h3,h4,h5,h6","placement":"left","visible":"hover","icon":""},"progressbar":{"enable":true,"height_px":3,"color":"#29d","options":{"showSpinner":false,"trickleSpeed":100}},"code_language":{"enable":true,"default":"TEXT"},"copy_btn":true,"image_caption":{"enable":true},"image_zoom":{"enable":true,"img_url_replace":["",""]},"toc":{"enable":true,"placement":"right","headingSelector":"h1,h2,h3,h4,h5,h6","collapseDepth":0},"lazyload":{"enable":true,"loading_img":"/img/loading.gif","onlypost":false,"offset_factor":2},"web_analytics":{"enable":false,"follow_dnt":true,"baidu":null,"google":null,"gtag":null,"tencent":{"sid":null,"cid":null},"woyaola":null,"cnzz":null,"leancloud":{"app_id":null,"app_key":null,"server_url":null,"path":"window.location.pathname","ignore_local":false}},"search_path":"/local-search.xml"};
+
+    if (CONFIG.web_analytics.follow_dnt) {
+      var dntVal = navigator.doNotTrack || window.doNotTrack || navigator.msDoNotTrack;
+      Fluid.ctx.dnt = dntVal && (dntVal.startsWith('1') || dntVal.startsWith('yes') || dntVal.startsWith('on'));
+    }
+  </script>
+  <script  src="/js/utils.js" ></script>
+  <script  src="/js/color-schema.js" ></script>
+  
+
+
+  
+<meta name="generator" content="Hexo 7.0.0-rc1"></head>
+
+
+<body>
+  
+
+  <header>
+    
+
+<div class="header-inner" style="height: 70vh;">
+  <nav id="navbar" class="navbar fixed-top  navbar-expand-lg navbar-dark scrolling-navbar">
+  <div class="container">
+    <a class="navbar-brand" href="/">
+      <strong>Fluid</strong>
+    </a>
+
+    <button id="navbar-toggler-btn" class="navbar-toggler" type="button" data-toggle="collapse"
+            data-target="#navbarSupportedContent"
+            aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
+      <div class="animated-icon"><span></span><span></span><span></span></div>
+    </button>
+
+    <!-- Collapsible content -->
+    <div class="collapse navbar-collapse" id="navbarSupportedContent">
+      <ul class="navbar-nav ml-auto text-center">
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/">
+                <i class="iconfont icon-home-fill"></i>
+                <span>首页</span>
+              </a>
+            </li>
+          
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/archives/">
+                <i class="iconfont icon-archive-fill"></i>
+                <span>归档</span>
+              </a>
+            </li>
+          
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/categories/">
+                <i class="iconfont icon-category-fill"></i>
+                <span>分类</span>
+              </a>
+            </li>
+          
+        
+        
+          <li class="nav-item" id="search-btn">
+            <a class="nav-link" target="_self" href="javascript:;" data-toggle="modal" data-target="#modalSearch" aria-label="Search">
+              <i class="iconfont icon-search"></i>
+            </a>
+          </li>
+          
+        
+        
+          <li class="nav-item" id="color-toggle-btn">
+            <a class="nav-link" target="_self" href="javascript:;" aria-label="Color Toggle">
+              <i class="iconfont icon-dark" id="color-toggle-icon"></i>
+            </a>
+          </li>
+        
+      </ul>
+    </div>
+  </div>
+</nav>
+
+  
+
+<div id="banner" class="banner" parallax=true
+     style="background: url('/img/default.png') no-repeat center center; background-size: cover;">
+  <div class="full-bg-img">
+    <div class="mask flex-center" style="background-color: rgba(0, 0, 0, 0.3)">
+      <div class="banner-text text-center fade-in-up">
+        <div class="h2">
+          
+            <span id="subtitle" data-typed-text="Paper Interpretation - A Generalised Solution to Distributed Consensus"></span>
+          
+        </div>
+
+        
+          
+  <div class="mt-3">
+    
+    
+      <span class="post-meta">
+        <i class="iconfont icon-date-fill" aria-hidden="true"></i>
+        <time datetime="2023-11-04 22:56" pubdate>
+          2023年11月4日 晚上
+        </time>
+      </span>
+    
+  </div>
+
+  <div class="mt-1">
+    
+      <span class="post-meta mr-2">
+        <i class="iconfont icon-chart"></i>
+        
+          17k 字
+        
+      </span>
+    
+
+    
+      <span class="post-meta mr-2">
+        <i class="iconfont icon-clock-fill"></i>
+        
+        
+        
+          146 分钟
+        
+      </span>
+    
+
+    
+    
+  </div>
+
+
+        
+      </div>
+
+      
+    </div>
+  </div>
+</div>
+
+</div>
+
+  </header>
+
+  <main>
+    
+      
+
+<div class="container-fluid nopadding-x">
+  <div class="row nomargin-x">
+    <div class="side-col d-none d-lg-block col-lg-2">
+      
+
+    </div>
+
+    <div class="col-lg-8 nopadding-x-md">
+      <div class="container nopadding-x-md" id="board-ctn">
+        <div id="board">
+          <article class="post-content mx-auto">
+            <!-- SEO header -->
+            <h1 style="display: none">Paper Interpretation - A Generalised Solution to Distributed Consensus</h1>
+            
+            
+              <div class="markdown-body">
+                
+                <h2 id="introduction">Introduction</h2>
+<p>This paper presents an inspiring piece of work. Creating a distributed consensus algorithm from scratch is no easy task, as Leslie Lamport, the Turing Award winner, once said: "...this consensus algorithm follows almost unavoidably from the properties we want it to satisfy." What this paper does beautifully is to demystify this process, showing even those of us who aren't Turing laureates how to design a consensus algorithm from the ground up.</p>
+<p>Building upon the insights from this paper, I plan to revisit the proofs of classical Paxos, Flexible Paxos, and Fast Paxos. My aim is to reinterpret and understand them within the framework presented in this paper.</p>
+<h2 id="problem-definition">Problem Definition</h2>
+<p>The classic formulation of consensus considers how to decide upon a <strong>single</strong> value in a distributed system. We consider systems comprised of two types of participant: servers, which store the value, and clients, which read/write the value. If you have read <a target="_blank" rel="noopener" href="https://www.microsoft.com/en-us/research/uploads/prod/2016/12/The-Part-Time-Parliament.pdf">The Part-Time Parliament</a>, you'll see that the priest's role is like a mix of the server and client roles as defined in this paper. Interestingly, in most consensus literature, the server role combines the functions of both the client and server as defined here. So, when studying consensus in this context, it's best to forget the usual definitions of server and client roles and instead follow Heidi Howard's definition.</p>
+<p>An algorithm solves consensus if it satisfies the following three requirements:</p>
+<ul>
+<li><strong>Non-triviality</strong>. All output values must have been the input value of a client.</li>
+<li><strong>Agreement</strong>. All clients that output a value must output the same value.</li>
+<li><strong>Progress</strong>. All clients must eventually output a value if the system is reliable and synchronous for a sufficient period. This requirement rules out algorithms that could reach deadlock, but it doesn't exclude those that could enter a state of livelock or become stuck when the liveness condition isn't satisfied. As termination cannot be guaranteed in an asynchronous system where failures may occur, algorithms need only guarantee termination assuming liveness.</li>
+</ul>
+<h2 id="single-server-solution">Single-Server Solution</h2>
+<figure>
+<img src="http://junbin-hexo-img.oss-cn-beijing.aliyuncs.com/paper-interpretation-a-generalised-solution-to-distributed-consensus/single-server-1.png" srcset="/img/loading.gif" lazyload alt="" /><figcaption>Single Server</figcaption>
+</figure>
+<figure>
+<img src="http://junbin-hexo-img.oss-cn-beijing.aliyuncs.com/paper-interpretation-a-generalised-solution-to-distributed-consensus/single-server-2.png" srcset="/img/loading.gif" lazyload alt="" /><figcaption>Single Server</figcaption>
+</figure>
+<p>If we have only one server, the solution is straightforward. The server has a single persistent write-once register, <span class="math inline">\(R0\)</span>, to store the decided value. Clients send requests to the server with their input value. If <span class="math inline">\(R0\)</span> is unwritten, the value received is written to <span class="math inline">\(R0\)</span> and is returned to the client. If <span class="math inline">\(R0\)</span> is already written, then the value in <span class="math inline">\(R0\)</span> is read and returned to the client. The client then outputs the returned value. This algorithm achieves consensus but requires the server to be available for clients to terminate. To overcome this limitation requires deployment of more than one server, so we now consider how to generalise to multiple servers.</p>
+<h2 id="multiple-servers-each-with-a-single-write-once-persistent-register-solution">Multiple Servers, Each with a Single Write-Once Persistent Register Solution</h2>
+<p>We could say a client has to write to all the registers to decide a value, but then that would be even worse than the original algorithm, because now we have three servers and if any one of the three fails, we won't be able to make progress. So let's write to a majority of servers (two or three). That means that there would be an overlap between any two majorities and if one failed, we could still reach a decision. We have got safety, which is great. Unfortunately, we <strong>don't actually have the progress property</strong>. So we could have a scenario like this, three clients come along, and each of these three clients talks to one of the three servers first and then we've got one register with the value <span class="math inline">\(A\)</span>, one register with the value <span class="math inline">\(B\)</span>, and one register with the value <span class="math inline">\(C\)</span>. We said we wanted <strong>immutability</strong> property. We're pretty stuck now, there's nothing we can do without overwriting these registers, so we don't have progress.</p>
+<figure>
+<img src="http://junbin-hexo-img.oss-cn-beijing.aliyuncs.com/paper-interpretation-a-generalised-solution-to-distributed-consensus/multi-server-each-with-a-sginle-register-split-votes.png" srcset="/img/loading.gif" lazyload alt="" /><figcaption>Split Votes</figcaption>
+</figure>
+<h2 id="multiple-servers-each-with-multiple-write-once-persistent-registers-solution">Multiple Servers, Each with Multiple Write-Once Persistent Registers Solution</h2>
+<p>Consider a set of servers, <span class="math inline">\(\{S_0, S_1, \ldots, S_n\}\)</span>, where each has a infinite series of write-once, persistent registers, <span class="math inline">\(\{R_0, R_1, \ldots, R_n\}\)</span>. Clients read and write registers on servers and, at any time, each register is in one of the three states:</p>
+<ul>
+<li><strong>unwritten</strong>, the starting state for all registers; or</li>
+<li><strong>contains a value</strong>, e.g., <span class="math inline">\(A\)</span>, <span class="math inline">\(B\)</span>, <span class="math inline">\(C\)</span>; or</li>
+<li><strong>contains nil</strong>, a special value denoted as <span class="math inline">\(\perp\)</span>.</li>
+</ul>
+<figure>
+<img src="http://junbin-hexo-img.oss-cn-beijing.aliyuncs.com/paper-interpretation-a-generalised-solution-to-distributed-consensus/multi-server-each-with-multi-registers.png" srcset="/img/loading.gif" lazyload alt="" /><figcaption>Multiple Servers, Each with Multiple Write-Once Persistent Registers</figcaption>
+</figure>
+<p>The following concepts need to be clarified:</p>
+<ul>
+<li>A <strong>quorum</strong>, <span class="math inline">\(Q\)</span>, is a (non-empty) subset of servers, such that if all servers have a same (non-nil) value <span class="math inline">\(v\)</span> in <strong>the same register</strong> then <span class="math inline">\(v\)</span> is said to be decided. If you're familiar with distributed systems, you might be thinking about concepts like quorums, majorities, and read-write quorums. However, for now, please set aside any ideas about the necessity for these constructs to intersect. We'll see later whether we do or do not need any intersection properties between them.</li>
+<li>A <strong>register set</strong>, <span class="math inline">\(i\)</span>, is the set comprised of the register <span class="math inline">\(R_i\)</span> from each server. Each register set <span class="math inline">\(i\)</span> is configured with a set of quorums, <span class="math inline">\(\mathcal{Q}_i\)</span>, and four example configurations are given in Figure 1.</li>
+<li>The state of all registers can be represented in a table, known as a <strong>state table</strong>, where each column represents the state of one server and each row represents a register set.</li>
+</ul>
+<figure>
+<img src="http://junbin-hexo-img.oss-cn-beijing.aliyuncs.com/paper-interpretation-a-generalised-solution-to-distributed-consensus/figure-1-sample-configurations-for-systems-of-three-or-four-servers.png" srcset="/img/loading.gif" lazyload alt="" /><figcaption>Figure 1: Sample configurations for systems of three or four servers.</figcaption>
+</figure>
+<figure>
+<img src="http://junbin-hexo-img.oss-cn-beijing.aliyuncs.com/paper-interpretation-a-generalised-solution-to-distributed-consensus/figure-2-sample-state-tables-for-a-system-using-the-configuration-in-figure-1a.png" srcset="/img/loading.gif" lazyload alt="" /><figcaption>Figure 2: Sample state tables for a system using the configuration in Figure 1a.</figcaption>
+</figure>
+<p>We define a value as being decided when we can identify at least one register set <span class="math inline">\(i\)</span>, and a quorum <span class="math inline">\(Q_i\)</span> such that <span class="math inline">\(Q_i \in \mathcal{Q}_i\)</span> (where <span class="math inline">\(\mathcal{Q}_i\)</span> represents the configured quorum sets of the register set <span class="math inline">\(i\)</span>), and every server in <span class="math inline">\(Q_i\)</span> has its register <span class="math inline">\(R_i\)</span> uniformly written with the identical non-nil value <span class="math inline">\(v\)</span>. By combining a configuration with a state table, we can determine whether any decision(s) have been reached (indicated by the gray highlights), as shown in Figure 2.</p>
+<h3 id="correctness">Correctness</h3>
+<p>The algorithm adheres to the following four rules, which in turn ensures the satisfaction of the non-triviality, agreement, and progress requirements. Fulfilling these requirements ultimately leads to the successful resolution of consensus.</p>
+<ul>
+<li>Rule 1: <strong>Quorum agreement</strong>. A client may only output a (non-nil) value <span class="math inline">\(v\)</span> if it has read <span class="math inline">\(v\)</span> from a quorum of servers in the same register set. This rule ensures that clients only output values that have been decided. When combined with rules 3 and 4 (which guarantee that at most only one value can be decided), this rule ensures the fulfillment of the <strong>agreement</strong> requirement.</li>
+<li>Rule 2: <strong>New value</strong>. A client may only write a (non-nil) value <span class="math inline">\(v\)</span> provided that either <span class="math inline">\(v\)</span> is the client's input value or that the client has read <span class="math inline">\(v\)</span> from a register. This rule ensures the fulfillment of the <strong>non-triviality</strong> requirement.</li>
+<li>Before a client writes a value to a register <span class="math inline">\(R_i\)</span> in register set <span class="math inline">\(i\)</span>, it needs to ensure that no other values could be decided in register sets <span class="math inline">\(0\)</span> through <span class="math inline">\(i\)</span> (inclusive). The client plans to write into register <span class="math inline">\(R_i\)</span>; however, it's the client's responsibility to verify that none of the previous registers could decide on a different value prior to doing so. This is a crucial step for maintaining safety. All clients must perform this check to prevent conflicting decisions.
+<ul>
+<li>Interestingly, if writing to a register <span class="math inline">\(R_i\)</span> wouldn't lead to a value being decided, then the client has the freedom to write any value of their preference. This implies that a more relaxed condition could be proposed. However, this relaxed aspect is not significant in the current context, so it is omitted.</li>
+<li>Rule 3: <strong>Current decision</strong>. A client may only write a (non-nil) value <span class="math inline">\(v\)</span> to register <span class="math inline">\(r\)</span> on server <span class="math inline">\(s\)</span> provided that if <span class="math inline">\(v\)</span> is decided in register set <span class="math inline">\(r\)</span> by a quorum <span class="math inline">\(Q \in \mathcal{Q}_r\)</span> where <span class="math inline">\(s \in Q\)</span> then no value <span class="math inline">\(v^\prime\)</span> where <span class="math inline">\(v \neq v^\prime\)</span> can also be decided in register set <span class="math inline">\(r\)</span>.</li>
+<li>Rule 4: <strong>Previous decisions</strong>. A client may only write a (non-nil) value <span class="math inline">\(v\)</span> to register <span class="math inline">\(r\)</span> provided no value <span class="math inline">\(v^\prime\)</span> where <span class="math inline">\(v \neq v^\prime\)</span> can be decided by the quorums in register sets <span class="math inline">\(0\)</span> to <span class="math inline">\(r − 1\)</span>.</li>
+</ul></li>
+</ul>
+<p>Implementing rule 1 and rule 2 is straightforward. We will not delve into their details in the later sections. Instead, our focus will be on providing guidance on the correct implementation of rule 3 and rule 4.</p>
+<h3 id="how-the-single-decree-synod-implements-the-correctness-rules">How the Single-Decree Synod Implements the Correctness Rules</h3>
+<p><a target="_blank" rel="noopener" href="https://www.microsoft.com/en-us/research/uploads/prod/2016/12/The-Part-Time-Parliament.pdf">The Single-Decree Synod</a> employs <strong>disjoint quorums</strong> to implement rule 3, whereby all values written to a particular register set must be identical. This can be achieved by assigning register sets to clients and requiring that <strong>clients write only to their own register sets, with at most one value</strong>. In practice, this could be implemented by using an allocation such as that in Figure 4 and by requiring clients to keep a persistent record of which register sets they have written too. We refer to these as <strong>client restricted configurations</strong>.</p>
+<figure>
+<img src="http://junbin-hexo-img.oss-cn-beijing.aliyuncs.com/paper-interpretation-a-generalised-solution-to-distributed-consensus/figure-4-sample-round-robin-allocation-of-register-sets-to-clients.png" srcset="/img/loading.gif" lazyload alt="" /><figcaption>Figure 4: Sample round robin allocation of register sets to clients.</figcaption>
+</figure>
+<p>For those familiar with <a target="_blank" rel="noopener" href="https://www.microsoft.com/en-us/research/uploads/prod/2016/12/The-Part-Time-Parliament.pdf">The Part-Time Parliament</a>, a useful correspondence can be drawn between register sets in the current paper and the concept of ballots in Paxos.</p>
+<p>Upholding rule 4 presents a more formidable challenge. A tool we can utilize to address this difficulty is the <strong>decision table</strong>. Each client's state table consistently contains a subset of the values from the global state table, which is a consequence of the registers being write-once. Consequently, each client possesses the capability to generate a decision table drawing from their individual local state table. At any given time, each <strong>quorum</strong> is in one of four decision states:</p>
+<ul>
+<li><span class="math inline">\(\text{Any}\)</span>: Any value could be decided by this quorum.</li>
+<li><span class="math inline">\(\text{Maybe}(v)\)</span>: If this quorum reaches a decision, then value <span class="math inline">\(v\)</span> will be decided.</li>
+<li><span class="math inline">\(\text{Decided}(v)\)</span>: The value <span class="math inline">\(v\)</span> has been decided by this quorum; a final state.</li>
+<li><span class="math inline">\(\text{None}\)</span>: This quorum will not decide a value; a final state.</li>
+</ul>
+<p>Here are the rules that govern the update of the decision table for client-restricted register sets:</p>
+<ul>
+<li>Initially, the decision state of all quorums is <span class="math inline">\(\text{Any}\)</span>.</li>
+<li>If there is a quorum where all registers contain the same value <span class="math inline">\(v\)</span> then its decision state is <span class="math inline">\(\text{Decided}(v)\)</span>.</li>
+<li>When a client reads a non-nil value <span class="math inline">\(v\)</span> at a specific register <span class="math inline">\(R_r\)</span> (which is one register in the register set <span class="math inline">\(r\)</span>),
+<ul>
+<li>According to client restricted configurations, only one client can write a singular value, <span class="math inline">\(v\)</span>, to register set <span class="math inline">\(i\)</span>.</li>
+<li>According to Rule 4, prior to the client writing the value <span class="math inline">\(v\)</span> to register sets <span class="math inline">\(r\)</span>, it must have already ensured that no other value <span class="math inline">\(v^\prime \neq v\)</span> can be decided by the register sets ranging from <span class="math inline">\(0\)</span> to <span class="math inline">\(r - 1\)</span>.</li>
+<li>Consequently, we can update the decision state as follows. For all quorums over register sets <span class="math inline">\(0\)</span> to <span class="math inline">\(r\)</span>,
+<ul>
+<li>The decision state <span class="math inline">\(\text{Any}\)</span> becomes <span class="math inline">\(\text{Maybe}(v)\)</span>,</li>
+<li>And the decision state <span class="math inline">\(\text{Maybe}(v^\prime)\)</span> where <span class="math inline">\(v^\prime \neq v\)</span> becomes <span class="math inline">\(\text{None}\)</span>. The client restricted configurations ensure that only one value can be written to this register set. If the current state is <span class="math inline">\(\text{Maybe}(v^\prime)\)</span>, then the final state can either be <span class="math inline">\(\text{Decided}(v^\prime)\)</span> or <span class="math inline">\(\text{None}\)</span>. However, when a client writes a value <span class="math inline">\(v\)</span> to register <span class="math inline">\(R_r\)</span>, it must adhere to Rule 4. This rule stipulates that the client must ensure no other value <span class="math inline">\(v^\prime \neq v\)</span> can be decided for this register set. This requirement implies that the final state cannot be <span class="math inline">\(\text{Decided}(v^\prime)\)</span>. Therefore, the only possible final state is <span class="math inline">\(\text{None}\)</span>.</li>
+</ul></li>
+</ul></li>
+</ul>
+<p><img src="http://junbin-hexo-img.oss-cn-beijing.aliyuncs.com/paper-interpretation-a-generalised-solution-to-distributed-consensus/figure-6-sample-client-state-tables-left-and-decision-tables-right.png" srcset="/img/loading.gif" lazyload /></p>
+<p>There are numerous ways to finalize every decision state of preceding register sets to end states (<span class="math inline">\(\text{Decided}(v)\)</span> and <span class="math inline">\(\text{None}\)</span>). A straightforward but inefficient way is to simply wait. However, the Single-Decree Synod employs a faster and simpler method, which I term "fence-and-read-majority". Before writing to any registers in register set <span class="math inline">\(r\)</span>, the client requests <strong>all</strong> servers to place a "fence" on the registers of register sets from <span class="math inline">\(0\)</span> to <span class="math inline">\(r - 1\)</span>: if a register state is unwritten, the server writes "nil" to it to prevent further writing; if not, it does nothing. The server then returns the value post-fencing. It's important to note that this fence-and-read-majority is an atomic action on each server. After collecting a <strong>majority (not all)</strong> of responses from the fence-and-read-majority action, the client can create a decision table that excludes <span class="math inline">\(\text{Any}\)</span> states, instead only including <span class="math inline">\(\text{Maybe}(v)\)</span>, <span class="math inline">\(\text{Decided}(v)\)</span>, or <span class="math inline">\(\text{None}\)</span> states. Given that each register is written to only once, the client's local state table will invariably be a subset of the global state table. Consequently, the local decision table will remain consistent with the global decision table both now and in the future. Based on this local decision table, the client can then select a value while complying with Rule 4.</p>
+<p>A minor optimization is available in this procedure. Instead of calculating all decision states from <span class="math inline">\(0\)</span> to <span class="math inline">\(r - 1\)</span>, the client only needs to identify the highest register set <span class="math inline">\(k\)</span> containing the non-nil value <span class="math inline">\(v\)</span> and then calculate the decision state of register set <span class="math inline">\(k\)</span>. Here, "highest" means that no other registers of register sets from <span class="math inline">\(k + 1\)</span> to <span class="math inline">\(r - 1\)</span> in the response have non-nil values. The client then calculates the decision state of register set <span class="math inline">\(k\)</span>.</p>
+<ul>
+<li>Following Rule 4, before the client (which may not necessarily be the same client that writes the value to register set <span class="math inline">\(r\)</span>) writes <span class="math inline">\(v\)</span> to register set <span class="math inline">\(k\)</span>, it must have already ensured that no other value <span class="math inline">\(v^\prime \neq v\)</span> can be decided in register sets from <span class="math inline">\(0\)</span> to <span class="math inline">\(k - 1\)</span>. This means it's safe for the client to write <span class="math inline">\(v\)</span> to register set <span class="math inline">\(r\)</span> without violating Rule 4 on register sets from <span class="math inline">\(0\)</span> to <span class="math inline">\(k - 1\)</span>.</li>
+<li>According to client-restricted configurations, it's also safe for the client to write <span class="math inline">\(v\)</span> to register set <span class="math inline">\(r\)</span> without violating Rule 4 on register set <span class="math inline">\(k\)</span>.</li>
+<li>Since <span class="math inline">\(k\)</span> is the highest register set and the majority of registers in register sets from <span class="math inline">\(k + 1\)</span> to <span class="math inline">\(r - 1\)</span> have been fenced (written to nil), no value can be decided in these register sets. Therefore, it's safe for the client to write <span class="math inline">\(v\)</span> to register set <span class="math inline">\(r\)</span> without violating Rule 4 on register sets from <span class="math inline">\(k + 1\)</span> to <span class="math inline">\(r - 1\)</span>.</li>
+</ul>
+<p>You might question whether the client can use the decision state of any register set instead of the highest register set. However, this is incorrect. Let's consider a scenario where a client writes <span class="math inline">\(v_n\)</span> to register set <span class="math inline">\(r\)</span> <strong>solely based on</strong> its observation that the decision state of register <span class="math inline">\(n\)</span> (<span class="math inline">\(n &lt; m &lt; r\)</span>) is <span class="math inline">\(\text{Maybe}(v_n)\)</span>. In this situation, the client could potentially write a value that violates Rule 4. This violation can occur because another client may perceive the decision state of register <span class="math inline">\(n\)</span> as <span class="math inline">\(\text{None}\)</span> (due to getting register values from a different quorum, resulting in a different decision state) and write a value <span class="math inline">\(v_m \neq v_n\)</span> to register set <span class="math inline">\(m\)</span> (<span class="math inline">\(n &lt; m &lt; r\)</span>). Consequently, <span class="math inline">\(v_m\)</span> gets decided in register set <span class="math inline">\(m\)</span>, leading to a conflict.</p>
+<h3 id="how-fast-paxos-implements-the-correctness-rules">How Fast Paxos Implements the Correctness Rules</h3>
+<p>Fast Paxos generalises Paxos by permitting intersecting quorum configurations for some register sets, known as <strong>fast sets</strong>, whilst still utilising client restricted configurations for remaining sets, known as <strong>classic sets</strong>.</p>
+<p>The process to determine which register sets are designated as fast sets and which are classic sets can be somewhat intricate. If you're interested in a more detailed exploration of this topic, I recommend reading the Fast Paxos paper. However, in this discussion, we'll focus on the simplest scenario. We designate register set <span class="math inline">\(0\)</span> as the sole fast set, with all remaining register sets classified as classic sets. In this setup, a client does not need to be assigned to register set <span class="math inline">\(0\)</span> nor do they need to ensure that they write to it with only one value. Clients can write many different non-nil values to various registers of register set <span class="math inline">\(0\)</span>.</p>
+<p>This introduces a complexity for clients that are preparing to write to register sets with larger indices, such as register set <span class="math inline">\(1\)</span>. Recall that Heidi Howard stated "each quorum is in one of four decision states". However, each register set has multiple quorums, each of which could be in the state <span class="math inline">\(\text{Maybe}(v)\)</span> or <span class="math inline">\(\text{Maybe}(v^\prime)\)</span> (where <span class="math inline">\(v^\prime \neq v\)</span>), or other similar states. This results in the decision table of the corresponding register set presenting as <span class="math inline">\(\text{Maybe}(v, v^\prime)\)</span>. While the Single-Decree Synod avoids this situation by using client restricted configurations, Fast Paxos may encounter this issue. For instance, when a client writes to register set <span class="math inline">\(1\)</span>, it cannot determine the decision state of register set <span class="math inline">\(0\)</span> as simply as in the Single-Decree Synod. This is because different registers of register set <span class="math inline">\(0\)</span> can be written with different values, leading to the client receiving different decision states based on different quorums - it could be <span class="math inline">\(\text{Maybe}(v)\)</span> based on one quorum, and <span class="math inline">\(\text{Maybe}(v^\prime)\)</span> where <span class="math inline">\(v^\prime \neq v\)</span> based on another quorum. This situation leaves the client in a quandary - it cannot write to register set <span class="math inline">\(1\)</span> until it has ascertained that at most one value could potentially be decided on in register set <span class="math inline">\(0\)</span>.</p>
+<p>This issue is addressed through the <strong>Quorum Requirement</strong>. For any round numbers <span class="math inline">\(i\)</span> and <span class="math inline">\(j\)</span>, if <span class="math inline">\(j\)</span> is designated as a fast round number, then any <span class="math inline">\(i\)</span>-quorum and any two <span class="math inline">\(j\)</span>-quorums will have a non-empty intersection. Let <span class="math inline">\(N\)</span> be the number of servers, and let us choose <span class="math inline">\(F\)</span> and <span class="math inline">\(E\)</span> such that any set of at least <span class="math inline">\(N - F\)</span> servers is a classic quorum and any set of at least <span class="math inline">\(N - E\)</span> servers is a fast quorum. In any given round, any two fast quorums, <span class="math inline">\(R_1\)</span> and <span class="math inline">\(R_2\)</span>, will intersect at least <span class="math inline">\(2 * (N - E) - N\)</span> servers, represented by <span class="math inline">\(R_1 \cap R_2\)</span>. If we consider <span class="math inline">\(Q\)</span> to be any classic quorum, there will be at least <span class="math inline">\((2 * (N - E) - N) + (N - F) - N\)</span> servers in the intersection <span class="math inline">\(Q \cap R_1 \cap R_2\)</span>. Therefore, if we ensure that <span class="math inline">\(N &gt; 2E + F\)</span>, it guarantees that the intersection <span class="math inline">\(Q \cap R_1 \cap R_2\)</span> is not empty.</p>
+<h3 id="how-flexible-paxos-implements-the-correctness-rules">How Flexible Paxos Implements the Correctness Rules</h3>
+<p>We observe that quorum intersection is required only between <strong>the phase one quorum</strong> for register set <span class="math inline">\(r\)</span> and <strong>the phase two quorums</strong> of register sets <span class="math inline">\(0\)</span> to <span class="math inline">\(r − 1\)</span>. This is the case because a client can always proceed to phase two after intersecting with all previous phase two quorums since Rule 4 will be satisfied.</p>
+<h2 id="revisiting-the-proofs">Revisiting the Proofs</h2>
+<h3 id="revisiting-the-proof-of-the-single-decree-synod">Revisiting the Proof of the Single-Decree Synod</h3>
+<p>Based on the sketch provided in the current paper, it's clear that a client (denoted as <span class="math inline">\(C_n\)</span>) writing a different value (such as <span class="math inline">\(v^\prime\)</span> where <span class="math inline">\(v^\prime \neq v\)</span>) to a register set (like <span class="math inline">\(n\)</span>) violates Rule 4 if a value (like <span class="math inline">\(v\)</span>) has already been decided on a smaller register set (like <span class="math inline">\(m\)</span> where <span class="math inline">\(m &lt; n\)</span>). Without loss of generality, we can assume that register set <span class="math inline">\(n\)</span> is the register set with the lowest index greater than <span class="math inline">\(m\)</span> that been written with a different value. Our goal is to prove that obeying Rule 4 and adhering to <span class="math inline">\(\operatorname{B3}(\mathcal{B})\)</span> as proposed by The Part-Time Parliament are equivalent under client-restricted configurations. We will demonstrate this by contradiction, starting with the assumption that client <span class="math inline">\(C_n\)</span> complies with <span class="math inline">\(\operatorname{B3}(\mathcal{B})\)</span>. This suggests that there should be another register set, referred to as <span class="math inline">\(k\)</span>, where <span class="math inline">\(m &lt; k &lt; n\)</span>. Additionally, the decision state observed by client <span class="math inline">\(C_n\)</span> for register set <span class="math inline">\(k\)</span> must be either <span class="math inline">\(\text{Maybe}(v^\prime)\)</span> or <span class="math inline">\(\text{Decided}(v^\prime)\)</span>. If this isn't the case, and the observed decision states of all register sets from <span class="math inline">\(m + 1\)</span> to <span class="math inline">\(n - 1\)</span> by client <span class="math inline">\(C_n\)</span> are either <span class="math inline">\(\text{Any}\)</span>, <span class="math inline">\(\text{None}\)</span>, <span class="math inline">\(\text{Maybe}(v)\)</span>, or <span class="math inline">\(\text{Decided}(v)\)</span>, it would imply that <span class="math inline">\(C_n\)</span> is breaching <span class="math inline">\(\operatorname{B3}(\mathcal{B})\)</span> when writing <span class="math inline">\(v^\prime\)</span> to register set <span class="math inline">\(n\)</span>. However, this results in a contradiction as register set <span class="math inline">\(k\)</span> is the register set with the lowest index greater than <span class="math inline">\(m\)</span> that been written with a different value. This contradiction solidifies our proof.</p>
+<h3 id="revisiting-the-proof-of-fast-paxos">Revisiting the Proof of Fast Paxos</h3>
+<p>Fast Paxos demonstrates the correctness of classical Paxos through a method of classification and induction, a process analogous to the section titled "How the Single-Decree Synod Implements the Correctness Rules" in the current blog.</p>
+<h2 id="reference">Reference</h2>
+<ul>
+<li><a target="_blank" rel="noopener" href="https://arxiv.org/pdf/1902.06776.pdf">A Generalised Solution to Distributed Consensus</a></li>
+<li><a target="_blank" rel="noopener" href="https://youtu.be/Pqc6X3sj6q8?feature=shared">Distributed Consensus Revised by Heidi Howard</a></li>
+<li><a target="_blank" rel="noopener" href="https://www.microsoft.com/en-us/research/uploads/prod/2016/12/The-Part-Time-Parliament.pdf">The Part-Time Parliament</a></li>
+</ul>
+
+                
+              </div>
+            
+            <hr/>
+            <div>
+              <div class="post-metas my-3">
+  
+    <div class="post-meta mr-3 d-flex align-items-center">
+      <i class="iconfont icon-category"></i>
+      
+
+<span class="category-chains">
+  
+  
+    
+      <span class="category-chain">
+        
+  <a href="/categories/Computer-Science/" class="category-chain-item">Computer Science</a>
+  
+  
+    <span>></span>
+    
+  <a href="/categories/Computer-Science/Consensus/" class="category-chain-item">Consensus</a>
+  
+  
+
+  
+
+      </span>
+    
+  
+</span>
+
+    </div>
+  
+  
+</div>
+
+
+              
+  
+
+  <div class="license-box my-3">
+    <div class="license-title">
+      <div>Paper Interpretation - A Generalised Solution to Distributed Consensus</div>
+      <div>https://clcanny.github.io/2023/11/04/computer-science/consensus/paper-interpretation-a-generalised-solution-to-distributed-consensus/</div>
+    </div>
+    <div class="license-meta">
+      
+        <div class="license-meta-item">
+          <div>作者</div>
+          <div>JunBin</div>
+        </div>
+      
+      
+        <div class="license-meta-item license-meta-date">
+          <div>发布于</div>
+          <div>2023年11月4日</div>
+        </div>
+      
+      
+      
+        <div class="license-meta-item">
+          <div>许可协议</div>
+          <div>
+            
+              
+              
+                <a target="_blank" href="https://creativecommons.org/licenses/by/4.0/">
+                  <span class="hint--top hint--rounded" aria-label="BY - 署名">
+                    <i class="iconfont icon-by"></i>
+                  </span>
+                </a>
+              
+            
+          </div>
+        </div>
+      
+    </div>
+    <div class="license-icon iconfont"></div>
+  </div>
+
+
+
+              
+                <div class="post-prevnext my-3">
+                  <article class="post-prev col-6">
+                    
+                    
+                      <a href="/2023/12/10/computer-science/serializability/paper-interpretation-building-consistent-transactions-with-inconsistent-replication/" title="Paper Interpretation - Building Consistent Transactions with Inconsistent Replication">
+                        <i class="iconfont icon-arrowleft"></i>
+                        <span class="hidden-mobile">Paper Interpretation - Building Consistent Transactions with Inconsistent Replication</span>
+                        <span class="visible-mobile">上一篇</span>
+                      </a>
+                    
+                  </article>
+                  <article class="post-next col-6">
+                    
+                    
+                      <a href="/2023/08/11/computer-science/consensus/paper-interpretation-there-is-more-consensus-in-egalitarian-parliaments/" title="Paper Interpretation - There Is More Consensus In Egalitarian Parliaments">
+                        <span class="hidden-mobile">Paper Interpretation - There Is More Consensus In Egalitarian Parliaments</span>
+                        <span class="visible-mobile">下一篇</span>
+                        <i class="iconfont icon-arrowright"></i>
+                      </a>
+                    
+                  </article>
+                </div>
+              
+            </div>
+
+            
+          </article>
+        </div>
+      </div>
+    </div>
+
+    <div class="side-col d-none d-lg-block col-lg-2">
+      
+  <aside class="sidebar" style="margin-left: -1rem">
+    <div id="toc">
+  <p class="toc-header">
+    <i class="iconfont icon-list"></i>
+    <span>目录</span>
+  </p>
+  <div class="toc-body" id="toc-body"></div>
+</div>
+
+
+
+  </aside>
+
+
+    </div>
+  </div>
+</div>
+
+
+
+
+
+  
+
+
+
+  
+
+
+
+  
+
+
+
+  
+
+
+
+  
+
+
+  
+  
+
+
+
+
+
+  <script>
+  Fluid.utils.createScript('https://lib.baomitu.com/mermaid/8.14.0/mermaid.min.js', function() {
+    mermaid.initialize({"theme":"default"});
+
+    Fluid.events.registerRefreshCallback(function() {
+      if ('mermaid' in window) {
+        mermaid.init();
+      }
+    });
+  });
+</script>
+
+
+
+
+
+
+    
+
+    
+      <a id="scroll-top-button" aria-label="TOP" href="#" role="button">
+        <i class="iconfont icon-arrowup" aria-hidden="true"></i>
+      </a>
+    
+
+    
+      <div class="modal fade" id="modalSearch" tabindex="-1" role="dialog" aria-labelledby="ModalLabel"
+     aria-hidden="true">
+  <div class="modal-dialog modal-dialog-scrollable modal-lg" role="document">
+    <div class="modal-content">
+      <div class="modal-header text-center">
+        <h4 class="modal-title w-100 font-weight-bold">搜索</h4>
+        <button type="button" id="local-search-close" class="close" data-dismiss="modal" aria-label="Close">
+          <span aria-hidden="true">&times;</span>
+        </button>
+      </div>
+      <div class="modal-body mx-3">
+        <div class="md-form mb-5">
+          <input type="text" id="local-search-input" class="form-control validate">
+          <label data-error="x" data-success="v" for="local-search-input">关键词</label>
+        </div>
+        <div class="list-group" id="local-search-result"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+    
+
+    
+  </main>
+
+  <footer>
+    <div class="footer-inner">
+  
+    <div class="footer-content">
+       <a href="https://hexo.io" target="_blank" rel="nofollow noopener"><span>Hexo</span></a> <i class="iconfont icon-love"></i> <a href="https://github.com/fluid-dev/hexo-theme-fluid" target="_blank" rel="nofollow noopener"><span>Fluid</span></a> 
+    </div>
+  
+  
+  
+  
+</div>
+
+  </footer>
+
+  <!-- Scripts -->
+  
+  <script  src="https://lib.baomitu.com/nprogress/0.2.0/nprogress.min.js" ></script>
+  <link  rel="stylesheet" href="https://lib.baomitu.com/nprogress/0.2.0/nprogress.min.css" />
+
+  <script>
+    NProgress.configure({"showSpinner":false,"trickleSpeed":100})
+    NProgress.start()
+    window.addEventListener('load', function() {
+      NProgress.done();
+    })
+  </script>
+
+
+<script  src="https://lib.baomitu.com/jquery/3.6.0/jquery.min.js" ></script>
+<script  src="https://lib.baomitu.com/twitter-bootstrap/4.6.1/js/bootstrap.min.js" ></script>
+<script  src="/js/events.js" ></script>
+<script  src="/js/plugins.js" ></script>
+
+
+  <script  src="https://lib.baomitu.com/typed.js/2.0.12/typed.min.js" ></script>
+  <script>
+    (function (window, document) {
+      var typing = Fluid.plugins.typing;
+      var subtitle = document.getElementById('subtitle');
+      if (!subtitle || !typing) {
+        return;
+      }
+      var text = subtitle.getAttribute('data-typed-text');
+      
+        typing(text);
+      
+    })(window, document);
+  </script>
+
+
+
+
+  
+    <script  src="/js/img-lazyload.js" ></script>
+  
+
+
+
+
+  
+<script>
+  Fluid.utils.createScript('https://lib.baomitu.com/tocbot/4.18.2/tocbot.min.js', function() {
+    var toc = jQuery('#toc');
+    if (toc.length === 0 || !window.tocbot) { return; }
+    var boardCtn = jQuery('#board-ctn');
+    var boardTop = boardCtn.offset().top;
+
+    window.tocbot.init(Object.assign({
+      tocSelector     : '#toc-body',
+      contentSelector : '.markdown-body',
+      linkClass       : 'tocbot-link',
+      activeLinkClass : 'tocbot-active-link',
+      listClass       : 'tocbot-list',
+      isCollapsedClass: 'tocbot-is-collapsed',
+      collapsibleClass: 'tocbot-is-collapsible',
+      scrollSmooth    : true,
+      includeTitleTags: true,
+      headingsOffset  : -boardTop,
+    }, CONFIG.toc));
+    if (toc.find('.toc-list-item').length > 0) {
+      toc.css('visibility', 'visible');
+    }
+
+    Fluid.events.registerRefreshCallback(function() {
+      if ('tocbot' in window) {
+        tocbot.refresh();
+        var toc = jQuery('#toc');
+        if (toc.length === 0 || !tocbot) {
+          return;
+        }
+        if (toc.find('.toc-list-item').length > 0) {
+          toc.css('visibility', 'visible');
+        }
+      }
+    });
+  });
+</script>
+
+
+  <script src=https://lib.baomitu.com/clipboard.js/2.0.11/clipboard.min.js></script>
+
+  <script>Fluid.plugins.codeWidget();</script>
+
+
+  
+<script>
+  Fluid.utils.createScript('https://lib.baomitu.com/anchor-js/4.3.1/anchor.min.js', function() {
+    window.anchors.options = {
+      placement: CONFIG.anchorjs.placement,
+      visible  : CONFIG.anchorjs.visible
+    };
+    if (CONFIG.anchorjs.icon) {
+      window.anchors.options.icon = CONFIG.anchorjs.icon;
+    }
+    var el = (CONFIG.anchorjs.element || 'h1,h2,h3,h4,h5,h6').split(',');
+    var res = [];
+    for (var item of el) {
+      res.push('.markdown-body > ' + item.trim());
+    }
+    if (CONFIG.anchorjs.placement === 'left') {
+      window.anchors.options.class = 'anchorjs-link-left';
+    }
+    window.anchors.add(res.join(', '));
+
+    Fluid.events.registerRefreshCallback(function() {
+      if ('anchors' in window) {
+        anchors.removeAll();
+        var el = (CONFIG.anchorjs.element || 'h1,h2,h3,h4,h5,h6').split(',');
+        var res = [];
+        for (var item of el) {
+          res.push('.markdown-body > ' + item.trim());
+        }
+        if (CONFIG.anchorjs.placement === 'left') {
+          anchors.options.class = 'anchorjs-link-left';
+        }
+        anchors.add(res.join(', '));
+      }
+    });
+  });
+</script>
+
+
+  
+<script>
+  Fluid.utils.createScript('https://lib.baomitu.com/fancybox/3.5.7/jquery.fancybox.min.js', function() {
+    Fluid.plugins.fancyBox();
+  });
+</script>
+
+
+  <script>Fluid.plugins.imageCaption();</script>
+
+  
+      <script>
+        if (!window.MathJax) {
+          window.MathJax = {
+            tex    : {
+              inlineMath: { '[+]': [['$', '$']] }
+            },
+            loader : {
+              load: ['ui/lazy']
+            },
+            options: {
+              renderActions: {
+                insertedScript: [200, () => {
+                  document.querySelectorAll('mjx-container').forEach(node => {
+                    let target = node.parentNode;
+                    if (target.nodeName.toLowerCase() === 'li') {
+                      target.parentNode.classList.add('has-jax');
+                    }
+                  });
+                }, '', false]
+              }
+            }
+          };
+        } else {
+          MathJax.startup.document.state(0);
+          MathJax.texReset();
+          MathJax.typeset();
+          MathJax.typesetPromise();
+        }
+
+        Fluid.events.registerRefreshCallback(function() {
+          if ('MathJax' in window && MathJax.startup.document && typeof MathJax.startup.document.state === 'function') {
+            MathJax.startup.document.state(0);
+            MathJax.texReset();
+            MathJax.typeset();
+            MathJax.typesetPromise();
+          }
+        });
+      </script>
+    
+
+  <script  src="https://lib.baomitu.com/mathjax/3.2.2/es5/tex-mml-chtml.js" ></script>
+
+  <script  src="/js/local-search.js" ></script>
+
+
+
+
+
+<!-- 主题的启动项，将它保持在最底部 -->
+<!-- the boot of the theme, keep it at the bottom -->
+<script  src="/js/boot.js" ></script>
+
+
+  
+
+  <noscript>
+    <div class="noscript-warning">博客在允许 JavaScript 运行的环境下浏览效果更佳</div>
+  </noscript>
+</body>
+</html>

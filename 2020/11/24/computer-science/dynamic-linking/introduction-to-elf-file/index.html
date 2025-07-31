@@ -1,0 +1,1000 @@
+
+
+<!DOCTYPE html>
+<html lang="zh-CN" data-default-color-scheme=auto>
+
+
+
+<head>
+  <meta charset="UTF-8">
+  <link rel="apple-touch-icon" sizes="76x76" href="/img/fluid.png">
+  <link rel="icon" href="/img/fluid.png">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, shrink-to-fit=no">
+  <meta http-equiv="x-ua-compatible" content="ie=edge">
+  
+  <meta name="theme-color" content="#2f4154">
+  <meta name="author" content="JunBin">
+  <meta name="keywords" content="">
+  
+    <meta name="description" content="导读  “工欲善其事，必先利其器。”  本文会介绍 ELF 文件以及阅读 ELF 文件的工具，熟悉 ELF 文件对探索动态链接是很有好处的。 环境 12345678910111213141516171819202122232425262728FROM debian:busterLABEL maintainer&#x3D;&quot;837940593@qq.com&quot;ENV DEBIAN_FRONT">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Introduction To Elf File">
+<meta property="og:url" content="https://clcanny.github.io/2020/11/24/computer-science/dynamic-linking/introduction-to-elf-file/index.html">
+<meta property="og:site_name" content="On The Road">
+<meta property="og:description" content="导读  “工欲善其事，必先利其器。”  本文会介绍 ELF 文件以及阅读 ELF 文件的工具，熟悉 ELF 文件对探索动态链接是很有好处的。 环境 12345678910111213141516171819202122232425262728FROM debian:busterLABEL maintainer&#x3D;&quot;837940593@qq.com&quot;ENV DEBIAN_FRONT">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="http://junbin-hexo-img.oss-cn-beijing.aliyuncs.com/dynamic-linking/ELF_Executable_and_Linkable_Format_diagram_by_Ange_Albertini.png">
+<meta property="article:published_time" content="2020-11-24T02:42:03.000Z">
+<meta property="article:modified_time" content="2024-10-30T15:47:28.515Z">
+<meta property="article:author" content="JunBin">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="http://junbin-hexo-img.oss-cn-beijing.aliyuncs.com/dynamic-linking/ELF_Executable_and_Linkable_Format_diagram_by_Ange_Albertini.png">
+  
+  
+  
+  <title>Introduction To Elf File - On The Road</title>
+
+  <link  rel="stylesheet" href="https://lib.baomitu.com/twitter-bootstrap/4.6.1/css/bootstrap.min.css" />
+
+
+
+  <link  rel="stylesheet" href="https://lib.baomitu.com/github-markdown-css/4.0.0/github-markdown.min.css" />
+
+  <link  rel="stylesheet" href="https://lib.baomitu.com/hint.css/2.7.0/hint.min.css" />
+
+  <link  rel="stylesheet" href="https://lib.baomitu.com/fancybox/3.5.7/jquery.fancybox.min.css" />
+
+
+
+<!-- 主题依赖的图标库，不要自行修改 -->
+<!-- Do not modify the link that theme dependent icons -->
+
+<link rel="stylesheet" href="//at.alicdn.com/t/font_1749284_hj8rtnfg7um.css">
+
+
+
+<link rel="stylesheet" href="//at.alicdn.com/t/font_1736178_lbnruvf0jn.css">
+
+
+<link  rel="stylesheet" href="/css/main.css" />
+
+
+  <link id="highlight-css" rel="stylesheet" href="/css/highlight.css" />
+  
+    <link id="highlight-css-dark" rel="stylesheet" href="/css/highlight-dark.css" />
+  
+
+
+
+
+  <script id="fluid-configs">
+    var Fluid = window.Fluid || {};
+    Fluid.ctx = Object.assign({}, Fluid.ctx)
+    var CONFIG = {"hostname":"clcanny.github.io","root":"/","version":"1.9.4","typing":{"enable":true,"typeSpeed":70,"cursorChar":"_","loop":false,"scope":[]},"anchorjs":{"enable":true,"element":"h1,h2,h3,h4,h5,h6","placement":"left","visible":"hover","icon":""},"progressbar":{"enable":true,"height_px":3,"color":"#29d","options":{"showSpinner":false,"trickleSpeed":100}},"code_language":{"enable":true,"default":"TEXT"},"copy_btn":true,"image_caption":{"enable":true},"image_zoom":{"enable":true,"img_url_replace":["",""]},"toc":{"enable":true,"placement":"right","headingSelector":"h1,h2,h3,h4,h5,h6","collapseDepth":0},"lazyload":{"enable":true,"loading_img":"/img/loading.gif","onlypost":false,"offset_factor":2},"web_analytics":{"enable":false,"follow_dnt":true,"baidu":null,"google":null,"gtag":null,"tencent":{"sid":null,"cid":null},"woyaola":null,"cnzz":null,"leancloud":{"app_id":null,"app_key":null,"server_url":null,"path":"window.location.pathname","ignore_local":false}},"search_path":"/local-search.xml"};
+
+    if (CONFIG.web_analytics.follow_dnt) {
+      var dntVal = navigator.doNotTrack || window.doNotTrack || navigator.msDoNotTrack;
+      Fluid.ctx.dnt = dntVal && (dntVal.startsWith('1') || dntVal.startsWith('yes') || dntVal.startsWith('on'));
+    }
+  </script>
+  <script  src="/js/utils.js" ></script>
+  <script  src="/js/color-schema.js" ></script>
+  
+
+
+  
+<meta name="generator" content="Hexo 7.0.0-rc1"></head>
+
+
+<body>
+  
+
+  <header>
+    
+
+<div class="header-inner" style="height: 70vh;">
+  <nav id="navbar" class="navbar fixed-top  navbar-expand-lg navbar-dark scrolling-navbar">
+  <div class="container">
+    <a class="navbar-brand" href="/">
+      <strong>Fluid</strong>
+    </a>
+
+    <button id="navbar-toggler-btn" class="navbar-toggler" type="button" data-toggle="collapse"
+            data-target="#navbarSupportedContent"
+            aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
+      <div class="animated-icon"><span></span><span></span><span></span></div>
+    </button>
+
+    <!-- Collapsible content -->
+    <div class="collapse navbar-collapse" id="navbarSupportedContent">
+      <ul class="navbar-nav ml-auto text-center">
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/">
+                <i class="iconfont icon-home-fill"></i>
+                <span>首页</span>
+              </a>
+            </li>
+          
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/archives/">
+                <i class="iconfont icon-archive-fill"></i>
+                <span>归档</span>
+              </a>
+            </li>
+          
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/categories/">
+                <i class="iconfont icon-category-fill"></i>
+                <span>分类</span>
+              </a>
+            </li>
+          
+        
+        
+          <li class="nav-item" id="search-btn">
+            <a class="nav-link" target="_self" href="javascript:;" data-toggle="modal" data-target="#modalSearch" aria-label="Search">
+              <i class="iconfont icon-search"></i>
+            </a>
+          </li>
+          
+        
+        
+          <li class="nav-item" id="color-toggle-btn">
+            <a class="nav-link" target="_self" href="javascript:;" aria-label="Color Toggle">
+              <i class="iconfont icon-dark" id="color-toggle-icon"></i>
+            </a>
+          </li>
+        
+      </ul>
+    </div>
+  </div>
+</nav>
+
+  
+
+<div id="banner" class="banner" parallax=true
+     style="background: url('/img/default.png') no-repeat center center; background-size: cover;">
+  <div class="full-bg-img">
+    <div class="mask flex-center" style="background-color: rgba(0, 0, 0, 0.3)">
+      <div class="banner-text text-center fade-in-up">
+        <div class="h2">
+          
+            <span id="subtitle" data-typed-text="Introduction To Elf File"></span>
+          
+        </div>
+
+        
+          
+  <div class="mt-3">
+    
+    
+      <span class="post-meta">
+        <i class="iconfont icon-date-fill" aria-hidden="true"></i>
+        <time datetime="2020-11-24 10:42" pubdate>
+          2020年11月24日 上午
+        </time>
+      </span>
+    
+  </div>
+
+  <div class="mt-1">
+    
+      <span class="post-meta mr-2">
+        <i class="iconfont icon-chart"></i>
+        
+          14k 字
+        
+      </span>
+    
+
+    
+      <span class="post-meta mr-2">
+        <i class="iconfont icon-clock-fill"></i>
+        
+        
+        
+          118 分钟
+        
+      </span>
+    
+
+    
+    
+  </div>
+
+
+        
+      </div>
+
+      
+    </div>
+  </div>
+</div>
+
+</div>
+
+  </header>
+
+  <main>
+    
+      
+
+<div class="container-fluid nopadding-x">
+  <div class="row nomargin-x">
+    <div class="side-col d-none d-lg-block col-lg-2">
+      
+
+    </div>
+
+    <div class="col-lg-8 nopadding-x-md">
+      <div class="container nopadding-x-md" id="board-ctn">
+        <div id="board">
+          <article class="post-content mx-auto">
+            <!-- SEO header -->
+            <h1 style="display: none">Introduction To Elf File</h1>
+            
+            
+              <div class="markdown-body">
+                
+                <h1 id="导读">导读</h1>
+<blockquote>
+<p>“工欲善其事，必先利其器。”</p>
+</blockquote>
+<p>本文会介绍 ELF 文件以及阅读 ELF 文件的工具，熟悉 ELF 文件对探索动态链接是很有好处的。</p>
+<h1 id="环境">环境</h1>
+<figure class="highlight dockerfile"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br></pre></td><td class="code"><pre><code class="hljs dockerfile"><span class="hljs-keyword">FROM</span> debian:buster<br><span class="hljs-keyword">LABEL</span><span class="language-bash"> maintainer=<span class="hljs-string">&quot;837940593@qq.com&quot;</span></span><br><br><span class="hljs-keyword">ENV</span> DEBIAN_FRONTEND noninteractive<br><span class="hljs-keyword">RUN</span><span class="language-bash"> apt-get update</span><br><span class="hljs-keyword">RUN</span><span class="language-bash"> apt-get install -y build-essential bear make gcc g++ gdb</span><br><br><span class="hljs-comment"># Compile linker.</span><br><span class="hljs-keyword">RUN</span><span class="language-bash"> <span class="hljs-built_in">mkdir</span> /root/glibc</span><br><span class="hljs-keyword">WORKDIR</span><span class="language-bash"> /root/glibc</span><br><span class="hljs-keyword">RUN</span><span class="language-bash"> apt-get install -y wget</span><br><span class="hljs-keyword">RUN</span><span class="language-bash"> apt-get install -y gawk bison texinfo gettext</span><br><span class="hljs-keyword">RUN</span><span class="language-bash"> wget http://ftp.gnu.org/gnu/libc/glibc-2.28.tar.gz</span><br><span class="hljs-keyword">RUN</span><span class="language-bash"> tar -xzvf glibc-2.28.tar.gz</span><br><span class="hljs-keyword">RUN</span><span class="language-bash"> <span class="hljs-built_in">mkdir</span> build</span><br><span class="hljs-keyword">WORKDIR</span><span class="language-bash"> /root/glibc/build</span><br><span class="hljs-keyword">RUN</span><span class="language-bash"> ../glibc-2.28/configure CFLAGS=<span class="hljs-string">&quot;-O1 -ggdb -w&quot;</span> --with-tls --enable-add-ons=nptl --prefix=<span class="hljs-string">&quot;<span class="hljs-variable">$PWD</span>/install&quot;</span></span><br><span class="hljs-keyword">RUN</span><span class="language-bash"> bear make -j8</span><br><span class="hljs-keyword">RUN</span><span class="language-bash"> make install -j8</span><br><br><span class="hljs-comment"># Install tools.</span><br><span class="hljs-comment"># Install hexdump.</span><br><span class="hljs-keyword">RUN</span><span class="language-bash"> apt-get install -y bsdmainutils</span><br><span class="hljs-comment"># Install lief.</span><br><span class="hljs-keyword">RUN</span><span class="language-bash"> apt-get install -y python3 python3-pip</span><br><span class="hljs-keyword">RUN</span><span class="language-bash"> pip3 install lief</span><br><br><span class="hljs-keyword">CMD</span><span class="language-bash"> /bin/bash</span><br></code></pre></td></tr></table></figure>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><code class="hljs bash"><span class="hljs-comment"># uname -r</span><br>4.19.76-linuxkit<br><span class="hljs-comment"># cat /etc/*-release | grep -E &quot;VERSION_ID|ID&quot;</span><br>VERSION_ID=<span class="hljs-string">&quot;10&quot;</span><br>ID=debian<br></code></pre></td></tr></table></figure>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><code class="hljs bash"><span class="hljs-comment"># gcc --version | head -n 1</span><br>gcc (Debian 8.3.0-6) 8.3.0<br><span class="hljs-comment"># ldd --version | head -n 1</span><br>ldd (Debian GLIBC 2.28-10) 2.28<br></code></pre></td></tr></table></figure>
+<h1 id="一个小例子">一个小例子</h1>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><code class="hljs cpp"><span class="hljs-comment">// gcc -fPIC -ggdb -O0 -shared -Wl,--dynamic-linker=/root/glibc/build/install/lib/ld-linux-x86-64.so.2 foo.cpp -o libfoo.so</span><br><span class="hljs-function"><span class="hljs-type">void</span> <span class="hljs-title">foo</span><span class="hljs-params">()</span> </span>&#123;&#125;<br></code></pre></td></tr></table></figure>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><code class="hljs cpp"><span class="hljs-comment">// g++ main.cpp -L$PWD -Wl,-rpath=$PWD -Wl,--dynamic-linker=/root/glibc/build/install/lib/ld-linux-x86-64.so.2 -lfoo -o main</span><br><span class="hljs-function"><span class="hljs-keyword">extern</span> <span class="hljs-type">void</span> <span class="hljs-title">foo</span><span class="hljs-params">()</span></span>;<br><span class="hljs-function"><span class="hljs-type">int</span> <span class="hljs-title">main</span><span class="hljs-params">()</span> </span>&#123;<br>    <span class="hljs-built_in">foo</span>();<br>&#125;<br></code></pre></td></tr></table></figure>
+<h1 id="了解-elf-文件">了解 ELF 文件</h1>
+<h2 id="工具概述">工具概述</h2>
+<h3 id="dump-二进制">Dump 二进制</h3>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br></pre></td><td class="code"><pre><code class="hljs bash"><span class="hljs-comment"># od --skip-bytes=0 --read-bytes=8 --format=xL main</span><br><span class="hljs-comment"># 64 bits</span><br>0000000 00010102464c457f<br>0000010<br><span class="hljs-comment"># od --skip-bytes=0 --read-bytes=8 --format=xI main</span><br><span class="hljs-comment"># 32 bits</span><br>0000000 464c457f 00010102<br>0000010<br><span class="hljs-comment"># od --skip-bytes=0 --read-bytes=8 --format=xS main</span><br><span class="hljs-comment"># 16 bits</span><br>0000000 457f 464c 0102 0001<br>0000010<br><span class="hljs-comment"># od --skip-bytes=0 --read-bytes=8 --format=xC main</span><br><span class="hljs-comment"># 8 bits</span><br>0000000 7f 45 4c 46 02 01 01 00<br>0000010<br><span class="hljs-comment"># od --skip-bytes=0 --read-bytes=8 --format=xC -c main</span><br><span class="hljs-comment"># 8 bits with characters</span><br>0000000  7f  45  4c  46  02  01  01  00<br>        177   E   L   F 002 001 001  \0<br>0000010<br></code></pre></td></tr></table></figure>
+<p>阅读字符串：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><code class="hljs bash"><span class="hljs-comment"># dd if=libfoo.so of=libfoo.strtab ibs=1 obs=1 skip=$((0x3660)) count=$((0x15e))</span><br>350+0 records <span class="hljs-keyword">in</span><br>350+0 records out<br>350 bytes copied, 0.000862803 s, 406 kB/s<br><span class="hljs-comment"># strings libfoo.strtab | head -n 2</span><br>crtstuff.c<br>deregister_tm_clones<br></code></pre></td></tr></table></figure>
+<p>查找字符串：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><code class="hljs bash"><span class="hljs-comment"># strings -t x libfoo.so | head -n 2</span><br>319 __gmon_start__<br>328 _ITM_deregisterTMCloneTable<br></code></pre></td></tr></table></figure>
+<p><code>x</code> 表示用十六进制显示字符串的 offset 。</p>
+<h3 id="dump-汇编代码">Dump 汇编代码</h3>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><code class="hljs bash"><span class="hljs-comment"># objdump -d libfoo.so --start-address=0x1020 --stop-address=$((0x1020+0x10))</span><br>0000000000001020 &lt;.plt&gt;:<br>    1020:   ff 35 e2 2f 00 00       pushq  0x2fe2(%rip)  <span class="hljs-comment"># 4008 &lt;_GLOBAL_OFFSET_TABLE_+0x8&gt;</span><br>    1026:   ff 25 e4 2f 00 00       jmpq   *0x2fe4(%rip) <span class="hljs-comment"># 4010 &lt;_GLOBAL_OFFSET_TABLE_+0x10&gt;</span><br>    102c:   0f 1f 40 00             nopl   0x0(%rax)<br><span class="hljs-comment"># objdump -d -j .text main | tail -n 2</span><br>00000000000011b0 &lt;__libc_csu_fini&gt;:<br>    11b0:       c3                      retq<br><span class="hljs-comment"># objdump -d --disassemble-zeroes -j .data main | tail -n 2</span><br>0000000000004028 &lt;__dso_handle&gt;:<br>    4028:       28 40 00 00 00 00 00 00                             (@......<br></code></pre></td></tr></table></figure>
+<h3 id="dump-元信息">Dump 元信息</h3>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><code class="hljs bash"><span class="hljs-comment"># readelf --file-header main</span><br><span class="hljs-comment"># readelf --program-headers main</span><br><span class="hljs-comment"># readelf --section-headers main</span><br></code></pre></td></tr></table></figure>
+<h3 id="解析特定-sections">解析特定 sections</h3>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br></pre></td><td class="code"><pre><code class="hljs bash"><span class="hljs-comment"># readelf --dynamic main | head -n 5 | tail -n 4</span><br>Dynamic section at offset 0x2dd8 contains 28 entries:<br>  Tag        Type                         Name/Value<br> 0x0000000000000001 (NEEDED)             Shared library: [libfoo.so]<br> 0x0000000000000001 (NEEDED)             Shared library: [libc.so.6]<br><span class="hljs-comment"># readelf --symbols main | grep &quot;Symbol&quot; -A2</span><br>Symbol table <span class="hljs-string">&#x27;.dynsym&#x27;</span> contains 7 entries:<br>   Num:    Value          Size Type    Bind   Vis      Ndx Name<br>     0: 0000000000000000     0 NOTYPE  LOCAL  DEFAULT  UND<br>--<br>Symbol table <span class="hljs-string">&#x27;.symtab&#x27;</span> contains 69 entries:<br>   Num:    Value          Size Type    Bind   Vis      Ndx Name<br>     0: 0000000000000000     0 NOTYPE  LOCAL  DEFAULT  UND<br><span class="hljs-comment"># readelf --dyn-syms main | grep &quot;Symbol&quot; -A2</span><br>Symbol table <span class="hljs-string">&#x27;.dynsym&#x27;</span> contains 7 entries:<br>   Num:    Value          Size Type    Bind   Vis      Ndx Name<br>     0: 0000000000000000     0 NOTYPE  LOCAL  DEFAULT  UND<br><span class="hljs-comment"># readelf --relocs main | grep &quot;Relocation&quot; -A2</span><br>Relocation section <span class="hljs-string">&#x27;.rela.dyn&#x27;</span> at offset 0x4c8 contains 8 entries:<br>  Offset          Info           Type           Sym. Value    Sym. Name + Addend<br>000000003dc8  000000000008 R_X86_64_RELATIVE                    1130<br>--<br>Relocation section <span class="hljs-string">&#x27;.rela.plt&#x27;</span> at offset 0x588 contains 1 entry:<br>  Offset          Info           Type           Sym. Value    Sym. Name + Addend<br>000000004018  000400000007 R_X86_64_JUMP_SLO 0000000000000000 _Z3foov + 0<br><span class="hljs-comment"># readelf -p .strtab main | head -n 5 | tail -n 4</span><br>String dump of section <span class="hljs-string">&#x27;.strtab&#x27;</span>:<br>  [     1]  crtstuff.c<br>  [     c]  deregister_tm_clones<br>  [    21]  __do_global_dtors_aux<br></code></pre></td></tr></table></figure>
+<h2 id="elf-文件概述">ELF 文件概述</h2>
+<p><img src="http://junbin-hexo-img.oss-cn-beijing.aliyuncs.com/dynamic-linking/ELF_Executable_and_Linkable_Format_diagram_by_Ange_Albertini.png" srcset="/img/loading.gif" lazyload /></p>
+<p>File Header 和 Program Header 在 ELF 文件的开头，Section Header 在 ELF 文件的结尾。</p>
+<p>接下来我们会用 readelf 直接查看元数据，也会用 od 以二进制方式看看每一个 Header 。</p>
+<h3 id="file-header">File Header</h3>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br></pre></td><td class="code"><pre><code class="hljs bash"><span class="hljs-comment"># readelf --file-header main</span><br>ELF Header:<br>  Magic:   7f 45 4c 46 02 01 01 00 00 00 00 00 00 00 00 00<br>  Class:                             ELF64<br>  Data:                              2<span class="hljs-string">&#x27;s complement, little endian</span><br><span class="hljs-string">  Version:                           1 (current)</span><br><span class="hljs-string">  OS/ABI:                            UNIX - System V</span><br><span class="hljs-string">  ABI Version:                       0</span><br><span class="hljs-string">  Type:                              DYN (Shared object file)</span><br><span class="hljs-string">  Machine:                           Advanced Micro Devices X86-64</span><br><span class="hljs-string">  Version:                           0x1</span><br><span class="hljs-string">  Entry point address:               0x1050</span><br><span class="hljs-string">  Start of program headers:          64 (bytes into file)</span><br><span class="hljs-string">  Start of section headers:          14680 (bytes into file)</span><br><span class="hljs-string">  Flags:                             0x0</span><br><span class="hljs-string">  Size of this header:               64 (bytes)</span><br><span class="hljs-string">  Size of program headers:           56 (bytes)</span><br><span class="hljs-string">  Number of program headers:         11</span><br><span class="hljs-string">  Size of section headers:           64 (bytes)</span><br><span class="hljs-string">  Number of section headers:         30</span><br><span class="hljs-string">  Section header string table index: 29</span><br></code></pre></td></tr></table></figure>
+<p>File Header 各个字段的含义可以参考<a target="_blank" rel="noopener" href="https://en.wikipedia.org/wiki/Executable_and_Linkable_Format#File%20header">维基百科</a> 。</p>
+<blockquote>
+<p>The ELF header is 52 or 64 bytes long for 32-bit and 64-bit binaries respectively.</p>
+</blockquote>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><code class="hljs bash"><span class="hljs-comment"># od --skip-bytes=0 --read-bytes=64 --format=xC main</span><br></code></pre></td></tr></table></figure>
+<table>
+
+<thead>
+<tr class="header">
+<th style="text-align: center;">位移（八进制）</th>
+<th style="text-align: center;">内容</th>
+<th style="text-align: center;">解释</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: center;">0000000</td>
+<td style="text-align: center;">7f 45 4c 46</td>
+<td style="text-align: center;">ELF (magic number).</td>
+</tr>
+<tr class="even">
+<td style="text-align: center;"></td>
+<td style="text-align: center;">02</td>
+<td style="text-align: center;">1 is 32-bit format, 2 is 64-bit format.</td>
+</tr>
+<tr class="odd">
+<td style="text-align: center;"></td>
+<td style="text-align: center;">01</td>
+<td style="text-align: center;">1 is big endianness, 2 is litte endianness.</td>
+</tr>
+<tr class="even">
+<td style="text-align: center;"></td>
+<td style="text-align: center;">01</td>
+<td style="text-align: center;">Set to 1 for the original and current version of ELF.</td>
+</tr>
+<tr class="odd">
+<td style="text-align: center;"></td>
+<td style="text-align: center;">00</td>
+<td style="text-align: center;">ABI version, it is often set to 0.</td>
+</tr>
+<tr class="even">
+<td style="text-align: center;"></td>
+<td style="text-align: center;">00</td>
+<td style="text-align: center;">Further specifies the ABI version.</td>
+</tr>
+<tr class="odd">
+<td style="text-align: center;"></td>
+<td style="text-align: center;">00 00 00 00 00 00 00</td>
+<td style="text-align: center;">Padding, should be filled with zeros.</td>
+</tr>
+<tr class="even">
+<td style="text-align: center;">0000020</td>
+<td style="text-align: center;">03 00</td>
+<td style="text-align: center;">Identifies object file type, 0x3 is ET_DYN.</td>
+</tr>
+<tr class="odd">
+<td style="text-align: center;"></td>
+<td style="text-align: center;">3e 00</td>
+<td style="text-align: center;">Specifies instruction set architecture, 0x3e is amd64.</td>
+</tr>
+<tr class="even">
+<td style="text-align: center;"></td>
+<td style="text-align: center;">01 00 00 00</td>
+<td style="text-align: center;">Set to 1 for the original version of ELF.</td>
+</tr>
+<tr class="odd">
+<td style="text-align: center;"></td>
+<td style="text-align: center;">50 10 00 00 00 00 00 00</td>
+<td style="text-align: center;">Entry point address.</td>
+</tr>
+<tr class="even">
+<td style="text-align: center;">0000040</td>
+<td style="text-align: center;">40 00 00 00 00 00 00 00</td>
+<td style="text-align: center;">The start of the program header table. 0x40 = 64.</td>
+</tr>
+<tr class="odd">
+<td style="text-align: center;"></td>
+<td style="text-align: center;">58 39 00 00 00 00 00 00</td>
+<td style="text-align: center;">The start of the section header table.</td>
+</tr>
+<tr class="even">
+<td style="text-align: center;">0000060</td>
+<td style="text-align: center;">00 00 00 00</td>
+<td style="text-align: center;">Interpretation depends on the target architecture.</td>
+</tr>
+<tr class="odd">
+<td style="text-align: center;"></td>
+<td style="text-align: center;">40 00</td>
+<td style="text-align: center;">Size of file header.</td>
+</tr>
+<tr class="even">
+<td style="text-align: center;"></td>
+<td style="text-align: center;">38 00</td>
+<td style="text-align: center;">Size of a program header table entry.</td>
+</tr>
+<tr class="odd">
+<td style="text-align: center;"></td>
+<td style="text-align: center;">0b 00</td>
+<td style="text-align: center;">Number of entries in the program header table.</td>
+</tr>
+<tr class="even">
+<td style="text-align: center;"></td>
+<td style="text-align: center;">40 00</td>
+<td style="text-align: center;">Size of a section header table entry.</td>
+</tr>
+<tr class="odd">
+<td style="text-align: center;"></td>
+<td style="text-align: center;">1e 00</td>
+<td style="text-align: center;">Number of entries in the section header table.</td>
+</tr>
+<tr class="even">
+<td style="text-align: center;"></td>
+<td style="text-align: center;">1d 00</td>
+<td style="text-align: center;">Index of the section header table entry that contains the section names.</td>
+</tr>
+<tr class="odd">
+<td style="text-align: center;">0000100</td>
+<td style="text-align: center;"></td>
+<td style="text-align: center;"></td>
+</tr>
+</tbody>
+</table>
+<p>File Header 帮助链接器：</p>
+<ol type="1">
+<li>确认是否可以装载文件，包括系统是 32 位还是 64 位、大小端、ABI 版本等；</li>
+<li>决定如何装载文件，包括 Program Header 和 Section Header 的位置及大小、如何寻找 section 名称、entry point address 等。</li>
+</ol>
+<h3 id="program-header">Program Header</h3>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><code class="hljs bash"><span class="hljs-comment"># readelf --program-headers main</span><br>Program Headers:<br>  Type           Offset             VirtAddr           PhysAddr<br>                 FileSiz            MemSiz              Flags  Align<br>  PHDR           0x0000000000000040 0x0000000000000040 0x0000000000000040<br>                 0x0000000000000268 0x0000000000000268  R      0x8<br>  INTERP         0x00000000000002a8 0x00000000000002a8 0x00000000000002a8<br>                 0x0000000000000033 0x0000000000000033  R      0x1<br>      [Requesting program interpreter: /root/glibc/build/install/lib/ld-linux-x86-64.so.2]<br>  ...<br></code></pre></td></tr></table></figure>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><code class="hljs cpp"><span class="hljs-comment">// /usr/include/elf.h</span><br><span class="hljs-keyword">typedef</span> <span class="hljs-type">uint32_t</span> Elf64_Word;<br><span class="hljs-keyword">typedef</span> <span class="hljs-type">uint64_t</span> Elf64_Xword;<br><span class="hljs-keyword">typedef</span> <span class="hljs-keyword">struct</span><br>&#123;<br>  Elf64_Word    p_type;                 <span class="hljs-comment">/* Segment type */</span><br>  Elf64_Word    p_flags;                <span class="hljs-comment">/* Segment flags */</span><br>  Elf64_Off     p_offset;               <span class="hljs-comment">/* Segment file offset */</span><br>  Elf64_Addr    p_vaddr;                <span class="hljs-comment">/* Segment virtual address */</span><br>  Elf64_Addr    p_paddr;                <span class="hljs-comment">/* Segment physical address */</span><br>  Elf64_Xword   p_filesz;               <span class="hljs-comment">/* Segment size in file */</span><br>  Elf64_Xword   p_memsz;                <span class="hljs-comment">/* Segment size in memory */</span><br>  Elf64_Xword   p_align;                <span class="hljs-comment">/* Segment alignment */</span><br>&#125; Elf64_Phdr;<br></code></pre></td></tr></table></figure>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><code class="hljs bash"><span class="hljs-comment"># od --skip-bytes=$((0x40 + 0x38 * 1)) --read-bytes=0x38 --format=xL main</span><br></code></pre></td></tr></table></figure>
+<table>
+<thead>
+<tr class="header">
+<th style="text-align: center;">位移（八进制）</th>
+<th style="text-align: center;">内容</th>
+<th style="text-align: center;">解释</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: center;">0000170</td>
+<td style="text-align: center;">00000003</td>
+<td style="text-align: center;">PT_INTERP</td>
+</tr>
+<tr class="even">
+<td style="text-align: center;"></td>
+<td style="text-align: center;">00000004</td>
+<td style="text-align: center;">Segment flags.</td>
+</tr>
+<tr class="odd">
+<td style="text-align: center;"></td>
+<td style="text-align: center;">00000000000002a8</td>
+<td style="text-align: center;">Segment file offset.</td>
+</tr>
+<tr class="even">
+<td style="text-align: center;">0000210</td>
+<td style="text-align: center;">00000000000002a8</td>
+<td style="text-align: center;">Segment virtual address.</td>
+</tr>
+<tr class="odd">
+<td style="text-align: center;"></td>
+<td style="text-align: center;">00000000000002a8</td>
+<td style="text-align: center;">Segment physical address.</td>
+</tr>
+<tr class="even">
+<td style="text-align: center;">0000230</td>
+<td style="text-align: center;">0000000000000033</td>
+<td style="text-align: center;">Segment size in file.</td>
+</tr>
+<tr class="odd">
+<td style="text-align: center;"></td>
+<td style="text-align: center;">0000000000000033</td>
+<td style="text-align: center;">Segment size in memory.</td>
+</tr>
+<tr class="even">
+<td style="text-align: center;">0000250</td>
+<td style="text-align: center;">0000000000000001</td>
+<td style="text-align: center;">Segment alignment.</td>
+</tr>
+</tbody>
+</table>
+<p>比较让人迷惑的字段是 Segment physical address ，根据 <a target="_blank" rel="noopener" href="https://stackoverflow.com/questions/16812574/elf-files-what-is-a-section-and-why-do-we-need-it">What is a section and why do we need it</a> 和<a target="_blank" rel="noopener" href="https://zhuanlan.zhihu.com/p/54399161">写一个工具来了解ELF文件（二）</a> 两篇文章，Segment physical address 在现代操作系统中已经没有用处了，GCC 一般将其置为 Segment virtual address 。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><code class="hljs bash"><span class="hljs-comment"># od --skip-bytes=0x2a8 --read-bytes=0x33 --format=xC -c main</span><br>0001250  2f  72  6f  6f  74  2f  67  6c  69  62  63  2f  62  75  69  6c<br>          /   r   o   o   t   /   g   l   i   b   c   /   b   u   i   l<br>0001270  64  2f  69  6e  73  74  61  6c  6c  2f  6c  69  62  2f  6c  64<br>          d   /   i   n   s   t   a   l   l   /   l   i   b   /   l   d<br>0001310  2d  6c  69  6e  75  78  2d  78  38  36  2d  36  34  2e  73  6f<br>          -   l   i   n   u   x   -   x   8   6   -   6   4   .   s   o<br>0001330  2e  32  00<br>          .   2  \0<br>0001333<br></code></pre></td></tr></table></figure>
+<p>根据 Program Header 的指导，从 0x2a8 开始连续读 0x33 个字节，就是 interpreter 在文件系统中的路径。</p>
+<p>Program Header 最重要的作用是指导链接器如何装载 ELF 文件，要注意：由于对齐或者前面的某个 Segment 在文件中的大小和在内存中的大小不一致，Segment 在文件中的起始地址未必等于在内存中的起始地址，比如：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><code class="hljs bash"><span class="hljs-comment"># readelf --program-headers main</span><br>  Type           Offset             VirtAddr           PhysAddr<br>                 FileSiz            MemSiz              Flags  Align<br>  ...<br>  LOAD           0x0000000000002dc8 0x0000000000003dc8 0x0000000000003dc8<br>                 0x0000000000000268 0x0000000000000270  RW     0x1000<br></code></pre></td></tr></table></figure>
+<p>LOAD Segment 在文件中的起始地址是 0x2dc8 ，在内存中的起始地址是 0x3dc8 ，两者并不相等。</p>
+<h3 id="section-header">Section Header</h3>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><code class="hljs bash"><span class="hljs-comment"># readelf --section-headers main</span><br>Section Headers:<br>  [Nr] Name              Type             Address           Offset<br>       Size              EntSize          Flags  Link  Info  Align<br>  ...<br>  [13] .plt.got          PROGBITS         0000000000001040  00001040<br>       0000000000000008  0000000000000008  AX       0     0     8<br>  ...<br>  [28] .strtab           STRTAB           0000000000000000  00003650<br>       00000000000001fa  0000000000000000           0     0     1<br>  ...<br></code></pre></td></tr></table></figure>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><code class="hljs cpp"><span class="hljs-keyword">typedef</span> <span class="hljs-type">uint32_t</span> Elf64_Word;<br><span class="hljs-keyword">typedef</span> <span class="hljs-type">uint64_t</span> Elf64_Xword;<br><span class="hljs-keyword">typedef</span> <span class="hljs-keyword">struct</span><br>&#123;<br>  Elf64_Word    sh_name;                <span class="hljs-comment">/* Section name (string tbl index) */</span><br>  Elf64_Word    sh_type;                <span class="hljs-comment">/* Section type */</span><br>  Elf64_Xword   sh_flags;               <span class="hljs-comment">/* Section flags */</span><br>  Elf64_Addr    sh_addr;                <span class="hljs-comment">/* Section virtual addr at execution */</span><br>  Elf64_Off     sh_offset;              <span class="hljs-comment">/* Section file offset */</span><br>  Elf64_Xword   sh_size;                <span class="hljs-comment">/* Section size in bytes */</span><br>  Elf64_Word    sh_link;                <span class="hljs-comment">/* Link to another section */</span><br>  Elf64_Word    sh_info;                <span class="hljs-comment">/* Additional section information */</span><br>  Elf64_Xword   sh_addralign;           <span class="hljs-comment">/* Section alignment */</span><br>  Elf64_Xword   sh_entsize;             <span class="hljs-comment">/* Entry size if section holds table */</span><br>&#125; Elf64_Shdr;<br></code></pre></td></tr></table></figure>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><code class="hljs bash"><span class="hljs-comment"># od --skip-bytes=$((0x3958 + 0x40 * 13)) --read-bytes=0x40 --format=xL main</span><br></code></pre></td></tr></table></figure>
+<table>
+<thead>
+<tr class="header">
+<th style="text-align: center;">位移（八进制）</th>
+<th style="text-align: center;">内容</th>
+<th style="text-align: center;">解释</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: center;">0036230</td>
+<td style="text-align: center;">00000094</td>
+<td style="text-align: center;">Section name (string table index).</td>
+</tr>
+<tr class="even">
+<td style="text-align: center;"></td>
+<td style="text-align: center;">00000001</td>
+<td style="text-align: center;">Section type, SHT_PROGBITS.</td>
+</tr>
+<tr class="odd">
+<td style="text-align: center;"></td>
+<td style="text-align: center;">0000000000000006</td>
+<td style="text-align: center;">Section flags, SHF_ALLOC | SHF_EXECINSTR.</td>
+</tr>
+<tr class="even">
+<td style="text-align: center;">0036250</td>
+<td style="text-align: center;">0000000000001040</td>
+<td style="text-align: center;">Section virtual address.</td>
+</tr>
+<tr class="odd">
+<td style="text-align: center;"></td>
+<td style="text-align: center;">0000000000001040</td>
+<td style="text-align: center;">Section file offset.</td>
+</tr>
+<tr class="even">
+<td style="text-align: center;">0036270</td>
+<td style="text-align: center;">0000000000000008</td>
+<td style="text-align: center;">Section size in bytes.</td>
+</tr>
+<tr class="odd">
+<td style="text-align: center;"></td>
+<td style="text-align: center;">00000000</td>
+<td style="text-align: center;">Link to another section.</td>
+</tr>
+<tr class="even">
+<td style="text-align: center;"></td>
+<td style="text-align: center;">00000000</td>
+<td style="text-align: center;">Additional section information.</td>
+</tr>
+<tr class="odd">
+<td style="text-align: center;">0036310</td>
+<td style="text-align: center;">0000000000000008</td>
+<td style="text-align: center;">Section alignment.</td>
+</tr>
+<tr class="even">
+<td style="text-align: center;"></td>
+<td style="text-align: center;">0000000000000008</td>
+<td style="text-align: center;">Entry size if section holds table.</td>
+</tr>
+</tbody>
+</table>
+<p>根据 <a target="_blank" rel="noopener" href="https://man7.org/linux/man-pages/man5/elf.5.html">man elf</a> 的描述，sh_link / sh_info 的含义都取决于 section 。</p>
+<h2 id="plt-.got.plt-.plt.got-.got">.plt &amp; .got.plt / .plt.got &amp; .got</h2>
+<p>Debug 技巧：先用 <code>info proc mappings</code> 获取 start address ，再用 <code>watch *(unsigned long long*)(&lt;start_addr&gt; + &lt;addr&gt;)</code> 就能看到改变特定地址的栈了。</p>
+<ol type="1">
+<li>.plt.got &amp; .got 同 .plt &amp; .got.plt 一样，都是一组用于重定位的 sections ；</li>
+<li>不同之处是：
+<ol type="1">
+<li>.plt.got &amp; .got 没有 lazy binding ，由链接器直接触发重定位；</li>
+<li>.plt &amp; .got.plt 有 lazy binding ，在第一次调用函数时触发重定位。</li>
+</ol></li>
+</ol>
+<h3 id="plt-.got.plt">.plt &amp; .got.plt</h3>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><code class="hljs bash"><span class="hljs-comment"># objdump -d -j .plt main</span><br>0000000000001020 &lt;.plt&gt;:<br>    1020:       ff 35 e2 2f 00 00       pushq  0x2fe2(%rip)        <span class="hljs-comment"># 4008 &lt;_GLOBAL_OFFSET_TABLE_+0x8&gt;</span><br>    1026:       ff 25 e4 2f 00 00       jmpq   *0x2fe4(%rip)        <span class="hljs-comment"># 4010 &lt;_GLOBAL_OFFSET_TABLE_+0x10&gt;</span><br>    102c:       0f 1f 40 00             nopl   0x0(%rax)<br><br>0000000000001030 &lt;_Z3foov@plt&gt;:<br>    1030:       ff 25 e2 2f 00 00       jmpq   *0x2fe2(%rip)        <span class="hljs-comment"># 4018 &lt;_Z3foov&gt;</span><br>    1036:       68 00 00 00 00          pushq  <span class="hljs-variable">$0x0</span><br>    103b:       e9 e0 ff ff ff          jmpq   1020 &lt;.plt&gt;<br></code></pre></td></tr></table></figure>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><code class="hljs bash"><span class="hljs-comment"># readelf --section-headers main | grep -E &quot;Nr|.got.plt&quot; -A1 | grep -v &quot;\-\-&quot;</span><br>  [Nr] Name              Type             Address           Offset<br>       Size              EntSize          Flags  Link  Info  Align<br>  [23] .got.plt          PROGBITS         0000000000004000  00003000<br>       0000000000000020  0000000000000008  WA       0     0     8<br></code></pre></td></tr></table></figure>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><code class="hljs bash"><span class="hljs-comment"># od --skip-bytes=$((0x1036 + 0x2fe2 - 0x4000 + 0x3000)) --read-bytes=8 --format=xL main</span><br>0030030 0000000000001036<br>0030040<br></code></pre></td></tr></table></figure>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><code class="hljs bash"><span class="hljs-comment"># readelf --relocs main | grep &quot;$(printf &#x27;%x&#x27; $((0x1036 + 0x2fe2)))&quot; -B2</span><br>Relocation section <span class="hljs-string">&#x27;.rela.plt&#x27;</span> at offset 0x590 contains 1 entry:<br>  Offset          Info           Type           Sym. Value    Sym. Name + Addend<br>000000004018  000400000007 R_X86_64_JUMP_SLO 0000000000000000 _Z3foov + 0<br></code></pre></td></tr></table></figure>
+<p>.got.plt 表项（虚存地址是 0x1036 + 0x2fe2）会发生两次改变：</p>
+<ol type="1">
+<li>从 0x1036 变成 start address + 0x1036 ：
+<ol type="1">
+<li>由运行时链接器在 .rela.plt (R_X86_64_JUMP_SLOT) 表项的指导下完成，调用栈是 <code>dl_main -&gt; _dl_relocate_object -&gt; elf_dynamic_do_Rela</code> ；</li>
+<li>是同文件重定位，仅仅加上了 start address ，不需要查找符号，执行速度快；</li>
+</ol></li>
+<li>从 start address + 0x1036 变成 <code>foo</code> 函数的首地址 ：
+<ol type="1">
+<li>由用户代码在函数 <code>foo</code> 第一次被调用时触发，调用栈是 <code>main -&gt; _dl_runtime_resolve_xsavec -&gt; _dl_fixup</code> ；</li>
+<li>是跨文件重定位，需要查找符号，执行速度慢。</li>
+</ol></li>
+</ol>
+<h3 id="plt.got-.got">.plt.got &amp; .got</h3>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><code class="hljs bash"><span class="hljs-comment"># objdump -d -j .plt.got main</span><br>0000000000001040 &lt;__cxa_finalize@plt&gt;:<br>    1040:       ff 25 b2 2f 00 00       jmpq   *0x2fb2(%rip)        <span class="hljs-comment"># 3ff8 &lt;__cxa_finalize@GLIBC_2.2.5&gt;</span><br>    1046:       66 90                   xchg   %ax,%ax<br></code></pre></td></tr></table></figure>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><code class="hljs bash"><span class="hljs-comment"># readelf --section-headers main | grep -E &quot;Nr| .got &quot; -A1 | grep -v &quot;\-\-&quot;</span><br>  [Nr] Name              Type             Address           Offset<br>       Size              EntSize          Flags  Link  Info  Align<br>  [22] .got              PROGBITS         0000000000003fd8  00002fd8<br>       0000000000000028  0000000000000008  WA       0     0     8<br></code></pre></td></tr></table></figure>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><code class="hljs bash"><span class="hljs-comment"># od --skip-bytes=$((0x1046 + 0x2fb2 - 0x3fd8 + 0x2fd8)) --read-bytes=8 --format=xL main</span><br>0027770 0000000000000000<br>0030000<br></code></pre></td></tr></table></figure>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><code class="hljs bash"><span class="hljs-comment"># readelf --relocs main | grep -E &quot;Offset|$(printf &#x27;%x&#x27; $((0x1046 + 0x2fb2)))&quot;</span><br>  Offset          Info           Type           Sym. Value    Sym. Name + Addend<br>000000003ff8  000600000006 R_X86_64_GLOB_DAT 0000000000000000 __cxa_finalize@GLIBC_2.2.5 + 0<br></code></pre></td></tr></table></figure>
+<p>.got 表项（虚存地址是 0x1046 + 0x2fb2）只会发生一次改变，从 0x0 变成 <code>__cxa_finalize</code> 函数的首地址：</p>
+<ol type="1">
+<li>由运行时链接器在 .rela.dyn (R_X86_64_GLOB_DAT) 表项的指导下完成，调用栈是 <code>dl_main -&gt; _dl_relocate_object -&gt; elf_dynamic_do_Rela -&gt; elf_machine_rela</code> ；</li>
+<li>是跨文件重定位，需要查找符号，执行速度慢。</li>
+</ol>
+<h2 id="rela.dyn-.rela.plt">.rela.dyn &amp; .rela.plt</h2>
+<p>以 foo.cpp 为例：</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><code class="hljs cpp"><span class="hljs-comment">// foo.cpp</span><br><span class="hljs-meta">#<span class="hljs-keyword">include</span> <span class="hljs-string">&lt;iostream&gt;</span></span><br><span class="hljs-keyword">namespace</span> &#123;<br><span class="hljs-type">int</span> var = <span class="hljs-number">1</span>;<br><span class="hljs-function"><span class="hljs-type">void</span> <span class="hljs-title">bar</span><span class="hljs-params">()</span> </span>&#123; std::cout &lt;&lt; <span class="hljs-string">&quot;bar&quot;</span> &lt;&lt; std::endl; &#125;<br>&#125;<br><span class="hljs-function"><span class="hljs-type">void</span> <span class="hljs-title">foo</span><span class="hljs-params">()</span> </span>&#123;&#125;<br></code></pre></td></tr></table></figure>
+<h3 id="rela.dyn-.rela.plt-1">.rela.dyn / .rela.plt</h3>
+<p>根据 <a target="_blank" rel="noopener" href="https://refspecs.linuxfoundation.org/LSB_4.1.0/LSB-Core-S390/LSB-Core-S390/sections.html">Linux Foundation Referenced Specifications: Additional Special Sections</a> 的说法：</p>
+<ol type="1">
+<li>.rela.plt section 负责配合 .plt section 完成<a href="https://clcanny.github.io/2020/11/21/dynamic-linking-relocation-across-files/">跨文件重定位</a> ；</li>
+<li>.rela.dyn 负责其它类型的重定位。</li>
+</ol>
+<h3 id="rela.dyn-.rela.plt-与-.symtab-的关系">.rela.dyn &amp; .rela.plt 与 .symtab 的关系</h3>
+<p>.symtab 中的 undefined symbols 都能在 relocation sections 中找到：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><code class="hljs bash"><span class="hljs-comment"># readelf --symbols --wide libfoo.so | grep &quot;.symtab&quot; -A 100 | grep &quot;UND&quot; | awk &#x27;&#123;print $8&#125;&#x27; | sort</span><br>__cxa_atexit@@GLIBC_2.2.5<br>__cxa_finalize@@GLIBC_2.2.5<br>__gmon_start__<br>_ITM_deregisterTMCloneTable<br>_ITM_registerTMCloneTable<br>_Jv_RegisterClasses<br>_ZNSolsEPFRSoS_E@@GLIBCXX_3.4<br>_ZNSt8ios_base4InitC1Ev@@GLIBCXX_3.4<br>_ZNSt8ios_base4InitD1Ev@@GLIBCXX_3.4<br>_ZSt4cout@@GLIBCXX_3.4<br>_ZSt4endlIcSt11char_traitsIcEERSt13basic_ostreamIT_T0_ES6_@@GLIBCXX_3.4<br>_ZStlsISt11char_traitsIcEERSt13basic_ostreamIcT_ES5_PKc@@GLIBCXX_3.4<br></code></pre></td></tr></table></figure>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><code class="hljs bash"><span class="hljs-comment"># readelf --relocs --wide libfoo.so | grep -v &quot;\&lt;Offset\&gt;&quot; | awk &#x27;&#123;print $5&#125;&#x27; | sort | uniq</span><br>__cxa_atexit@GLIBC_2.2.5<br>__cxa_finalize@GLIBC_2.2.5<br>__gmon_start__<br>_ITM_deregisterTMCloneTable<br>_ITM_registerTMCloneTable<br>_Jv_RegisterClasses<br>offset<br>_ZNSolsEPFRSoS_E@GLIBCXX_3.4<br>_ZNSt8ios_base4InitC1Ev@GLIBCXX_3.4<br>_ZNSt8ios_base4InitD1Ev@GLIBCXX_3.4<br>_ZSt4cout@GLIBCXX_3.4<br>_ZSt4endlIcSt11char_traitsIcEERSt13basic_ostreamIT_T0_ES6_@GLIBCXX_3.4<br>_ZStlsISt11char_traitsIcEERSt13basic_ostreamIcT_ES5_PKc@GLIBCXX_3.4<br></code></pre></td></tr></table></figure>
+<h1 id="参考资料">参考资料</h1>
+<p>ELF (except .plt and .got.plt and etc.):</p>
+<ul>
+<li><a target="_blank" rel="noopener" href="https://en.wikipedia.org/wiki/Executable_and_Linkable_Format">Wikipedia: Executable and Linkable Format</a></li>
+<li><a target="_blank" rel="noopener" href="http://blog.k3170makan.com/2018/11/introduction-to-elf-format-part-vii.html">Keith Makan: Introduction to the ELF Format (Part VII): Dynamic Linking / Loading and the .dynamic section</a></li>
+<li><a target="_blank" rel="noopener" href="https://zhuanlan.zhihu.com/p/54399161">知乎：写一个工具来了解ELF文件（二）</a></li>
+<li><a target="_blank" rel="noopener" href="https://stackoverflow.com/questions/16812574/elf-files-what-is-a-section-and-why-do-we-need-it">Stack Overflow: What is a section and why do we need it</a></li>
+<li><a target="_blank" rel="noopener" href="https://stackoverflow.com/questions/23379880/difference-between-program-header-and-section-header-in-elf">Stack Overflow: Difference between Program header and Section Header in ELF</a></li>
+<li><a target="_blank" rel="noopener" href="https://blogs.oracle.com/solaris/gnu-hash-elf-sections-v2">Oracle Solaris Blog: GNU Hash ELF Sections</a></li>
+<li><a target="_blank" rel="noopener" href="https://docs.oracle.com/cd/E23824_01/html/819-0690/chapter6-42444.html">ORACLE: Dynamic Section</a></li>
+</ul>
+<p>.plt and .got.plt and etc.:</p>
+<ul>
+<li><a target="_blank" rel="noopener" href="https://reverseengineering.stackexchange.com/questions/1992/what-is-plt-got">Stack Exchange: What is PLT/GOT?</a></li>
+<li><a target="_blank" rel="noopener" href="https://stackoverflow.com/questions/43048932/why-does-the-plt-exist-in-addition-to-the-got-instead-of-just-using-the-got">Stack Overflow: Why does the PLT exist in addition to the GOT, instead of just using the GOT?</a></li>
+<li><a target="_blank" rel="noopener" href="https://stackoverflow.com/questions/58076539/plt-plt-got-what-is-different">Stack Overflow: .plt .plt.got what is different?</a></li>
+<li><a target="_blank" rel="noopener" href="https://stackoverflow.com/questions/11676472/what-is-the-difference-between-got-and-got-plt-section">Stack Overflow: What is the difference between .got and .got.plt section?</a></li>
+<li><a target="_blank" rel="noopener" href="https://www.technovelty.org/linux/plt-and-got-the-key-to-code-sharing-and-dynamic-libraries.html">Technovelty: PLT and GOT - the key to code sharing and dynamic libraries</a></li>
+<li><a target="_blank" rel="noopener" href="https://systemoverlord.com/2017/03/19/got-and-plt-for-pwning.html">System Overlord: GOT and PLT for pwning.</a></li>
+<li><a target="_blank" rel="noopener" href="https://lief.quarkslab.com/doc/latest/tutorials/05_elf_infect_plt_got.html">LIEF: 05 - Infecting the plt/got</a></li>
+</ul>
+<p>.rela.dyn and .rela.plt:</p>
+<ul>
+<li><a target="_blank" rel="noopener" href="https://refspecs.linuxfoundation.org/LSB_4.1.0/LSB-Core-S390/LSB-Core-S390/sections.html">Linux Foundation Referenced Specifications: Additional Special Sections</a></li>
+<li><a target="_blank" rel="noopener" href="http://blog.k3170makan.com/2018/10/introduction-to-elf-format-part-vi_18.html">Keith Makan: Introduction to The ELF Format (Part VI): The Symbol Table and Relocations (Part 2)</a></li>
+</ul>
+
+                
+              </div>
+            
+            <hr/>
+            <div>
+              <div class="post-metas my-3">
+  
+    <div class="post-meta mr-3 d-flex align-items-center">
+      <i class="iconfont icon-category"></i>
+      
+
+<span class="category-chains">
+  
+  
+    
+      <span class="category-chain">
+        
+  <a href="/categories/Computer-Science/" class="category-chain-item">Computer Science</a>
+  
+  
+    <span>></span>
+    
+  <a href="/categories/Computer-Science/Dynamic-Linking/" class="category-chain-item">Dynamic Linking</a>
+  
+  
+
+  
+
+      </span>
+    
+  
+</span>
+
+    </div>
+  
+  
+</div>
+
+
+              
+  
+
+  <div class="license-box my-3">
+    <div class="license-title">
+      <div>Introduction To Elf File</div>
+      <div>https://clcanny.github.io/2020/11/24/computer-science/dynamic-linking/introduction-to-elf-file/</div>
+    </div>
+    <div class="license-meta">
+      
+        <div class="license-meta-item">
+          <div>作者</div>
+          <div>JunBin</div>
+        </div>
+      
+      
+        <div class="license-meta-item license-meta-date">
+          <div>发布于</div>
+          <div>2020年11月24日</div>
+        </div>
+      
+      
+      
+        <div class="license-meta-item">
+          <div>许可协议</div>
+          <div>
+            
+              
+              
+                <a target="_blank" href="https://creativecommons.org/licenses/by/4.0/">
+                  <span class="hint--top hint--rounded" aria-label="BY - 署名">
+                    <i class="iconfont icon-by"></i>
+                  </span>
+                </a>
+              
+            
+          </div>
+        </div>
+      
+    </div>
+    <div class="license-icon iconfont"></div>
+  </div>
+
+
+
+              
+                <div class="post-prevnext my-3">
+                  <article class="post-prev col-6">
+                    
+                    
+                      <a href="/2020/12/03/computer-science/dynamic-linking/relocation-types/" title="Relocation Types">
+                        <i class="iconfont icon-arrowleft"></i>
+                        <span class="hidden-mobile">Relocation Types</span>
+                        <span class="visible-mobile">上一篇</span>
+                      </a>
+                    
+                  </article>
+                  <article class="post-next col-6">
+                    
+                    
+                      <a href="/2020/11/21/computer-science/dynamic-linking/relocation-across-files/" title="Relocation Across Files">
+                        <span class="hidden-mobile">Relocation Across Files</span>
+                        <span class="visible-mobile">下一篇</span>
+                        <i class="iconfont icon-arrowright"></i>
+                      </a>
+                    
+                  </article>
+                </div>
+              
+            </div>
+
+            
+          </article>
+        </div>
+      </div>
+    </div>
+
+    <div class="side-col d-none d-lg-block col-lg-2">
+      
+  <aside class="sidebar" style="margin-left: -1rem">
+    <div id="toc">
+  <p class="toc-header">
+    <i class="iconfont icon-list"></i>
+    <span>目录</span>
+  </p>
+  <div class="toc-body" id="toc-body"></div>
+</div>
+
+
+
+  </aside>
+
+
+    </div>
+  </div>
+</div>
+
+
+
+
+
+  
+
+
+
+  
+
+
+
+  
+
+
+
+  
+
+
+
+  
+
+
+
+  <script>
+  Fluid.utils.createScript('https://lib.baomitu.com/mermaid/8.14.0/mermaid.min.js', function() {
+    mermaid.initialize({"theme":"default"});
+
+    Fluid.events.registerRefreshCallback(function() {
+      if ('mermaid' in window) {
+        mermaid.init();
+      }
+    });
+  });
+</script>
+
+
+
+
+
+
+    
+
+    
+      <a id="scroll-top-button" aria-label="TOP" href="#" role="button">
+        <i class="iconfont icon-arrowup" aria-hidden="true"></i>
+      </a>
+    
+
+    
+      <div class="modal fade" id="modalSearch" tabindex="-1" role="dialog" aria-labelledby="ModalLabel"
+     aria-hidden="true">
+  <div class="modal-dialog modal-dialog-scrollable modal-lg" role="document">
+    <div class="modal-content">
+      <div class="modal-header text-center">
+        <h4 class="modal-title w-100 font-weight-bold">搜索</h4>
+        <button type="button" id="local-search-close" class="close" data-dismiss="modal" aria-label="Close">
+          <span aria-hidden="true">&times;</span>
+        </button>
+      </div>
+      <div class="modal-body mx-3">
+        <div class="md-form mb-5">
+          <input type="text" id="local-search-input" class="form-control validate">
+          <label data-error="x" data-success="v" for="local-search-input">关键词</label>
+        </div>
+        <div class="list-group" id="local-search-result"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+    
+
+    
+  </main>
+
+  <footer>
+    <div class="footer-inner">
+  
+    <div class="footer-content">
+       <a href="https://hexo.io" target="_blank" rel="nofollow noopener"><span>Hexo</span></a> <i class="iconfont icon-love"></i> <a href="https://github.com/fluid-dev/hexo-theme-fluid" target="_blank" rel="nofollow noopener"><span>Fluid</span></a> 
+    </div>
+  
+  
+  
+  
+</div>
+
+  </footer>
+
+  <!-- Scripts -->
+  
+  <script  src="https://lib.baomitu.com/nprogress/0.2.0/nprogress.min.js" ></script>
+  <link  rel="stylesheet" href="https://lib.baomitu.com/nprogress/0.2.0/nprogress.min.css" />
+
+  <script>
+    NProgress.configure({"showSpinner":false,"trickleSpeed":100})
+    NProgress.start()
+    window.addEventListener('load', function() {
+      NProgress.done();
+    })
+  </script>
+
+
+<script  src="https://lib.baomitu.com/jquery/3.6.0/jquery.min.js" ></script>
+<script  src="https://lib.baomitu.com/twitter-bootstrap/4.6.1/js/bootstrap.min.js" ></script>
+<script  src="/js/events.js" ></script>
+<script  src="/js/plugins.js" ></script>
+
+
+  <script  src="https://lib.baomitu.com/typed.js/2.0.12/typed.min.js" ></script>
+  <script>
+    (function (window, document) {
+      var typing = Fluid.plugins.typing;
+      var subtitle = document.getElementById('subtitle');
+      if (!subtitle || !typing) {
+        return;
+      }
+      var text = subtitle.getAttribute('data-typed-text');
+      
+        typing(text);
+      
+    })(window, document);
+  </script>
+
+
+
+
+  
+    <script  src="/js/img-lazyload.js" ></script>
+  
+
+
+
+
+  
+<script>
+  Fluid.utils.createScript('https://lib.baomitu.com/tocbot/4.18.2/tocbot.min.js', function() {
+    var toc = jQuery('#toc');
+    if (toc.length === 0 || !window.tocbot) { return; }
+    var boardCtn = jQuery('#board-ctn');
+    var boardTop = boardCtn.offset().top;
+
+    window.tocbot.init(Object.assign({
+      tocSelector     : '#toc-body',
+      contentSelector : '.markdown-body',
+      linkClass       : 'tocbot-link',
+      activeLinkClass : 'tocbot-active-link',
+      listClass       : 'tocbot-list',
+      isCollapsedClass: 'tocbot-is-collapsed',
+      collapsibleClass: 'tocbot-is-collapsible',
+      scrollSmooth    : true,
+      includeTitleTags: true,
+      headingsOffset  : -boardTop,
+    }, CONFIG.toc));
+    if (toc.find('.toc-list-item').length > 0) {
+      toc.css('visibility', 'visible');
+    }
+
+    Fluid.events.registerRefreshCallback(function() {
+      if ('tocbot' in window) {
+        tocbot.refresh();
+        var toc = jQuery('#toc');
+        if (toc.length === 0 || !tocbot) {
+          return;
+        }
+        if (toc.find('.toc-list-item').length > 0) {
+          toc.css('visibility', 'visible');
+        }
+      }
+    });
+  });
+</script>
+
+
+  <script src=https://lib.baomitu.com/clipboard.js/2.0.11/clipboard.min.js></script>
+
+  <script>Fluid.plugins.codeWidget();</script>
+
+
+  
+<script>
+  Fluid.utils.createScript('https://lib.baomitu.com/anchor-js/4.3.1/anchor.min.js', function() {
+    window.anchors.options = {
+      placement: CONFIG.anchorjs.placement,
+      visible  : CONFIG.anchorjs.visible
+    };
+    if (CONFIG.anchorjs.icon) {
+      window.anchors.options.icon = CONFIG.anchorjs.icon;
+    }
+    var el = (CONFIG.anchorjs.element || 'h1,h2,h3,h4,h5,h6').split(',');
+    var res = [];
+    for (var item of el) {
+      res.push('.markdown-body > ' + item.trim());
+    }
+    if (CONFIG.anchorjs.placement === 'left') {
+      window.anchors.options.class = 'anchorjs-link-left';
+    }
+    window.anchors.add(res.join(', '));
+
+    Fluid.events.registerRefreshCallback(function() {
+      if ('anchors' in window) {
+        anchors.removeAll();
+        var el = (CONFIG.anchorjs.element || 'h1,h2,h3,h4,h5,h6').split(',');
+        var res = [];
+        for (var item of el) {
+          res.push('.markdown-body > ' + item.trim());
+        }
+        if (CONFIG.anchorjs.placement === 'left') {
+          anchors.options.class = 'anchorjs-link-left';
+        }
+        anchors.add(res.join(', '));
+      }
+    });
+  });
+</script>
+
+
+  
+<script>
+  Fluid.utils.createScript('https://lib.baomitu.com/fancybox/3.5.7/jquery.fancybox.min.js', function() {
+    Fluid.plugins.fancyBox();
+  });
+</script>
+
+
+  <script>Fluid.plugins.imageCaption();</script>
+
+  <script  src="/js/local-search.js" ></script>
+
+
+
+
+
+<!-- 主题的启动项，将它保持在最底部 -->
+<!-- the boot of the theme, keep it at the bottom -->
+<script  src="/js/boot.js" ></script>
+
+
+  
+
+  <noscript>
+    <div class="noscript-warning">博客在允许 JavaScript 运行的环境下浏览效果更佳</div>
+  </noscript>
+</body>
+</html>

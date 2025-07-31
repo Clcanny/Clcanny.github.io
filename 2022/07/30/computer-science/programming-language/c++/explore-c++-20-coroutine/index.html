@@ -1,0 +1,739 @@
+
+
+<!DOCTYPE html>
+<html lang="zh-CN" data-default-color-scheme=auto>
+
+
+
+<head>
+  <meta charset="UTF-8">
+  <link rel="apple-touch-icon" sizes="76x76" href="/img/fluid.png">
+  <link rel="icon" href="/img/fluid.png">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, shrink-to-fit=no">
+  <meta http-equiv="x-ua-compatible" content="ie=edge">
+  
+  <meta name="theme-color" content="#2f4154">
+  <meta name="author" content="JunBin">
+  <meta name="keywords" content="">
+  
+    <meta name="description" content="测试环境 123456789101112# docker run -it gcc:12.2.0-bullseye g++ --versiong++ (GCC) 12.2.0# docker run -it gcc:12.2.0-bullseye cat &#x2F;etc&#x2F;os-releasePRETTY_NAME&#x3D;&quot;Debian GNU&#x2F;Linux 11 (bullseye)&quot;NAME">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Explore C++20 Coroutine">
+<meta property="og:url" content="https://clcanny.github.io/2022/07/30/computer-science/programming-language/c++/explore-c++-20-coroutine/index.html">
+<meta property="og:site_name" content="On The Road">
+<meta property="og:description" content="测试环境 123456789101112# docker run -it gcc:12.2.0-bullseye g++ --versiong++ (GCC) 12.2.0# docker run -it gcc:12.2.0-bullseye cat &#x2F;etc&#x2F;os-releasePRETTY_NAME&#x3D;&quot;Debian GNU&#x2F;Linux 11 (bullseye)&quot;NAME">
+<meta property="og:locale" content="zh_CN">
+<meta property="article:published_time" content="2022-07-30T05:26:01.000Z">
+<meta property="article:modified_time" content="2024-10-30T15:47:28.515Z">
+<meta property="article:author" content="JunBin">
+<meta name="twitter:card" content="summary_large_image">
+  
+  
+  
+  <title>Explore C++20 Coroutine - On The Road</title>
+
+  <link  rel="stylesheet" href="https://lib.baomitu.com/twitter-bootstrap/4.6.1/css/bootstrap.min.css" />
+
+
+
+  <link  rel="stylesheet" href="https://lib.baomitu.com/github-markdown-css/4.0.0/github-markdown.min.css" />
+
+  <link  rel="stylesheet" href="https://lib.baomitu.com/hint.css/2.7.0/hint.min.css" />
+
+  <link  rel="stylesheet" href="https://lib.baomitu.com/fancybox/3.5.7/jquery.fancybox.min.css" />
+
+
+
+<!-- 主题依赖的图标库，不要自行修改 -->
+<!-- Do not modify the link that theme dependent icons -->
+
+<link rel="stylesheet" href="//at.alicdn.com/t/font_1749284_hj8rtnfg7um.css">
+
+
+
+<link rel="stylesheet" href="//at.alicdn.com/t/font_1736178_lbnruvf0jn.css">
+
+
+<link  rel="stylesheet" href="/css/main.css" />
+
+
+  <link id="highlight-css" rel="stylesheet" href="/css/highlight.css" />
+  
+    <link id="highlight-css-dark" rel="stylesheet" href="/css/highlight-dark.css" />
+  
+
+
+
+
+  <script id="fluid-configs">
+    var Fluid = window.Fluid || {};
+    Fluid.ctx = Object.assign({}, Fluid.ctx)
+    var CONFIG = {"hostname":"clcanny.github.io","root":"/","version":"1.9.4","typing":{"enable":true,"typeSpeed":70,"cursorChar":"_","loop":false,"scope":[]},"anchorjs":{"enable":true,"element":"h1,h2,h3,h4,h5,h6","placement":"left","visible":"hover","icon":""},"progressbar":{"enable":true,"height_px":3,"color":"#29d","options":{"showSpinner":false,"trickleSpeed":100}},"code_language":{"enable":true,"default":"TEXT"},"copy_btn":true,"image_caption":{"enable":true},"image_zoom":{"enable":true,"img_url_replace":["",""]},"toc":{"enable":true,"placement":"right","headingSelector":"h1,h2,h3,h4,h5,h6","collapseDepth":0},"lazyload":{"enable":true,"loading_img":"/img/loading.gif","onlypost":false,"offset_factor":2},"web_analytics":{"enable":false,"follow_dnt":true,"baidu":null,"google":null,"gtag":null,"tencent":{"sid":null,"cid":null},"woyaola":null,"cnzz":null,"leancloud":{"app_id":null,"app_key":null,"server_url":null,"path":"window.location.pathname","ignore_local":false}},"search_path":"/local-search.xml"};
+
+    if (CONFIG.web_analytics.follow_dnt) {
+      var dntVal = navigator.doNotTrack || window.doNotTrack || navigator.msDoNotTrack;
+      Fluid.ctx.dnt = dntVal && (dntVal.startsWith('1') || dntVal.startsWith('yes') || dntVal.startsWith('on'));
+    }
+  </script>
+  <script  src="/js/utils.js" ></script>
+  <script  src="/js/color-schema.js" ></script>
+  
+
+
+  
+<meta name="generator" content="Hexo 7.0.0-rc1"></head>
+
+
+<body>
+  
+
+  <header>
+    
+
+<div class="header-inner" style="height: 70vh;">
+  <nav id="navbar" class="navbar fixed-top  navbar-expand-lg navbar-dark scrolling-navbar">
+  <div class="container">
+    <a class="navbar-brand" href="/">
+      <strong>Fluid</strong>
+    </a>
+
+    <button id="navbar-toggler-btn" class="navbar-toggler" type="button" data-toggle="collapse"
+            data-target="#navbarSupportedContent"
+            aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
+      <div class="animated-icon"><span></span><span></span><span></span></div>
+    </button>
+
+    <!-- Collapsible content -->
+    <div class="collapse navbar-collapse" id="navbarSupportedContent">
+      <ul class="navbar-nav ml-auto text-center">
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/">
+                <i class="iconfont icon-home-fill"></i>
+                <span>首页</span>
+              </a>
+            </li>
+          
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/archives/">
+                <i class="iconfont icon-archive-fill"></i>
+                <span>归档</span>
+              </a>
+            </li>
+          
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/categories/">
+                <i class="iconfont icon-category-fill"></i>
+                <span>分类</span>
+              </a>
+            </li>
+          
+        
+        
+          <li class="nav-item" id="search-btn">
+            <a class="nav-link" target="_self" href="javascript:;" data-toggle="modal" data-target="#modalSearch" aria-label="Search">
+              <i class="iconfont icon-search"></i>
+            </a>
+          </li>
+          
+        
+        
+          <li class="nav-item" id="color-toggle-btn">
+            <a class="nav-link" target="_self" href="javascript:;" aria-label="Color Toggle">
+              <i class="iconfont icon-dark" id="color-toggle-icon"></i>
+            </a>
+          </li>
+        
+      </ul>
+    </div>
+  </div>
+</nav>
+
+  
+
+<div id="banner" class="banner" parallax=true
+     style="background: url('/img/default.png') no-repeat center center; background-size: cover;">
+  <div class="full-bg-img">
+    <div class="mask flex-center" style="background-color: rgba(0, 0, 0, 0.3)">
+      <div class="banner-text text-center fade-in-up">
+        <div class="h2">
+          
+            <span id="subtitle" data-typed-text="Explore C++20 Coroutine"></span>
+          
+        </div>
+
+        
+          
+  <div class="mt-3">
+    
+    
+      <span class="post-meta">
+        <i class="iconfont icon-date-fill" aria-hidden="true"></i>
+        <time datetime="2022-07-30 13:26" pubdate>
+          2022年7月30日 下午
+        </time>
+      </span>
+    
+  </div>
+
+  <div class="mt-1">
+    
+      <span class="post-meta mr-2">
+        <i class="iconfont icon-chart"></i>
+        
+          31k 字
+        
+      </span>
+    
+
+    
+      <span class="post-meta mr-2">
+        <i class="iconfont icon-clock-fill"></i>
+        
+        
+        
+          256 分钟
+        
+      </span>
+    
+
+    
+    
+  </div>
+
+
+        
+      </div>
+
+      
+    </div>
+  </div>
+</div>
+
+</div>
+
+  </header>
+
+  <main>
+    
+      
+
+<div class="container-fluid nopadding-x">
+  <div class="row nomargin-x">
+    <div class="side-col d-none d-lg-block col-lg-2">
+      
+
+    </div>
+
+    <div class="col-lg-8 nopadding-x-md">
+      <div class="container nopadding-x-md" id="board-ctn">
+        <div id="board">
+          <article class="post-content mx-auto">
+            <!-- SEO header -->
+            <h1 style="display: none">Explore C++20 Coroutine</h1>
+            
+            
+              <div class="markdown-body">
+                
+                <h1 id="测试环境">测试环境</h1>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><code class="hljs bash"><span class="hljs-comment"># docker run -it gcc:12.2.0-bullseye g++ --version</span><br>g++ (GCC) 12.2.0<br><span class="hljs-comment"># docker run -it gcc:12.2.0-bullseye cat /etc/os-release</span><br>PRETTY_NAME=<span class="hljs-string">&quot;Debian GNU/Linux 11 (bullseye)&quot;</span><br>NAME=<span class="hljs-string">&quot;Debian GNU/Linux&quot;</span><br>VERSION_ID=<span class="hljs-string">&quot;11&quot;</span><br>VERSION=<span class="hljs-string">&quot;11 (bullseye)&quot;</span><br>VERSION_CODENAME=bullseye<br>ID=debian<br>HOME_URL=<span class="hljs-string">&quot;https://www.debian.org/&quot;</span><br>SUPPORT_URL=<span class="hljs-string">&quot;https://www.debian.org/support&quot;</span><br>BUG_REPORT_URL=<span class="hljs-string">&quot;https://bugs.debian.org/&quot;</span><br></code></pre></td></tr></table></figure>
+<h1 id="用状态机实现-coroutine">用状态机实现 Coroutine</h1>
+<h2 id="概述">概述</h2>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br></pre></td><td class="code"><pre><code class="hljs cpp"><span class="hljs-comment">// g++ -std=c++20 -fcoroutines -fno-exceptions -fno-asynchronous-unwind-tables -ggdb -O0 main.cc -o main.o</span><br><span class="hljs-comment">// objdump -M intel,intel-mnemonic --demangle=auto --no-recurse-limit --no-show-raw-insn -d main.o</span><br><span class="hljs-meta">#<span class="hljs-keyword">include</span> <span class="hljs-string">&lt;concepts&gt;</span></span><br><span class="hljs-meta">#<span class="hljs-keyword">include</span> <span class="hljs-string">&lt;coroutine&gt;</span></span><br><span class="hljs-meta">#<span class="hljs-keyword">include</span> <span class="hljs-string">&lt;exception&gt;</span></span><br><span class="hljs-meta">#<span class="hljs-keyword">include</span> <span class="hljs-string">&lt;iostream&gt;</span></span><br><br><span class="hljs-keyword">struct</span> <span class="hljs-title class_">ReturnObject</span> &#123;<br>  <span class="hljs-keyword">struct</span> <span class="hljs-title class_">InitialSuspendNever</span> : <span class="hljs-keyword">public</span> std::suspend_never &#123; <span class="hljs-type">char</span> c; &#125;;<br>  <span class="hljs-keyword">struct</span> <span class="hljs-title class_">YieldSuspendAlways</span> : <span class="hljs-keyword">public</span> std::suspend_always &#123; <span class="hljs-type">char</span> c; &#125;;<br>  <span class="hljs-keyword">struct</span> <span class="hljs-title class_">FinalSuspendAlways</span> : <span class="hljs-keyword">public</span> std::suspend_always &#123; <span class="hljs-type">char</span> c; &#125;;<br><br>  <span class="hljs-keyword">struct</span> <span class="hljs-title class_">promise_type</span> &#123;<br>    <span class="hljs-function">ReturnObject <span class="hljs-title">get_return_object</span><span class="hljs-params">()</span> </span>&#123;<br>      <span class="hljs-keyword">return</span> &#123;<br>        .h_ = std::coroutine_handle&lt;promise_type&gt;::<span class="hljs-built_in">from_promise</span>(*<span class="hljs-keyword">this</span>)<br>      &#125;;<br>    &#125;<br>    <span class="hljs-function">InitialSuspendNever <span class="hljs-title">initial_suspend</span><span class="hljs-params">()</span> </span>&#123; <span class="hljs-keyword">return</span> &#123;&#125;; &#125;<br>    <span class="hljs-function">YieldSuspendAlways <span class="hljs-title">yield_value</span><span class="hljs-params">(<span class="hljs-type">unsigned</span> <span class="hljs-type">int</span> value)</span> </span>&#123;<br>      value_ = value;<br>      <span class="hljs-keyword">return</span> &#123;&#125;;<br>    &#125;<br>    <span class="hljs-function"><span class="hljs-type">void</span> <span class="hljs-title">return_value</span><span class="hljs-params">(<span class="hljs-type">unsigned</span> <span class="hljs-type">int</span> value)</span> </span>&#123;<br>      value_ = value;<br>    &#125;<br>    <span class="hljs-function">FinalSuspendAlways <span class="hljs-title">final_suspend</span><span class="hljs-params">()</span> <span class="hljs-keyword">noexcept</span> </span>&#123; <span class="hljs-keyword">return</span> &#123;&#125;; &#125;<br>    <span class="hljs-function"><span class="hljs-type">void</span> <span class="hljs-title">unhandled_exception</span><span class="hljs-params">()</span> </span>&#123;&#125;<br>    <span class="hljs-type">unsigned</span> <span class="hljs-type">int</span> value_;<br>  &#125;;<br>  std::coroutine_handle&lt;promise_type&gt; h_;<br>&#125;;<br><br><span class="hljs-keyword">struct</span> <span class="hljs-title class_">CoAwaitSuspendAlways</span> : <span class="hljs-keyword">public</span> std::suspend_always &#123; <span class="hljs-type">char</span> c; &#125;;<br><span class="hljs-function">ReturnObject <span class="hljs-title">counter</span><span class="hljs-params">()</span> </span>&#123;<br>  <span class="hljs-function"><span class="hljs-keyword">co_await</span> <span class="hljs-title">CoAwaitSuspendAlways</span><span class="hljs-params">()</span></span>;<br>  <span class="hljs-type">unsigned</span> <span class="hljs-type">int</span> value_a = <span class="hljs-number">0x12345678</span>;<br>  <span class="hljs-keyword">co_yield</span> value_a;<br>  <span class="hljs-type">unsigned</span> <span class="hljs-type">int</span> value_b = <span class="hljs-number">0x90ABCDEF</span>;<br>  <span class="hljs-keyword">co_yield</span> value_b;<br>  <span class="hljs-type">unsigned</span> <span class="hljs-type">int</span> value_c = <span class="hljs-number">0x98765432</span>;<br>  <span class="hljs-keyword">co_return</span> value_c;<br>&#125;<br><br><span class="hljs-function"><span class="hljs-type">int</span> <span class="hljs-title">main</span><span class="hljs-params">()</span> </span>&#123;<br>  <span class="hljs-keyword">auto</span> h = <span class="hljs-built_in">counter</span>().h_;<br>  <span class="hljs-keyword">auto</span>&amp; promise = h.<span class="hljs-built_in">promise</span>();<br>  std::cout &lt;&lt; promise.value_ &lt;&lt; std::endl;<br>  <span class="hljs-built_in">h</span>();<br>  std::cout &lt;&lt; promise.value_ &lt;&lt; std::endl;<br>  <span class="hljs-built_in">h</span>();<br>  std::cout &lt;&lt; promise.value_ &lt;&lt; std::endl;<br>  <span class="hljs-built_in">h</span>();<br>  std::cout &lt;&lt; promise.value_ &lt;&lt; std::endl;<br>  h.<span class="hljs-built_in">destroy</span>();<br>  <span class="hljs-keyword">return</span> <span class="hljs-number">0</span>;<br>&#125;<br></code></pre></td></tr></table></figure>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br></pre></td><td class="code"><pre><code class="hljs bash"><span class="hljs-comment"># readelf --symbols --wide main.o | grep -E &quot;Frame&quot; | awk &#x27;&#123;print $NF&#125;&#x27; | sort | uniq</span><br>_Z7counterPZ7countervE17_Z7counterv.Frame.actor<br>_Z7counterPZ7countervE17_Z7counterv.Frame.destroy<br><br>(gdb) b _Z7counterPZ7countervE17_Z7counterv.Frame.actor<br>(gdb) r<br>(gdb) ptype *frame_ptr<br>// sizeof(*frame_ptr) = 56 = 0x38<br><span class="hljs-built_in">type</span> = struct _Z7counterv.Frame &#123;<br>  // offset = 0 = 0x0<br>  void (*_Coro_resume_fn)(_Z7counterv.Frame *);<br>  // offset = 8 = 0x8<br>  void (*_Coro_destroy_fn)(_Z7counterv.Frame *);<br>  // offset = 16 = 0x10<br>  // ReturnObject::promise_type<br>  std::__n4861::__coroutine_traits_impl&lt;ReturnObject, void&gt;::promise_type _Coro_promise;<br>  // offset = 24 = 0x18<br>  std::__n4861::coroutine_handle&lt;ReturnObject::promise_type&gt; _Coro_self_handle;<br>  // offset = 32 = 0x20<br>  // The index represents the progress of the coroutine through its <span class="hljs-keyword">function</span> body.<br>  unsigned short _Coro_resume_index;<br>  // offset = 34 = 0x22<br>  bool _Coro_frame_needs_free;<br>  // offset = 35 = 0x23<br>  ReturnObject::InitialSuspendNever Is_1_1;<br>  // offset = 36 = 0x24<br>  unsigned int value_a_1_2;<br>  // offset = 40 = 0x28<br>  unsigned int value_b_1_2;<br>  // offset = 44 = 0x2c<br>  unsigned int value_c_1_2;<br>  // offset = 48 = 0x30<br>  CoAwaitSuspendAlways Aw0_2_3;<br>  // offset = 49 = 0x31<br>  ReturnObject::YieldSuspendAlways Yd1_2_4;<br>  // offset = 50 = 0x32<br>  ReturnObject::YieldSuspendAlways Yd2_2_5;<br>  // offset = 51 = 0x33<br>  ReturnObject::FinalSuspendAlways Fs_1_6;<br>&#125;<br></code></pre></td></tr></table></figure>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br></pre></td><td class="code"><pre><code class="hljs assembly">0000000000401196 &lt;counter()&gt;:<br>  ; Save address of previous stack frame.<br>  401196:   push   rbp<br>  ; RBP/EBP is extended base pointer,<br>  ; it points to the bottom of current stack frame.<br>  401197:   mov    rbp,rsp<br>  ; RBX is a callee-saved register.<br>  40119a:   push   rbx<br>  ; RSP/ESP is extended stack pointer,<br>  ; it points to the top of current stack frame.<br>  ; Notice stack frame grows from higher address to lower address.<br>  ; Reserve 40 bytes for local variables.<br>  40119b:   sub    rsp,0x18<br>  40119f:   mov    QWORD PTR [rbp-0x18],0x0<br>  4011a7:   mov    BYTE PTR [rbp-0x19],0x0<br>  4011ab:   mov    BYTE PTR [rbp-0x1a],0x0<br><br>  ; The co_await operator ensures the current state of a function<br>  ; is bundled up somewhere on the heap and creates a callable object<br>  ; whose invocation continues execution of the current function.<br>  ; The current state is coroutine frame.<br>  ; The callable object is of type std::coroutine_handle&lt;&gt;.<br>  ; Init coroutine frame:<br>  ; Allocate 56 bytes.<br>  4011af:   mov    eax,0x38<br>  ; RDI is the first argument of operator new.<br>  4011b4:   mov    rdi,rax<br>  4011b7:   call   401060 &lt;operator new(unsigned long)@plt&gt;<br>  ; RAX is the result of operator new.<br>  4011bc:   mov    QWORD PTR [rbp-0x18],rax<br>  ; Set Frame::_Coro_frame_needs_free to true.<br>  4011c0:   mov    rax,QWORD PTR [rbp-0x18]<br>  4011c4:   mov    BYTE PTR [rax+0x22],0x1<br>  ; Set Frame::_Coro_resume_fn to &lt;counter(_Z7counterv.Frame *)&gt;.<br>  4011c8:   mov    rax,QWORD PTR [rbp-0x18]<br>  4011cc:   mov    QWORD PTR [rax],0x401212<br>  ; Set Frame::_Coro_destroy_fn to &lt;counter(_Z7counterv.Frame *)&gt;.<br>  4011d3:   mov    rax,QWORD PTR [rbp-0x18]<br>  4011d7:   mov    QWORD PTR [rax+0x8],0x401534<br>  ; Prepare return value.<br>  ; Call promise_type::get_return_object() with this = &amp;Frame::_Coro_promise.<br>  4011df:   mov    rax,QWORD PTR [rbp-0x18]<br>  4011e3:   add    rax,0x10<br>  4011e7:   mov    rdi,rax<br>  4011ea:   call   401708 &lt;ReturnObject::promise_type::get_return_object()&gt;<br>  4011ef:   mov    rbx,rax<br>  ; Set Frame::_Coro_resume_index to 0x0.<br>  4011f2:   mov    rax,QWORD PTR [rbp-0x18]<br>  4011f6:   mov    WORD PTR [rax+0x20],0x0<br>  ; Call actor.<br>  4011fc:   mov    rax,QWORD PTR [rbp-0x18]<br>  401200:   mov    rdi,rax<br>  401203:   call   401212 &lt;counter(counter()::_Z7counterv.Frame*) [clone .actor]&gt;<br>  401208:   nop<br>  ; Put return value into RAX.<br>  401209:   mov    rax,rbx<br>  40120c:   mov    rbx,QWORD PTR [rbp-0x8]<br>  401210:   leave<br>  401211:   ret<br></code></pre></td></tr></table></figure>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br><span class="line">86</span><br><span class="line">87</span><br><span class="line">88</span><br><span class="line">89</span><br><span class="line">90</span><br><span class="line">91</span><br><span class="line">92</span><br><span class="line">93</span><br><span class="line">94</span><br><span class="line">95</span><br><span class="line">96</span><br><span class="line">97</span><br><span class="line">98</span><br><span class="line">99</span><br><span class="line">100</span><br><span class="line">101</span><br><span class="line">102</span><br><span class="line">103</span><br><span class="line">104</span><br><span class="line">105</span><br><span class="line">106</span><br><span class="line">107</span><br><span class="line">108</span><br><span class="line">109</span><br><span class="line">110</span><br><span class="line">111</span><br><span class="line">112</span><br><span class="line">113</span><br><span class="line">114</span><br><span class="line">115</span><br><span class="line">116</span><br><span class="line">117</span><br><span class="line">118</span><br><span class="line">119</span><br><span class="line">120</span><br><span class="line">121</span><br><span class="line">122</span><br><span class="line">123</span><br><span class="line">124</span><br><span class="line">125</span><br><span class="line">126</span><br><span class="line">127</span><br><span class="line">128</span><br><span class="line">129</span><br><span class="line">130</span><br><span class="line">131</span><br><span class="line">132</span><br><span class="line">133</span><br><span class="line">134</span><br><span class="line">135</span><br><span class="line">136</span><br><span class="line">137</span><br><span class="line">138</span><br><span class="line">139</span><br><span class="line">140</span><br><span class="line">141</span><br><span class="line">142</span><br><span class="line">143</span><br><span class="line">144</span><br><span class="line">145</span><br><span class="line">146</span><br><span class="line">147</span><br><span class="line">148</span><br><span class="line">149</span><br><span class="line">150</span><br><span class="line">151</span><br><span class="line">152</span><br><span class="line">153</span><br><span class="line">154</span><br><span class="line">155</span><br><span class="line">156</span><br><span class="line">157</span><br><span class="line">158</span><br><span class="line">159</span><br><span class="line">160</span><br><span class="line">161</span><br><span class="line">162</span><br><span class="line">163</span><br><span class="line">164</span><br><span class="line">165</span><br><span class="line">166</span><br><span class="line">167</span><br><span class="line">168</span><br><span class="line">169</span><br><span class="line">170</span><br><span class="line">171</span><br><span class="line">172</span><br><span class="line">173</span><br><span class="line">174</span><br><span class="line">175</span><br><span class="line">176</span><br><span class="line">177</span><br><span class="line">178</span><br><span class="line">179</span><br><span class="line">180</span><br><span class="line">181</span><br><span class="line">182</span><br><span class="line">183</span><br><span class="line">184</span><br><span class="line">185</span><br><span class="line">186</span><br><span class="line">187</span><br><span class="line">188</span><br><span class="line">189</span><br><span class="line">190</span><br><span class="line">191</span><br><span class="line">192</span><br><span class="line">193</span><br><span class="line">194</span><br><span class="line">195</span><br><span class="line">196</span><br><span class="line">197</span><br><span class="line">198</span><br><span class="line">199</span><br><span class="line">200</span><br><span class="line">201</span><br><span class="line">202</span><br><span class="line">203</span><br><span class="line">204</span><br><span class="line">205</span><br><span class="line">206</span><br><span class="line">207</span><br><span class="line">208</span><br><span class="line">209</span><br><span class="line">210</span><br><span class="line">211</span><br><span class="line">212</span><br><span class="line">213</span><br><span class="line">214</span><br><span class="line">215</span><br><span class="line">216</span><br><span class="line">217</span><br><span class="line">218</span><br><span class="line">219</span><br><span class="line">220</span><br><span class="line">221</span><br><span class="line">222</span><br><span class="line">223</span><br><span class="line">224</span><br><span class="line">225</span><br><span class="line">226</span><br><span class="line">227</span><br><span class="line">228</span><br><span class="line">229</span><br><span class="line">230</span><br><span class="line">231</span><br><span class="line">232</span><br><span class="line">233</span><br><span class="line">234</span><br><span class="line">235</span><br><span class="line">236</span><br><span class="line">237</span><br><span class="line">238</span><br><span class="line">239</span><br><span class="line">240</span><br><span class="line">241</span><br><span class="line">242</span><br><span class="line">243</span><br><span class="line">244</span><br><span class="line">245</span><br><span class="line">246</span><br><span class="line">247</span><br><span class="line">248</span><br><span class="line">249</span><br><span class="line">250</span><br><span class="line">251</span><br><span class="line">252</span><br><span class="line">253</span><br><span class="line">254</span><br><span class="line">255</span><br><span class="line">256</span><br><span class="line">257</span><br><span class="line">258</span><br><span class="line">259</span><br><span class="line">260</span><br><span class="line">261</span><br><span class="line">262</span><br><span class="line">263</span><br><span class="line">264</span><br><span class="line">265</span><br><span class="line">266</span><br><span class="line">267</span><br><span class="line">268</span><br><span class="line">269</span><br><span class="line">270</span><br><span class="line">271</span><br><span class="line">272</span><br><span class="line">273</span><br><span class="line">274</span><br><span class="line">275</span><br><span class="line">276</span><br><span class="line">277</span><br><span class="line">278</span><br><span class="line">279</span><br><span class="line">280</span><br><span class="line">281</span><br><span class="line">282</span><br><span class="line">283</span><br><span class="line">284</span><br><span class="line">285</span><br><span class="line">286</span><br><span class="line">287</span><br><span class="line">288</span><br><span class="line">289</span><br><span class="line">290</span><br><span class="line">291</span><br><span class="line">292</span><br><span class="line">293</span><br><span class="line">294</span><br><span class="line">295</span><br><span class="line">296</span><br><span class="line">297</span><br><span class="line">298</span><br><span class="line">299</span><br><span class="line">300</span><br><span class="line">301</span><br><span class="line">302</span><br><span class="line">303</span><br><span class="line">304</span><br><span class="line">305</span><br><span class="line">306</span><br><span class="line">307</span><br><span class="line">308</span><br><span class="line">309</span><br><span class="line">310</span><br><span class="line">311</span><br><span class="line">312</span><br><span class="line">313</span><br><span class="line">314</span><br><span class="line">315</span><br><span class="line">316</span><br><span class="line">317</span><br><span class="line">318</span><br><span class="line">319</span><br><span class="line">320</span><br><span class="line">321</span><br><span class="line">322</span><br><span class="line">323</span><br><span class="line">324</span><br><span class="line">325</span><br><span class="line">326</span><br><span class="line">327</span><br><span class="line">328</span><br><span class="line">329</span><br><span class="line">330</span><br><span class="line">331</span><br><span class="line">332</span><br><span class="line">333</span><br><span class="line">334</span><br><span class="line">335</span><br><span class="line">336</span><br><span class="line">337</span><br><span class="line">338</span><br><span class="line">339</span><br><span class="line">340</span><br><span class="line">341</span><br><span class="line">342</span><br><span class="line">343</span><br><span class="line">344</span><br><span class="line">345</span><br><span class="line">346</span><br><span class="line">347</span><br><span class="line">348</span><br><span class="line">349</span><br><span class="line">350</span><br><span class="line">351</span><br><span class="line">352</span><br><span class="line">353</span><br><span class="line">354</span><br><span class="line">355</span><br><span class="line">356</span><br><span class="line">357</span><br><span class="line">358</span><br><span class="line">359</span><br><span class="line">360</span><br><span class="line">361</span><br><span class="line">362</span><br><span class="line">363</span><br><span class="line">364</span><br><span class="line">365</span><br><span class="line">366</span><br><span class="line">367</span><br></pre></td><td class="code"><pre><code class="hljs assembly">0000000000401212 &lt;counter(counter()::_Z7counterv.Frame*) [clone .actor]&gt;:<br>  ; Save address of previous stack frame.<br>  401212:   push   rbp<br>  ; RBP/EBP is extended base pointer,<br>  ; it points to the bottom of current stack frame.<br>  401213:   mov    rbp,rsp<br>  ; RBX is a callee-saved register.<br>  401216:   push   rbx<br>  ; RSP/ESP is extended stack pointer,<br>  ; it points to the top of current stack frame.<br>  ; Notice stack frame grows from higher address to lower address.<br>  ; Reserve 40 bytes for local variables.<br>  401217:   sub    rsp,0x28<br><br>  ; RDI is the first argument of function actor,<br>  ; which is coroutine frame.<br>  40121b:   mov    QWORD PTR [rbp-0x28],rdi<br><br>  40121f:   mov    rax,QWORD PTR [rbp-0x28]<br>  ; Test if Frame::_Coro_resume_index is an even number.<br>  401223:   movzx  eax,WORD PTR [rax+0x20]<br>  ; If Frame::_Coro_resume_index is an even number,<br>  ; then jump to 0x40124d.<br>  401227:   and    eax,0x1<br>  40122a:   test   ax,ax<br>  40122d:   je     40124d &lt;counter(counter()::_Z7counterv.Frame*) [clone .actor]+0x3b&gt;<br><br>  ; Else if Frame::_Coro_resume_index is an odd number.<br>  ; Please notice Frame::_Coro_frame_needs_free is always true.<br>  40122f:   mov    rax,QWORD PTR [rbp-0x28]<br>  401233:   movzx  eax,WORD PTR [rax+0x20]<br>  ; Throw exception if Frame::_Coro_resume_index &gt; 0xb.<br>  401237:   movzx  eax,ax<br>  40123a:   cmp    eax,0xb<br>  40123d:   ja     40124b &lt;counter(counter()::_Z7counterv.Frame*) [clone .actor]+0x39&gt;<br>  ; Jump to a table entry if Frame::_Coro_resume_index &lt;= 0xb.<br>  ;           [useless] [useful]<br>  ; 0x402008: 40124b    40150f<br>  ; 0x402018: 40124b    4012e1<br>  ; 0x402028: 40124b    401347<br>  ; 0x402038: 40124b    4013d0<br>  ; 0x402048: 40124b    401459<br>  ; 0x402058: 40124b    4014fb<br>  40123f:   mov    eax,eax<br>  401241:   mov    rax,QWORD PTR [rax*8+0x402008]<br>  401249:   jmp    rax<br>  ; Otherwise, raise invalid opcode exception.<br>  40124b:   ud2<br><br>  ; If Frame::_Coro_resume_index is an even number.<br>  40124d:   mov    rax,QWORD PTR [rbp-0x28]<br>  ; Throw exception if Frame::_Coro_resume_index &gt; 0xa.<br>  401251:   movzx  eax,WORD PTR [rax+0x20]<br>  401255:   movzx  eax,ax<br>  401258:   cmp    eax,0xa<br>  40125b:   ja     4012ad &lt;counter(counter()::_Z7counterv.Frame*) [clone .actor]+0x9b&gt;<br>  ; Jump to a table entry if Frame::_Coro_resume_index &lt;= 0xa.<br>  ;           [useful] [useless]<br>  ; 0x402068: 401269   4012ad<br>  ; 0x402078: 4012e6   4012ad<br>  ; 0x402088: 40134c   4012ad<br>  ; 0x402098: 4013d5   4012ad<br>  ; 0x4020a8: 40145e   4012ad<br>  ; 0x4020b8: 4014fd<br>  40125d:   mov    eax,eax<br>  40125f:   mov    rax,QWORD PTR [rax*8+0x402068]<br>  401267:   jmp    rax<br><br>  ; Execute the following code when Frame::_Coro_resume_index == 0x0.<br>  401269:   mov    rbx,QWORD PTR [rbp-0x28]<br>  ; Call std::coroutine_handle&lt;Promise&gt;::from_address(void* addr)<br>  ; with addr = &amp;Frame.<br>  ; frame_address creates a coroutine_handle from a null pointer value or<br>  ; an underlying address of another coroutine_handle.<br>  ; Return type of from_address is std::coroutine_handle&lt;Promise&gt;.<br>  ; The underlying address of return value is addr.<br>  40126d:   mov    rax,QWORD PTR [rbp-0x28]<br>  401271:   mov    rdi,rax<br>  401274:   call   4017ba &lt;std::__n4861::coroutine_handle&lt;ReturnObject::promise_type&gt;::from_address(void*)&gt;<br>  ; RAX is return value of func<br>  ; std::coroutine_handle&lt;Promise&gt;::from_address(void* addr),<br>  ; which is equal to addr, which is equal to &amp;Frame.<br>  ; RBX is set to &amp;Frame at 0x401269.<br>  ; Set Frame::_Coro_self_handle::_M_fr_ptr to &amp;Frame.<br>  401279:   mov    QWORD PTR [rbx+0x18],rax<br>  ; Call ReturnObject::promise_type::initial_suspend() with<br>  ; this = &amp;Frame::_Coro_promise.<br>  40127d:   mov    rax,QWORD PTR [rbp-0x28]<br>  401281:   add    rax,0x10<br>  401285:   mov    rbx,QWORD PTR [rbp-0x28]<br>  401289:   mov    rdi,rax<br>  40128c:   call   401722 &lt;ReturnObject::promise_type::initial_suspend()&gt;<br>  ; RBX is set to &amp;Frame at 0x401285.<br>  ; AL is RAX&#x27;s 8 low bits, which is the return value of initial_suspend().<br>  ; Set Frame::Is_1_1 to return value of initial_suspend().<br>  401291:   mov    BYTE PTR [rbx+0x23],al<br>  ; Call std::__n4861::suspend_never::await_ready() with this = &amp;Frame::Is_1_1.<br>  401294:   mov    rax,QWORD PTR [rbp-0x28]<br>  401298:   add    rax,0x23<br>  40129c:   mov    rdi,rax<br>  40129f:   call   4016dc &lt;std::__n4861::suspend_never::await_ready() const&gt;<br>  ; Test if return value is true.<br>  ; await_ready is an optimization.<br>  ; If it returns true, then co_await does not suspend the function.<br>  ; In this example, suspend_never::await_ready() will always return true.<br>  4012a4:   xor    eax,0x1<br>  4012a7:   test   al,al<br>  ; Always skip this branch.<br>  4012a9:   jne    4012af &lt;counter(counter()::_Z7counterv.Frame*) [clone .actor]+0x9d&gt;<br>  ; Always execute this branch.<br>  4012ab:   jmp    4012e6 &lt;counter(counter()::_Z7counterv.Frame*) [clone .actor]+0xd4&gt;<br>  ; Raise invalid opcode exception.<br>  4012ad:   ud2<br><br>  ; Always skip the following code.<br>  ; Set Frame::_Coro_resume_index to 0x2.<br>  4012af:   mov    rax,QWORD PTR [rbp-0x28]<br>  4012b3:   mov    WORD PTR [rax+0x20],0x2<br>  4012b9:   mov    rax,QWORD PTR [rbp-0x28]<br>  ; Set RBX to &amp;Frame::Is_1_1.<br>  4012bd:   lea    rbx,[rax+0x23]<br>  ; Call coroutine_handle::operator()() with this = &amp;Frame::_Coro_self_handle.<br>  4012c1:   mov    rax,QWORD PTR [rbp-0x28]<br>  4012c5:   add    rax,0x18<br>  4012c9:   mov    rdi,rax<br>  4012cc:   call   401798 &lt;std::__n4861::coroutine_handle&lt;ReturnObject::promise_type&gt;::operator std::__n4861::coroutine_handle&lt;void&gt;() const&gt;<br>  4012d1:   mov    rsi,rax<br>  ; Call suspend_never::await_suspend(handle) with this = &amp;Frame::Is_1_1<br>  ; and handle = return value of coroutine_handle::operator()(&amp;Frame::_Coro_self_handle).<br>  4012d4:   mov    rdi,rbx<br>  4012d7:   call   4016ec &lt;std::__n4861::suspend_never::await_suspend(std::__n4861::coroutine_handle&lt;void&gt;) const&gt;<br>  4012dc:   jmp    40152d &lt;counter(counter()::_Z7counterv.Frame*) [clone .actor]+0x31b&gt;<br><br>  ; Execute the following code when Frame::_Coro_resume_index == 0x3.<br>  4012e1:   jmp    401510 &lt;counter(counter()::_Z7counterv.Frame*) [clone .actor]+0x2fe&gt;<br><br>  ; Execute the following code when Frame::_Coro_resume_index == 0x2.<br>  ; Call suspend_never::await_resume() with this = &amp;Frame::Is_1_1.<br>  4012e6:   mov    rax,QWORD PTR [rbp-0x28]<br>  4012ea:   add    rax,0x23<br>  4012ee:   mov    rdi,rax<br>  4012f1:   call   4016fc &lt;std::__n4861::suspend_never::await_resume() const&gt;<br>  ; Set Frame::Aw0_2_3 to 0x0.<br>  4012f6:   mov    rax,QWORD PTR [rbp-0x28]<br>  4012fa:   mov    BYTE PTR [rax+0x30],0x0<br>  ; Call suspend_always::await_ready() with this = &amp;Frame::Aw0_2_3.<br>  4012fe:   mov    rax,QWORD PTR [rbp-0x28]<br>  401302:   add    rax,0x30<br>  401306:   mov    rdi,rax<br>  401309:   call   4016b0 &lt;std::__n4861::suspend_always::await_ready() const&gt;<br>  ; Test if return value is true.<br>  40130e:   xor    eax,0x1<br>  401311:   test   al,al<br>  ; Always skip this branch.<br>  401313:   je     40134c &lt;counter(counter()::_Z7counterv.Frame*) [clone .actor]+0x13a&gt;<br>  ; Always execute this branch.<br>  ; Set Frame::_Coro_resume_index to 0x4.<br>  401315:   mov    rax,QWORD PTR [rbp-0x28]<br>  401319:   mov    WORD PTR [rax+0x20],0x4<br>  ; Set RBX to &amp;Frame::Aw0_2_3.<br>  40131f:   mov    rax,QWORD PTR [rbp-0x28]<br>  401323:   lea    rbx,[rax+0x30]<br>  ; Call coroutine_handle::operator()() with this = &amp;Frame::_Coro_self_handle.<br>  401327:   mov    rax,QWORD PTR [rbp-0x28]<br>  40132b:   add    rax,0x18<br>  40132f:   mov    rdi,rax<br>  401332:   call   401798 &lt;std::__n4861::coroutine_handle&lt;ReturnObject::promise_type&gt;::operator std::__n4861::coroutine_handle&lt;void&gt;() const&gt;<br>  ; Call suspend_always::await_suspend(handle) with this = &amp;Frame::Aw0_2_3<br>  ; and handle = return value of coroutine_handle::operator()(&amp;Frame::_Coro_self_handle).<br>  401337:   mov    rsi,rax<br>  40133a:   mov    rdi,rbx<br>  40133d:   call   4016c0 &lt;std::__n4861::suspend_always::await_suspend(std::__n4861::coroutine_handle&lt;void&gt;) const&gt;<br>  401342:   jmp    40152d &lt;counter(counter()::_Z7counterv.Frame*) [clone .actor]+0x31b&gt;<br><br>  ; Execute the following code when Frame::_Coro_resume_index == 0x5.<br>  401347:   jmp    401510 &lt;counter(counter()::_Z7counterv.Frame*) [clone .actor]+0x2fe&gt;<br><br>  ; Execute the following code when Frame::_Coro_resume_index == 0x4.<br>  ; Call suspend_always::await_resume() with this = &amp;Frame::Aw0_2_3.<br>  40134c:   mov    rax,QWORD PTR [rbp-0x28]<br>  401350:   add    rax,0x30<br>  401354:   mov    rdi,rax<br>  401357:   call   4016d0 &lt;std::__n4861::suspend_always::await_resume() const&gt;<br>  ; Set value_a_1_2 to 0x12345678.<br>  40135c:   mov    rax,QWORD PTR [rbp-0x28]<br>  401360:   mov    DWORD PTR [rax+0x24],0x12345678<br>  ; Call promise_type::yield_value(value) with this = &amp;Frame::_Coro_promise<br>  ; and value = value_a_1_2.<br>  401367:   mov    rax,QWORD PTR [rbp-0x28]<br>  40136b:   lea    rdx,[rax+0x10]<br>  40136f:   mov    rax,QWORD PTR [rbp-0x28]<br>  401373:   mov    eax,DWORD PTR [rax+0x24]<br>  401376:   mov    rbx,QWORD PTR [rbp-0x28]<br>  40137a:   mov    esi,eax<br>  40137c:   mov    rdi,rdx<br>  40137f:   call   401732 &lt;ReturnObject::promise_type::yield_value(unsigned int)&gt;<br>  ; RBX is set to &amp;Frame at 0x401376.<br>  ; Set Frame::Yd1_2_4 to return value of yield_value(unsigned int).<br>  401384:   mov    BYTE PTR [rbx+0x31],al<br>  ; Call suspend_always::await_ready() with this = &amp;Frame::Yd1_2_4.<br>  401387:   mov    rax,QWORD PTR [rbp-0x28]<br>  40138b:   add    rax,0x31<br>  40138f:   mov    rdi,rax<br>  401392:   call   4016b0 &lt;std::__n4861::suspend_always::await_ready() const&gt;<br>  ; Test if return value is true.<br>  401397:   xor    eax,0x1<br>  40139a:   test   al,al<br>  ; Always skip this branch.<br>  40139c:   je     4013d5 &lt;counter(counter()::_Z7counterv.Frame*) [clone .actor]+0x1c3&gt;<br>  ; Always execute this branch.<br>  ; Set Frame::_Coro_resume_index to 0x6.<br>  40139e:   mov    rax,QWORD PTR [rbp-0x28]<br>  4013a2:   mov    WORD PTR [rax+0x20],0x6<br>  ; Call suspend_always::await_suspend(handle) with this = &amp;Frame::Yd1_2_4<br>  ; and handle = return value of coroutine_handle::operator()(&amp;Frame::_Coro_self_handle).<br>  4013a8:   mov    rax,QWORD PTR [rbp-0x28]<br>  4013ac:   lea    rbx,[rax+0x31]<br>  4013b0:   mov    rax,QWORD PTR [rbp-0x28]<br>  4013b4:   add    rax,0x18<br>  4013b8:   mov    rdi,rax<br>  4013bb:   call   401798 &lt;std::__n4861::coroutine_handle&lt;ReturnObject::promise_type&gt;::operator std::__n4861::coroutine_handle&lt;void&gt;() const&gt;<br>  4013c0:   mov    rsi,rax<br>  4013c3:   mov    rdi,rbx<br>  4013c6:   call   4016c0 &lt;std::__n4861::suspend_always::await_suspend(std::__n4861::coroutine_handle&lt;void&gt;) const&gt;<br>  4013cb:   jmp    40152d &lt;counter(counter()::_Z7counterv.Frame*) [clone .actor]+0x31b&gt;<br><br>  ; Execute the following code when Frame::_Coro_resume_index == 0x7.<br>  4013d0:   jmp    401510 &lt;counter(counter()::_Z7counterv.Frame*) [clone .actor]+0x2fe&gt;<br><br>  ; Execute the following code when Frame::_Coro_resume_index == 0x6.<br>  ; Call suspend_always::await_resume() with this = &amp;Frame::Yd1_2_4.<br>  4013d5:   mov    rax,QWORD PTR [rbp-0x28]<br>  4013d9:   add    rax,0x31<br>  4013dd:   mov    rdi,rax<br>  4013e0:   call   4016d0 &lt;std::__n4861::suspend_always::await_resume() const&gt;<br>  ; Set value_b_1_2 to 0x90abcdef.<br>  4013e5:   mov    rax,QWORD PTR [rbp-0x28]<br>  4013e9:   mov    DWORD PTR [rax+0x28],0x90abcdef<br>  ; Call promise_type::yield_value(value) with this = &amp;Frame::_Coro_promise<br>  ; and value_b_1_2.<br>  4013f0:   mov    rax,QWORD PTR [rbp-0x28]<br>  4013f4:   lea    rdx,[rax+0x10]<br>  4013f8:   mov    rax,QWORD PTR [rbp-0x28]<br>  4013fc:   mov    eax,DWORD PTR [rax+0x28]<br>  4013ff:   mov    rbx,QWORD PTR [rbp-0x28]<br>  401403:   mov    esi,eax<br>  401405:   mov    rdi,rdx<br>  401408:   call   401732 &lt;ReturnObject::promise_type::yield_value(unsigned int)&gt;<br>  ; Set Frame::Yd2_2_5 to return value of yield_value(unsigned int).<br>  40140d:   mov    BYTE PTR [rbx+0x32],al<br>  ; Call suspend_always::await_ready() with this = &amp;Frame::Yd2_2_5.<br>  401410:   mov    rax,QWORD PTR [rbp-0x28]<br>  401414:   add    rax,0x32<br>  401418:   mov    rdi,rax<br>  40141b:   call   4016b0 &lt;std::__n4861::suspend_always::await_ready() const&gt;<br>  ; Test if return value is true.<br>  401420:   xor    eax,0x1<br>  401423:   test   al,al<br>  ; Always skip this branch.<br>  401425:   je     40145e &lt;counter(counter()::_Z7counterv.Frame*) [clone .actor]+0x24c&gt;<br>  ; Always execute this branch.<br>  ; Call suspend_always::await_suspend(handle) with this = &amp;Frame::Yd2_2_5<br>  ; and handle = return value of coroutine_handle::operator()(&amp;Frame::_Coro_self_handle).<br>  401427:   mov    rax,QWORD PTR [rbp-0x28]<br>  40142b:   mov    WORD PTR [rax+0x20],0x8<br>  401431:   mov    rax,QWORD PTR [rbp-0x28]<br>  401435:   lea    rbx,[rax+0x32]<br>  401439:   mov    rax,QWORD PTR [rbp-0x28]<br>  40143d:   add    rax,0x18<br>  401441:   mov    rdi,rax<br>  401444:   call   401798 &lt;std::__n4861::coroutine_handle&lt;ReturnObject::promise_type&gt;::operator std::__n4861::coroutine_handle&lt;void&gt;() const&gt;<br>  401449:   mov    rsi,rax<br>  40144c:   mov    rdi,rbx<br>  40144f:   call   4016c0 &lt;std::__n4861::suspend_always::await_suspend(std::__n4861::coroutine_handle&lt;void&gt;) const&gt;<br>  401454:   jmp    40152d &lt;counter(counter()::_Z7counterv.Frame*) [clone .actor]+0x31b&gt;<br><br>  ; Execute the following code when Frame::_Coro_resume_index == 0x9.<br>  401459:   jmp    401510 &lt;counter(counter()::_Z7counterv.Frame*) [clone .actor]+0x2fe&gt;<br><br>  ; Execute the following code when Frame::_Coro_resume_index == 0x8.<br>  ; Call suspend_always::await_resume() with this = &amp;Frame::Yd2_2_5.<br>  40145e:   mov    rax,QWORD PTR [rbp-0x28]<br>  401462:   add    rax,0x32<br>  401466:   mov    rdi,rax<br>  401469:   call   4016d0 &lt;std::__n4861::suspend_always::await_resume() const&gt;<br>  ; Set value_c_1_2 to 0x98765432.<br>  40146e:   mov    rax,QWORD PTR [rbp-0x28]<br>  401472:   mov    DWORD PTR [rax+0x2c],0x98765432<br>  ; Call promise_type::return_value(value) with this = &amp;Frame::_Coro_promise<br>  ; and value = value_c_1_2.<br>  401479:   mov    rax,QWORD PTR [rbp-0x28]<br>  40147d:   lea    rdx,[rax+0x10]<br>  401481:   mov    rax,QWORD PTR [rbp-0x28]<br>  401485:   mov    eax,DWORD PTR [rax+0x2c]<br>  401488:   mov    esi,eax<br>  40148a:   mov    rdi,rdx<br>  40148d:   call   40174e &lt;ReturnObject::promise_type::return_value(unsigned int)&gt;<br>  401492:   nop<br>  ; Set Frame::_Coro_resume_fn to nullptr.<br>  401493:   mov    rax,QWORD PTR [rbp-0x28]<br>  401497:   mov    QWORD PTR [rax],0x0<br>  ; Call promise_type::final_suspend() with this = &amp;Frame::_Coro_promise.<br>  40149e:   mov    rax,QWORD PTR [rbp-0x28]<br>  4014a2:   add    rax,0x10<br>  4014a6:   mov    rbx,QWORD PTR [rbp-0x28]<br>  4014aa:   mov    rdi,rax<br>  4014ad:   call   401766 &lt;ReturnObject::promise_type::final_suspend()&gt;<br>  ; RBX is set to &amp;Frame at 0x4014a6.<br>  ; Set Frame::Fs_1_6 to return value of final_suspend().<br>  4014b2:   mov    BYTE PTR [rbx+0x33],al<br>  ; Call suspend_always::await_ready() with this = &amp;Frame::Fs_1_6.<br>  4014b5:   mov    rax,QWORD PTR [rbp-0x28]<br>  4014b9:   add    rax,0x33<br>  4014bd:   mov    rdi,rax<br>  4014c0:   call   4016b0 &lt;std::__n4861::suspend_always::await_ready() const&gt;<br>  ; Test if return value is true.<br>  4014c5:   xor    eax,0x1<br>  4014c8:   test   al,al<br>  ; Always skip this branch.<br>  4014ca:   je     4014fd &lt;counter(counter()::_Z7counterv.Frame*) [clone .actor]+0x2eb&gt;<br>  ; Always execute this branch.<br>  ; Set Frame::_Coro_resume_index to 0xa.<br>  4014cc:   mov    rax,QWORD PTR [rbp-0x28]<br>  4014d0:   mov    WORD PTR [rax+0x20],0xa<br>  ; Call suspend_always::await_suspend(handle) with this = &amp;Frame::Fs_1_6<br>  ; and handle = return value of coroutine_handle::operator()(&amp;Frame::_Coro_self_handle).<br>  4014d6:   mov    rax,QWORD PTR [rbp-0x28]<br>  4014da:   lea    rbx,[rax+0x33]<br>  4014de:   mov    rax,QWORD PTR [rbp-0x28]<br>  4014e2:   add    rax,0x18<br>  4014e6:   mov    rdi,rax<br>  4014e9:   call   401798 &lt;std::__n4861::coroutine_handle&lt;ReturnObject::promise_type&gt;::operator std::__n4861::coroutine_handle&lt;void&gt;() const&gt;<br>  4014ee:   mov    rsi,rax<br>  4014f1:   mov    rdi,rbx<br>  4014f4:   call   4016c0 &lt;std::__n4861::suspend_always::await_suspend(std::__n4861::coroutine_handle&lt;void&gt;) const&gt;<br>  4014f9:   jmp    40152d &lt;counter(counter()::_Z7counterv.Frame*) [clone .actor]+0x31b&gt;<br><br>  ; Execute the following code when Frame::_Coro_resume_index == 0xb.<br>  4014fb:   jmp    401510 &lt;counter(counter()::_Z7counterv.Frame*) [clone .actor]+0x2fe&gt;<br><br>  ; Execute the following code when Frame::_Coro_resume_index == 0xa.<br>  ; Call suspend_always::await_resume() with this = &amp;Frame::Fs_1_6.<br>  4014fd:   mov    rax,QWORD PTR [rbp-0x28]<br>  401501:   add    rax,0x33<br>  401505:   mov    rdi,rax<br>  401508:   call   4016d0 &lt;std::__n4861::suspend_always::await_resume() const&gt;<br>  40150d:   jmp    401510 &lt;counter(counter()::_Z7counterv.Frame*) [clone .actor]+0x2fe&gt;<br><br>  ; Execute the following code when Frame::_Coro_resume_index == 0x1.<br>  40150f:   nop<br>  ; Execute the following code when Frame::_Coro_resume_index == 0x3/0x5/0x7/0x9/0xb.<br>  ; Test if Frame::_Coro_frame_needs_free is true.<br>  401510:   mov    rax,QWORD PTR [rbp-0x28]<br>  401514:   movzx  eax,BYTE PTR [rax+0x22]<br>  401518:   movzx  eax,al<br>  40151b:   test   eax,eax<br>  ; Jump to 0x40152d if Frame::_Coro_frame_needs_free is false.<br>  40151d:   je     40152d &lt;counter(counter()::_Z7counterv.Frame*) [clone .actor]+0x31b&gt;<br>  ; Delete coroutine frame.<br>  40151f:   mov    rax,QWORD PTR [rbp-0x28]<br>  401523:   mov    rdi,rax<br>  401526:   call   401050 &lt;operator delete(void*)@plt&gt;<br>  40152b:   jmp    40152d &lt;counter(counter()::_Z7counterv.Frame*) [clone .actor]+0x31b&gt;<br>  40152d:   nop<br>  40152e:   mov    rbx,QWORD PTR [rbp-0x8]<br>  401532:   leave<br>  401533:   ret<br></code></pre></td></tr></table></figure>
+<p>等价上述汇编代码的伪代码如下：</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><code class="hljs cpp">&#123;<br>  promise-type promise promise-constructor-arguments;<br>  <span class="hljs-keyword">try</span> &#123;<br>    <span class="hljs-keyword">co_await</span> promise.<span class="hljs-built_in">initial_suspend</span>();<br>    function-body<br>  &#125; <span class="hljs-built_in">catch</span> (...) &#123;<br>    <span class="hljs-keyword">if</span> (!initial-await-resume-called) &#123;<br>      <span class="hljs-keyword">throw</span>;<br>    &#125;<br>    promise.<span class="hljs-built_in">unhandled_exception</span>();<br>  &#125;<br><span class="hljs-keyword">final</span>-suspend:<br>  <span class="hljs-keyword">co_await</span> promise.<span class="hljs-built_in">final_suspend</span>();<br>&#125;<br></code></pre></td></tr></table></figure>
+<h2 id="coroutine-frame-是一个保存-coroutine-状态的栈">coroutine frame 是一个保存 coroutine 状态的栈</h2>
+<p>C++20 的 coroutine 是无栈协程，相较于有栈协程，无栈协程不会在堆内存上开一块空间来伪装成调用栈，而是让编译器用一个结构体将参数和本地变量保存下来。<a target="_blank" rel="noopener" href="https://github.com/gcc-mirror/gcc/blob/2fa8c4a659a19ec971c80704f48f96c13aae9ac3/gcc/cp/coroutines.cc#L4336">gcc-mirror/gcc: coroutines.cc</a> 有一段注释描述了 coroutine frame 的大致结构：</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><code class="hljs cpp"><span class="hljs-comment">// We do something like this:</span><br><span class="hljs-comment">// declare a dummy coro frame.</span><br><span class="hljs-comment">// struct _R_frame &#123;</span><br><span class="hljs-comment">//  using handle_type = coro::coroutine_handle&lt;coro1::promise_type&gt;;</span><br><span class="hljs-comment">//  void (*_Coro_resume_fn)(_R_frame *);</span><br><span class="hljs-comment">//  void (*_Coro_destroy_fn)(_R_frame *);</span><br><span class="hljs-comment">//  coro1::promise_type _Coro_promise;</span><br><span class="hljs-comment">//  bool _Coro_frame_needs_free; free the coro frame mem if set.</span><br><span class="hljs-comment">//  bool _Coro_i_a_r_c; [dcl.fct.def.coroutine] / 5.3</span><br><span class="hljs-comment">//  short _Coro_resume_index;</span><br><span class="hljs-comment">//  handle_type _Coro_self_handle;</span><br><span class="hljs-comment">//  parameter copies (were required).</span><br><span class="hljs-comment">//  local variables saved (including awaitables)</span><br><span class="hljs-comment">//  (maybe) trailing space.</span><br></code></pre></td></tr></table></figure>
+<h2 id="promise-是一个-coroutine-向-caller-传递数据的对象">promise 是一个 coroutine 向 caller 传递数据的对象</h2>
+<ul>
+<li><code>co_yield</code> 使 coroutine 调用 <code>promise_type::yield_value</code> 。</li>
+<li><code>co_return</code> 使 coroutine 调用 <code>promise_type::return_value</code> 。</li>
+<li><code>initial_suspend</code> / <code>final_suspend</code> 分别控制 coroutine 开始和结束时是否额外暂停一次。</li>
+</ul>
+<h2 id="coroutine_handle-是一个指向-coroutine-frame-的指针"><code>coroutine_handle</code> 是一个指向 coroutine frame 的指针</h2>
+<figure class="highlight text"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br></pre></td><td class="code"><pre><code class="hljs text">(gdb) b _Z7counterPZ7countervE17_Z7counterv.Frame.actor<br>(gdb) r<br>(gdb) ptype frame_ptr-&gt;_Coro_self_handle<br>struct std::__n4861::coroutine_handle&lt;ReturnObject::promise_type&gt;<br>[with _Promise = ReturnObject::promise_type] &#123;<br>  void *_M_fr_ptr;<br>&#125;;<br>(gdb) watch frame_ptr-&gt;_Coro_self_handle<br>Hardware watchpoint 2: frame_ptr-&gt;_Coro_self_handle<br>(gdb) c<br>Hardware watchpoint 2: frame_ptr-&gt;_Coro_self_handle<br>Old value = &#123;_M_fr_ptr = 0x0&#125;<br>New value = &#123;_M_fr_ptr = 0x1ab6eb0&#125;<br>(gdb) print frame_ptr<br>$1 = (_Z7counterv.Frame *) 0x1ab6eb0<br>(gdb) print &amp;frame_ptr-&gt;_Coro_resume_fn<br>$2 = (void (**)(_Z7counterv.Frame *)) 0x1ab6eb0<br></code></pre></td></tr></table></figure>
+<figure class="highlight text"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><code class="hljs text">(gdb) b main.cc:47<br>(gdb) c<br>Breakpoint 3, main () at /usr/local/include/c++/12.2.0/main.cc:47<br>47    auto&amp; promise = h.promise();<br>(gdb) print h<br>$3 = &#123;_M_fr_ptr = 0x1ab6eb0&#125;<br></code></pre></td></tr></table></figure>
+<p>通过 GDB 跟踪 <code>frame_ptr-&gt;_Coro_self_handle</code> ，可以看到它是一个指向 <code>Frame</code> / <code>Frame::_Coro_resume_fn</code> 的指针，从而说明 <code>coroutine_handle</code> 也是一个指向 <code>Frame</code> / <code>Frame::_Coro_resume_fn</code> 的指针。</p>
+<h2 id="awaiter-是一个控制-coroutine-切换行为的对象"><code>awaiter</code> 是一个控制 coroutine 切换行为的对象</h2>
+<ul>
+<li><code>awaiter.await_ready()</code> 决定继续执行当前 coroutine 还是暂停执行当前 coroutine 。</li>
+<li><code>awaiter.await_suspend(handle)</code> 决定暂停执行当前 coroutine 之后应该干什么。</li>
+</ul>
+<p><a target="_blank" rel="noopener" href="https://en.cppreference.com/w/cpp/language/coroutines">C++ reference: Coroutines</a> 提到了 <code>Awaiter</code> 的作用：</p>
+<blockquote>
+<p><code>co_await expr</code>:</p>
+<p>First, expr is converted to an awaitable as follows...</p>
+<p>Then, the awaiter object is obtained, as follows...</p>
+<p>Then, <code>awaiter.await_ready()</code> is called (this is a short-cut to avoid the cost of suspension if it's known that the result is ready or can be completed synchronously). If its result, contextually-converted to bool is <code>false</code> then</p>
+<ul>
+<li>The coroutine is suspended (its coroutine state is populated with local variables and current suspension point).</li>
+<li><code>awaiter.await_suspend(handle)</code> is called, where handle is the coroutine handle representing the current coroutine. Inside that function, the suspended coroutine state is observable via that handle, and it's this function's responsibility to schedule it to resume on some executor, or to be destroyed (returning <code>false</code> counts as scheduling)
+<ul>
+<li>if <code>await_suspend</code> returns <code>void</code>, control is immediately returned to the caller/resumer of the current coroutine (this coroutine remains suspended).</li>
+<li>if <code>await_suspend</code> returns <code>bool</code>,
+<ul>
+<li>the value <code>true</code> returns control to the caller/resumer of the current coroutine.</li>
+<li>the value <code>false</code> resumes the current coroutine.</li>
+</ul></li>
+<li>if <code>await_suspend</code> returns a coroutine handle for some other coroutine, that handle is resumed (by a call to <code>handle.resume()</code>) (note this may chain to eventually cause the current coroutine to resume).</li>
+<li>if <code>await_suspend</code> throws an exception, the exception is caught, the coroutine is resumed, and the exception is immediately re-thrown.</li>
+</ul></li>
+</ul>
+<p>Finally, <code>awaiter.await_resume()</code> is called (whether the coroutine was suspended or not), and its result is the result of the whole <code>co_await expr</code> expression.</p>
+</blockquote>
+<h1 id="co_yield-co_await-promise.yield_valuevalue"><code>co_yield</code> = <code>co_await promise.yield_value(value)</code></h1>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br></pre></td><td class="code"><pre><code class="hljs cpp"><span class="hljs-comment">// g++ -std=c++20 -fcoroutines -fno-exceptions -fno-asynchronous-unwind-tables -ggdb -O0 main.cc -o main.o</span><br><span class="hljs-comment">// objdump -M intel,intel-mnemonic --demangle=auto --no-recurse-limit --no-show-raw-insn -d main.o</span><br><span class="hljs-meta">#<span class="hljs-keyword">include</span> <span class="hljs-string">&lt;concepts&gt;</span></span><br><span class="hljs-meta">#<span class="hljs-keyword">include</span> <span class="hljs-string">&lt;coroutine&gt;</span></span><br><span class="hljs-meta">#<span class="hljs-keyword">include</span> <span class="hljs-string">&lt;exception&gt;</span></span><br><span class="hljs-meta">#<span class="hljs-keyword">include</span> <span class="hljs-string">&lt;iostream&gt;</span></span><br><br><span class="hljs-keyword">struct</span> <span class="hljs-title class_">ReturnObject</span> &#123;<br>  <span class="hljs-keyword">struct</span> <span class="hljs-title class_">promise_type</span> &#123;<br>    <span class="hljs-function">ReturnObject <span class="hljs-title">get_return_object</span><span class="hljs-params">()</span> </span>&#123;<br>      <span class="hljs-keyword">return</span> &#123;<br>        .h_ = std::coroutine_handle&lt;promise_type&gt;::<span class="hljs-built_in">from_promise</span>(*<span class="hljs-keyword">this</span>)<br>      &#125;;<br>    &#125;<br>    <span class="hljs-function">std::suspend_never <span class="hljs-title">initial_suspend</span><span class="hljs-params">()</span> </span>&#123; <span class="hljs-keyword">return</span> &#123;&#125;; &#125;<br>    <span class="hljs-function">std::suspend_always <span class="hljs-title">yield_value</span><span class="hljs-params">(<span class="hljs-type">unsigned</span> <span class="hljs-type">int</span> value)</span> </span>&#123;<br>      value_ = value;<br>      <span class="hljs-keyword">return</span> &#123;&#125;;<br>    &#125;<br>    <span class="hljs-function"><span class="hljs-type">void</span> <span class="hljs-title">return_value</span><span class="hljs-params">(<span class="hljs-type">unsigned</span> <span class="hljs-type">int</span> value)</span> </span>&#123;<br>      value_ = value;<br>    &#125;<br>    <span class="hljs-function">std::suspend_always <span class="hljs-title">final_suspend</span><span class="hljs-params">()</span> <span class="hljs-keyword">noexcept</span> </span>&#123; <span class="hljs-keyword">return</span> &#123;&#125;; &#125;<br>    <span class="hljs-function"><span class="hljs-type">void</span> <span class="hljs-title">unhandled_exception</span><span class="hljs-params">()</span> </span>&#123;&#125;<br>    <span class="hljs-type">unsigned</span> <span class="hljs-type">int</span> value_;<br>  &#125;;<br>  std::coroutine_handle&lt;promise_type&gt; h_;<br>&#125;;<br><br><span class="hljs-function">ReturnObject <span class="hljs-title">counter</span><span class="hljs-params">()</span> </span>&#123;<br>  <span class="hljs-keyword">co_await</span> std::suspend_always&#123;&#125;;<br>  <span class="hljs-type">unsigned</span> <span class="hljs-type">int</span> value_a = <span class="hljs-number">0x12345678</span>;<br>  <span class="hljs-keyword">co_yield</span> value_a;<br>  <span class="hljs-type">unsigned</span> <span class="hljs-type">int</span> value_b = <span class="hljs-number">0x90ABCDEF</span>;<br>  <span class="hljs-type">uint64_t</span> rbp = <span class="hljs-number">0</span>;<br>  <span class="hljs-built_in">asm</span>(<span class="hljs-string">&quot;movq %%rbp, %0&quot;</span> : <span class="hljs-string">&quot;=r&quot;</span> (rbp));<br>  <span class="hljs-type">uint64_t</span>* frame_ptr = *(<span class="hljs-built_in">reinterpret_cast</span>&lt;<span class="hljs-type">uint64_t</span>**&gt;(rbp - <span class="hljs-number">0x28</span>));<br>  <span class="hljs-keyword">auto</span> h = std::coroutine_handle&lt;ReturnObject::promise_type&gt;::<span class="hljs-built_in">from_address</span>(frame_ptr);<br>  <span class="hljs-keyword">auto</span>&amp; p = h.<span class="hljs-built_in">promise</span>();<br>  <span class="hljs-keyword">co_await</span> p.<span class="hljs-built_in">yield_value</span>(value_b);<br>  <span class="hljs-type">unsigned</span> <span class="hljs-type">int</span> value_c = <span class="hljs-number">0x98765432</span>;<br>  <span class="hljs-keyword">co_return</span> value_c;<br>&#125;<br><br><span class="hljs-function"><span class="hljs-type">int</span> <span class="hljs-title">main</span><span class="hljs-params">()</span> </span>&#123;<br>  <span class="hljs-keyword">auto</span> h = <span class="hljs-built_in">counter</span>().h_;<br>  <span class="hljs-keyword">auto</span>&amp; promise = h.<span class="hljs-built_in">promise</span>();<br>  std::cout &lt;&lt; promise.value_ &lt;&lt; std::endl;<br>  <span class="hljs-built_in">h</span>();<br>  std::cout &lt;&lt; promise.value_ &lt;&lt; std::endl;<br>  <span class="hljs-built_in">h</span>();<br>  std::cout &lt;&lt; promise.value_ &lt;&lt; std::endl;<br>  <span class="hljs-built_in">h</span>();<br>  std::cout &lt;&lt; promise.value_ &lt;&lt; std::endl;<br>  h.<span class="hljs-built_in">destroy</span>();<br>  <span class="hljs-keyword">return</span> <span class="hljs-number">0</span>;<br>&#125;<br></code></pre></td></tr></table></figure>
+<h1 id="解密-stdcoroutine_handlefrom_promise">解密 std::coroutine_handle<Promise>::from_promise</h1>
+<p><code>std::coroutine_handle&lt;Promise&gt;::from_promise</code> 看上去很像“魔法”，从一个没有任何相关字段的对象（比如 <code>ReturnObject::promise_type</code> ）里凭空变出了 <code>coroutine_handle</code> 。<a target="_blank" rel="noopener" href="https://stackoverflow.com/questions/58632651/how-coroutine-handlepromisefrom-promise-works-in-c">Stack Overflow: How coroutine_handle<Promise>::from_promise() works in C++</a> 解释了这个魔法：</p>
+<blockquote>
+<p>It works by fiat. That is, it works because the standard says that it works, and implementations must therefore find a way to implement coroutines in such a way that it is possible.</p>
+<p>When creating a coroutine, the implementation creates two things: the <code>coroutine_handle</code> and the <code>promise</code> object. The location of both of these things is controlled entirely by the compiler. So, the compiler could very easily allocate them contiguously with each other, such that a coroutine's stack would essentially start with a <code>struct &#123;coroutine_handle&lt;Promise&gt; handle; Promise promise&#125;;</code>.</p>
+<p>Given that knowledge, you know that the handle for any promise type lives <code>sizeof(coroutine_handle&lt;Promise&gt;)</code> bytes before any <code>promise</code> object's address (alignment requirements of the <code>Promise</code> type can adjust this, but such things can be queried from the type). And since <code>from_promise</code> takes a promise object, you can just offset the pointer and cast it to a <code>coroutine_handle&lt;Promise&gt;</code>.</p>
+<p>Now, that is just one way of doing it; an implementation doesn't have to do it this way. What matters is that the implementation has control over where the promise object lives relative to the coroutine internal data. Or more specifically, the promise lives inside of that internal data. Regardless of how you look at it, the compiler knows everything it needs to in order to convert the address of a promise into the internal data needed to fill in a <code>coroutine_handle</code>.</p>
+</blockquote>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br></pre></td><td class="code"><pre><code class="hljs cpp">type = <span class="hljs-keyword">struct</span> _Z7counterv.Frame &#123;<br>  <span class="hljs-built_in">void</span> (*_Coro_resume_fn)(_Z7counterv.Frame *);<br>  <span class="hljs-built_in">void</span> (*_Coro_destroy_fn)(_Z7counterv.Frame *);<br>  std::__n4861::__coroutine_traits_impl&lt;ReturnObject, <span class="hljs-type">void</span>&gt;::promise_type _Coro_promise;<br>  std::__n4861::coroutine_handle&lt;ReturnObject::promise_type&gt; _Coro_self_handle;<br>  <span class="hljs-type">unsigned</span> <span class="hljs-type">short</span> _Coro_resume_index;<br>  <span class="hljs-type">bool</span> _Coro_frame_needs_free;<br>  ReturnObject::InitialSuspendNever Is_1_1;<br>  <span class="hljs-type">unsigned</span> <span class="hljs-type">int</span> value_a_1_2;<br>  <span class="hljs-type">unsigned</span> <span class="hljs-type">int</span> value_b_1_2;<br>  <span class="hljs-type">unsigned</span> <span class="hljs-type">int</span> value_c_1_2;<br>  CoAwaitSuspendAlways Aw0_2_3;<br>  ReturnObject::YieldSuspendAlways Yd1_2_4;<br>  ReturnObject::YieldSuspendAlways Yd2_2_5;<br>  ReturnObject::FinalSuspendAlways Fs_1_6;<br>&#125;<br></code></pre></td></tr></table></figure>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br></pre></td><td class="code"><pre><code class="hljs assembly">0000000000401708 &lt;ReturnObject::promise_type::get_return_object()&gt;:<br>  401708:       push   rbp<br>  401709:       mov    rbp,rsp<br>  40170c:       sub    rsp,0x10<br>  ; RDI = this = &amp;Frame::_Coro_promise;<br>  401710:       mov    QWORD PTR [rbp-0x8],rdi<br>  401714:       mov    rax,QWORD PTR [rbp-0x8]<br>  401718:       mov    rdi,rax<br>  40171b:       call   401775 &lt;std::__n4861::coroutine_handle&lt;ReturnObject::promise_type&gt;::from_promise(ReturnObject::promise_type&amp;)&gt;<br>  401720:       leave<br>  401721:       ret<br><br>0000000000401775 &lt;std::__n4861::coroutine_handle&lt;ReturnObject::promise_type&gt;::from_promise(ReturnObject::promise_type&amp;)&gt;:<br>  401775:       push   rbp<br>  401776:       mov    rbp,rsp<br>  ; RDI = &amp;Frame::_Coro_promise.<br>  401779:       mov    QWORD PTR [rbp-0x18],rdi<br>  40177d:       mov    QWORD PTR [rbp-0x8],0x0<br>  401785:       mov    rax,QWORD PTR [rbp-0x18]<br>  ; RAX = RDI - 0x10 = &amp;Frame::_Coro_promise - 0x10 = &amp;Frame.<br>  401789:       sub    rax,0x10<br>  40178d:       mov    QWORD PTR [rbp-0x8],rax<br>  401791:       mov    rax,QWORD PTR [rbp-0x8]<br>  401795:       pop    rbp<br>  ; Return value is &amp;Frame, which is coroutine handle.<br>  401796:       ret<br>  401797:       nop<br></code></pre></td></tr></table></figure>
+<h1 id="reference">Reference</h1>
+<p>Assembly Language:</p>
+<ul>
+<li><a target="_blank" rel="noopener" href="https://www.intel.com/content/www/us/en/architecture-and-technology/64-ia-32-architectures-software-developer-instruction-set-reference-manual-325383.html">Intel 64 and IA-32 Architectures Software Developer's Manual: Volume 2</a></li>
+<li><a target="_blank" rel="noopener" href="https://aaronbloomfield.github.io/pdr/book/x86-64bit-ccc-chapter.pdf">The 64 bit x86 C Calling Convention</a></li>
+<li><a target="_blank" rel="noopener" href="https://libdl.so/articles/x86_calling_conventions.html">x86 calling conventions</a></li>
+<li><a target="_blank" rel="noopener" href="https://wiki.osdev.org/CPU_Registers_x86">OSDev.org: CPU Registers x86</a></li>
+<li><a target="_blank" rel="noopener" href="https://stackoverflow.com/questions/21718397/what-are-the-esp-and-the-ebp-registers">Stack Overflow: What are the ESP and the EBP registers?</a></li>
+<li><a target="_blank" rel="noopener" href="https://stackoverflow.com/questions/4560720/why-does-the-stack-address-grow-towards-decreasing-memory-addresses">Stack Overflow: Why does the stack address grow towards decreasing memory addresses?</a></li>
+<li><a target="_blank" rel="noopener" href="https://stackoverflow.com/questions/1582960/assembly-language-je-jump-function">Stack Overflow: Assembly language je jump function</a></li>
+</ul>
+<p>Coroutine proposals:</p>
+<ul>
+<li><a target="_blank" rel="noopener" href="https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2018/n4775.pdf">Open Standards: Working Draft, C++ Extensions for Coroutines</a></li>
+<li><a target="_blank" rel="noopener" href="https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2019/p1492r0.pdf">Open Standards: Coroutines: Language and Implementation Impact</a></li>
+<li><a target="_blank" rel="noopener" href="https://eel.is/c++draft/dcl.fct.def.coroutine">Working Draft, Standard for Programming Language C++: Coroutine definitions</a></li>
+</ul>
+<p>Coroutine Overview:</p>
+<ul>
+<li><a target="_blank" rel="noopener" href="https://www.scs.stanford.edu/~dm/blog/c++-coroutines.html">David Mazières: My tutorial and take on C++20 coroutines</a></li>
+<li><a target="_blank" rel="noopener" href="https://devblogs.microsoft.com/oldnewthing/20211007-00/?p=105777">Mircosoft, The Old New Thing, Debugging coroutine handles: The Microsoft Visual C++ compiler, clang, and gcc</a></li>
+<li><a target="_blank" rel="noopener" href="https://devblogs.microsoft.com/oldnewthing/20210329-00/?p=105015">Mircosoft, The Old New Thing, C++ coroutines: The mental model for coroutine promises</a></li>
+<li><a target="_blank" rel="noopener" href="https://devblogs.microsoft.com/oldnewthing/20210330-00/?p=105019">Mircosoft, The Old New Thing, C++ coroutines: Basic implementation of a promise type</a></li>
+<li><a target="_blank" rel="noopener" href="https://devblogs.microsoft.com/oldnewthing/20210331-00/?p=105028">Microsoft, The Old New Thing, C++ coroutines: The initial and final suspend, and improving our return_value method</a></li>
+<li><a target="_blank" rel="noopener" href="https://devblogs.microsoft.com/oldnewthing/20210401-00/?p=105043">Microsoft, The Old New Thing, C++ coroutines: What happens if an exception occurs in my return_value?</a></li>
+<li><a target="_blank" rel="noopener" href="https://www.youtube.com/watch?v=ZNttI_WswMU">ACCU 2022, Jim Pascoe: How to Use C++20 Coroutines for Networking</a></li>
+<li><a target="_blank" rel="noopener" href="https://itnext.io/c-20-coroutines-complete-guide-7c3fc08db89d">ITNEXT, Šimon Tóth: C++20 Coroutines — Complete* Guide</a></li>
+<li><a target="_blank" rel="noopener" href="https://stackoverflow.com/questions/58632651/how-coroutine-handlepromisefrom-promise-works-in-c">Stack Overflow: How coroutine_handle&lt;Promise&gt;::from_promise() works in C++</a></li>
+<li><a target="_blank" rel="noopener" href="https://en.cppreference.com/w/cpp/language/coroutines">C++ reference: Coroutines</a></li>
+</ul>
+<p>Coroutine Frame:</p>
+<ul>
+<li><a target="_blank" rel="noopener" href="https://clang.llvm.org/docs/DebuggingCoroutines.html#coroutine-frame">Clang 16.0.0: Debugging C++ Coroutines, coroutine frame</a></li>
+<li><a target="_blank" rel="noopener" href="https://github.com/gcc-mirror/gcc/commit/49789fd08378e3ff7a6efd7c4f72b72654259b89">gcc-mirror/gcc: C++ coroutines Initial implementation.</a></li>
+<li><a target="_blank" rel="noopener" href="https://github.com/gcc-mirror/gcc/blob/2fa8c4a659a19ec971c80704f48f96c13aae9ac3/gcc/cp/coroutines.cc#L4336">gcc-mirror/gcc: coroutines.cc</a></li>
+</ul>
+
+                
+              </div>
+            
+            <hr/>
+            <div>
+              <div class="post-metas my-3">
+  
+    <div class="post-meta mr-3 d-flex align-items-center">
+      <i class="iconfont icon-category"></i>
+      
+
+<span class="category-chains">
+  
+  
+    
+      <span class="category-chain">
+        
+  <a href="/categories/Computer-Science/" class="category-chain-item">Computer Science</a>
+  
+  
+    <span>></span>
+    
+  <a href="/categories/Computer-Science/Programming-Language/" class="category-chain-item">Programming Language</a>
+  
+  
+    <span>></span>
+    
+  <a href="/categories/Computer-Science/Programming-Language/C/" class="category-chain-item">C++</a>
+  
+  
+
+  
+
+  
+
+      </span>
+    
+  
+</span>
+
+    </div>
+  
+  
+</div>
+
+
+              
+  
+
+  <div class="license-box my-3">
+    <div class="license-title">
+      <div>Explore C++20 Coroutine</div>
+      <div>https://clcanny.github.io/2022/07/30/computer-science/programming-language/c++/explore-c++-20-coroutine/</div>
+    </div>
+    <div class="license-meta">
+      
+        <div class="license-meta-item">
+          <div>作者</div>
+          <div>JunBin</div>
+        </div>
+      
+      
+        <div class="license-meta-item license-meta-date">
+          <div>发布于</div>
+          <div>2022年7月30日</div>
+        </div>
+      
+      
+      
+        <div class="license-meta-item">
+          <div>许可协议</div>
+          <div>
+            
+              
+              
+                <a target="_blank" href="https://creativecommons.org/licenses/by/4.0/">
+                  <span class="hint--top hint--rounded" aria-label="BY - 署名">
+                    <i class="iconfont icon-by"></i>
+                  </span>
+                </a>
+              
+            
+          </div>
+        </div>
+      
+    </div>
+    <div class="license-icon iconfont"></div>
+  </div>
+
+
+
+              
+                <div class="post-prevnext my-3">
+                  <article class="post-prev col-6">
+                    
+                    
+                      <a href="/2022/10/05/computer-science/consensus/paper-interpretation-the-part-time-parliament/" title="Paper Interpretation - The Part-Time Parliament">
+                        <i class="iconfont icon-arrowleft"></i>
+                        <span class="hidden-mobile">Paper Interpretation - The Part-Time Parliament</span>
+                        <span class="visible-mobile">上一篇</span>
+                      </a>
+                    
+                  </article>
+                  <article class="post-next col-6">
+                    
+                    
+                      <a href="/2022/01/15/computer-science/memory-analysis/jemalloc-size-classes/" title="Jemalloc Size Classes">
+                        <span class="hidden-mobile">Jemalloc Size Classes</span>
+                        <span class="visible-mobile">下一篇</span>
+                        <i class="iconfont icon-arrowright"></i>
+                      </a>
+                    
+                  </article>
+                </div>
+              
+            </div>
+
+            
+          </article>
+        </div>
+      </div>
+    </div>
+
+    <div class="side-col d-none d-lg-block col-lg-2">
+      
+  <aside class="sidebar" style="margin-left: -1rem">
+    <div id="toc">
+  <p class="toc-header">
+    <i class="iconfont icon-list"></i>
+    <span>目录</span>
+  </p>
+  <div class="toc-body" id="toc-body"></div>
+</div>
+
+
+
+  </aside>
+
+
+    </div>
+  </div>
+</div>
+
+
+
+
+
+  
+
+
+
+  
+
+
+
+  
+
+
+
+  
+
+
+
+  
+
+
+
+  <script>
+  Fluid.utils.createScript('https://lib.baomitu.com/mermaid/8.14.0/mermaid.min.js', function() {
+    mermaid.initialize({"theme":"default"});
+
+    Fluid.events.registerRefreshCallback(function() {
+      if ('mermaid' in window) {
+        mermaid.init();
+      }
+    });
+  });
+</script>
+
+
+
+
+
+
+    
+
+    
+      <a id="scroll-top-button" aria-label="TOP" href="#" role="button">
+        <i class="iconfont icon-arrowup" aria-hidden="true"></i>
+      </a>
+    
+
+    
+      <div class="modal fade" id="modalSearch" tabindex="-1" role="dialog" aria-labelledby="ModalLabel"
+     aria-hidden="true">
+  <div class="modal-dialog modal-dialog-scrollable modal-lg" role="document">
+    <div class="modal-content">
+      <div class="modal-header text-center">
+        <h4 class="modal-title w-100 font-weight-bold">搜索</h4>
+        <button type="button" id="local-search-close" class="close" data-dismiss="modal" aria-label="Close">
+          <span aria-hidden="true">&times;</span>
+        </button>
+      </div>
+      <div class="modal-body mx-3">
+        <div class="md-form mb-5">
+          <input type="text" id="local-search-input" class="form-control validate">
+          <label data-error="x" data-success="v" for="local-search-input">关键词</label>
+        </div>
+        <div class="list-group" id="local-search-result"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+    
+
+    
+  </main>
+
+  <footer>
+    <div class="footer-inner">
+  
+    <div class="footer-content">
+       <a href="https://hexo.io" target="_blank" rel="nofollow noopener"><span>Hexo</span></a> <i class="iconfont icon-love"></i> <a href="https://github.com/fluid-dev/hexo-theme-fluid" target="_blank" rel="nofollow noopener"><span>Fluid</span></a> 
+    </div>
+  
+  
+  
+  
+</div>
+
+  </footer>
+
+  <!-- Scripts -->
+  
+  <script  src="https://lib.baomitu.com/nprogress/0.2.0/nprogress.min.js" ></script>
+  <link  rel="stylesheet" href="https://lib.baomitu.com/nprogress/0.2.0/nprogress.min.css" />
+
+  <script>
+    NProgress.configure({"showSpinner":false,"trickleSpeed":100})
+    NProgress.start()
+    window.addEventListener('load', function() {
+      NProgress.done();
+    })
+  </script>
+
+
+<script  src="https://lib.baomitu.com/jquery/3.6.0/jquery.min.js" ></script>
+<script  src="https://lib.baomitu.com/twitter-bootstrap/4.6.1/js/bootstrap.min.js" ></script>
+<script  src="/js/events.js" ></script>
+<script  src="/js/plugins.js" ></script>
+
+
+  <script  src="https://lib.baomitu.com/typed.js/2.0.12/typed.min.js" ></script>
+  <script>
+    (function (window, document) {
+      var typing = Fluid.plugins.typing;
+      var subtitle = document.getElementById('subtitle');
+      if (!subtitle || !typing) {
+        return;
+      }
+      var text = subtitle.getAttribute('data-typed-text');
+      
+        typing(text);
+      
+    })(window, document);
+  </script>
+
+
+
+
+  
+    <script  src="/js/img-lazyload.js" ></script>
+  
+
+
+
+
+  
+<script>
+  Fluid.utils.createScript('https://lib.baomitu.com/tocbot/4.18.2/tocbot.min.js', function() {
+    var toc = jQuery('#toc');
+    if (toc.length === 0 || !window.tocbot) { return; }
+    var boardCtn = jQuery('#board-ctn');
+    var boardTop = boardCtn.offset().top;
+
+    window.tocbot.init(Object.assign({
+      tocSelector     : '#toc-body',
+      contentSelector : '.markdown-body',
+      linkClass       : 'tocbot-link',
+      activeLinkClass : 'tocbot-active-link',
+      listClass       : 'tocbot-list',
+      isCollapsedClass: 'tocbot-is-collapsed',
+      collapsibleClass: 'tocbot-is-collapsible',
+      scrollSmooth    : true,
+      includeTitleTags: true,
+      headingsOffset  : -boardTop,
+    }, CONFIG.toc));
+    if (toc.find('.toc-list-item').length > 0) {
+      toc.css('visibility', 'visible');
+    }
+
+    Fluid.events.registerRefreshCallback(function() {
+      if ('tocbot' in window) {
+        tocbot.refresh();
+        var toc = jQuery('#toc');
+        if (toc.length === 0 || !tocbot) {
+          return;
+        }
+        if (toc.find('.toc-list-item').length > 0) {
+          toc.css('visibility', 'visible');
+        }
+      }
+    });
+  });
+</script>
+
+
+  <script src=https://lib.baomitu.com/clipboard.js/2.0.11/clipboard.min.js></script>
+
+  <script>Fluid.plugins.codeWidget();</script>
+
+
+  
+<script>
+  Fluid.utils.createScript('https://lib.baomitu.com/anchor-js/4.3.1/anchor.min.js', function() {
+    window.anchors.options = {
+      placement: CONFIG.anchorjs.placement,
+      visible  : CONFIG.anchorjs.visible
+    };
+    if (CONFIG.anchorjs.icon) {
+      window.anchors.options.icon = CONFIG.anchorjs.icon;
+    }
+    var el = (CONFIG.anchorjs.element || 'h1,h2,h3,h4,h5,h6').split(',');
+    var res = [];
+    for (var item of el) {
+      res.push('.markdown-body > ' + item.trim());
+    }
+    if (CONFIG.anchorjs.placement === 'left') {
+      window.anchors.options.class = 'anchorjs-link-left';
+    }
+    window.anchors.add(res.join(', '));
+
+    Fluid.events.registerRefreshCallback(function() {
+      if ('anchors' in window) {
+        anchors.removeAll();
+        var el = (CONFIG.anchorjs.element || 'h1,h2,h3,h4,h5,h6').split(',');
+        var res = [];
+        for (var item of el) {
+          res.push('.markdown-body > ' + item.trim());
+        }
+        if (CONFIG.anchorjs.placement === 'left') {
+          anchors.options.class = 'anchorjs-link-left';
+        }
+        anchors.add(res.join(', '));
+      }
+    });
+  });
+</script>
+
+
+  
+<script>
+  Fluid.utils.createScript('https://lib.baomitu.com/fancybox/3.5.7/jquery.fancybox.min.js', function() {
+    Fluid.plugins.fancyBox();
+  });
+</script>
+
+
+  <script>Fluid.plugins.imageCaption();</script>
+
+  <script  src="/js/local-search.js" ></script>
+
+
+
+
+
+<!-- 主题的启动项，将它保持在最底部 -->
+<!-- the boot of the theme, keep it at the bottom -->
+<script  src="/js/boot.js" ></script>
+
+
+  
+
+  <noscript>
+    <div class="noscript-warning">博客在允许 JavaScript 运行的环境下浏览效果更佳</div>
+  </noscript>
+</body>
+</html>

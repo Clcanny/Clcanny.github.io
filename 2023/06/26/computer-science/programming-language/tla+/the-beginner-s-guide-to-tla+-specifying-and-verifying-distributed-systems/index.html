@@ -1,0 +1,809 @@
+
+
+<!DOCTYPE html>
+<html lang="zh-CN" data-default-color-scheme=auto>
+
+
+
+<head>
+  <meta charset="UTF-8">
+  <link rel="apple-touch-icon" sizes="76x76" href="/img/fluid.png">
+  <link rel="icon" href="/img/fluid.png">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, shrink-to-fit=no">
+  <meta http-equiv="x-ua-compatible" content="ie=edge">
+  
+  <meta name="theme-color" content="#2f4154">
+  <meta name="author" content="JunBin">
+  <meta name="keywords" content="">
+  
+    <meta name="description" content="The TLA+ Video Course is excellent material for learning TLA+. However, the most effective way to learn something new is to try it out, fail, and try again. This post is a record of what I&#39;ve learned">
+<meta property="og:type" content="article">
+<meta property="og:title" content="The Beginner&#39;s Guide to TLA+: Specifying and Verifying Distributed Systems">
+<meta property="og:url" content="https://clcanny.github.io/2023/06/26/computer-science/programming-language/tla+/the-beginner-s-guide-to-tla+-specifying-and-verifying-distributed-systems/index.html">
+<meta property="og:site_name" content="On The Road">
+<meta property="og:description" content="The TLA+ Video Course is excellent material for learning TLA+. However, the most effective way to learn something new is to try it out, fail, and try again. This post is a record of what I&#39;ve learned">
+<meta property="og:locale" content="zh_CN">
+<meta property="article:published_time" content="2023-06-26T15:15:00.000Z">
+<meta property="article:modified_time" content="2024-10-30T15:47:28.515Z">
+<meta property="article:author" content="JunBin">
+<meta name="twitter:card" content="summary_large_image">
+  
+  
+  
+  <title>The Beginner&#39;s Guide to TLA+: Specifying and Verifying Distributed Systems - On The Road</title>
+
+  <link  rel="stylesheet" href="https://lib.baomitu.com/twitter-bootstrap/4.6.1/css/bootstrap.min.css" />
+
+
+
+  <link  rel="stylesheet" href="https://lib.baomitu.com/github-markdown-css/4.0.0/github-markdown.min.css" />
+
+  <link  rel="stylesheet" href="https://lib.baomitu.com/hint.css/2.7.0/hint.min.css" />
+
+  <link  rel="stylesheet" href="https://lib.baomitu.com/fancybox/3.5.7/jquery.fancybox.min.css" />
+
+
+
+<!-- 主题依赖的图标库，不要自行修改 -->
+<!-- Do not modify the link that theme dependent icons -->
+
+<link rel="stylesheet" href="//at.alicdn.com/t/font_1749284_hj8rtnfg7um.css">
+
+
+
+<link rel="stylesheet" href="//at.alicdn.com/t/font_1736178_lbnruvf0jn.css">
+
+
+<link  rel="stylesheet" href="/css/main.css" />
+
+
+  <link id="highlight-css" rel="stylesheet" href="/css/highlight.css" />
+  
+    <link id="highlight-css-dark" rel="stylesheet" href="/css/highlight-dark.css" />
+  
+
+
+
+
+  <script id="fluid-configs">
+    var Fluid = window.Fluid || {};
+    Fluid.ctx = Object.assign({}, Fluid.ctx)
+    var CONFIG = {"hostname":"clcanny.github.io","root":"/","version":"1.9.4","typing":{"enable":true,"typeSpeed":70,"cursorChar":"_","loop":false,"scope":[]},"anchorjs":{"enable":true,"element":"h1,h2,h3,h4,h5,h6","placement":"left","visible":"hover","icon":""},"progressbar":{"enable":true,"height_px":3,"color":"#29d","options":{"showSpinner":false,"trickleSpeed":100}},"code_language":{"enable":true,"default":"TEXT"},"copy_btn":true,"image_caption":{"enable":true},"image_zoom":{"enable":true,"img_url_replace":["",""]},"toc":{"enable":true,"placement":"right","headingSelector":"h1,h2,h3,h4,h5,h6","collapseDepth":0},"lazyload":{"enable":true,"loading_img":"/img/loading.gif","onlypost":false,"offset_factor":2},"web_analytics":{"enable":false,"follow_dnt":true,"baidu":null,"google":null,"gtag":null,"tencent":{"sid":null,"cid":null},"woyaola":null,"cnzz":null,"leancloud":{"app_id":null,"app_key":null,"server_url":null,"path":"window.location.pathname","ignore_local":false}},"search_path":"/local-search.xml"};
+
+    if (CONFIG.web_analytics.follow_dnt) {
+      var dntVal = navigator.doNotTrack || window.doNotTrack || navigator.msDoNotTrack;
+      Fluid.ctx.dnt = dntVal && (dntVal.startsWith('1') || dntVal.startsWith('yes') || dntVal.startsWith('on'));
+    }
+  </script>
+  <script  src="/js/utils.js" ></script>
+  <script  src="/js/color-schema.js" ></script>
+  
+
+
+  
+<meta name="generator" content="Hexo 7.0.0-rc1"></head>
+
+
+<body>
+  
+
+  <header>
+    
+
+<div class="header-inner" style="height: 70vh;">
+  <nav id="navbar" class="navbar fixed-top  navbar-expand-lg navbar-dark scrolling-navbar">
+  <div class="container">
+    <a class="navbar-brand" href="/">
+      <strong>Fluid</strong>
+    </a>
+
+    <button id="navbar-toggler-btn" class="navbar-toggler" type="button" data-toggle="collapse"
+            data-target="#navbarSupportedContent"
+            aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
+      <div class="animated-icon"><span></span><span></span><span></span></div>
+    </button>
+
+    <!-- Collapsible content -->
+    <div class="collapse navbar-collapse" id="navbarSupportedContent">
+      <ul class="navbar-nav ml-auto text-center">
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/">
+                <i class="iconfont icon-home-fill"></i>
+                <span>首页</span>
+              </a>
+            </li>
+          
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/archives/">
+                <i class="iconfont icon-archive-fill"></i>
+                <span>归档</span>
+              </a>
+            </li>
+          
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/categories/">
+                <i class="iconfont icon-category-fill"></i>
+                <span>分类</span>
+              </a>
+            </li>
+          
+        
+        
+          <li class="nav-item" id="search-btn">
+            <a class="nav-link" target="_self" href="javascript:;" data-toggle="modal" data-target="#modalSearch" aria-label="Search">
+              <i class="iconfont icon-search"></i>
+            </a>
+          </li>
+          
+        
+        
+          <li class="nav-item" id="color-toggle-btn">
+            <a class="nav-link" target="_self" href="javascript:;" aria-label="Color Toggle">
+              <i class="iconfont icon-dark" id="color-toggle-icon"></i>
+            </a>
+          </li>
+        
+      </ul>
+    </div>
+  </div>
+</nav>
+
+  
+
+<div id="banner" class="banner" parallax=true
+     style="background: url('/img/default.png') no-repeat center center; background-size: cover;">
+  <div class="full-bg-img">
+    <div class="mask flex-center" style="background-color: rgba(0, 0, 0, 0.3)">
+      <div class="banner-text text-center fade-in-up">
+        <div class="h2">
+          
+            <span id="subtitle" data-typed-text="The Beginner&#39;s Guide to TLA+: Specifying and Verifying Distributed Systems"></span>
+          
+        </div>
+
+        
+          
+  <div class="mt-3">
+    
+    
+      <span class="post-meta">
+        <i class="iconfont icon-date-fill" aria-hidden="true"></i>
+        <time datetime="2023-06-26 23:15" pubdate>
+          2023年6月26日 晚上
+        </time>
+      </span>
+    
+  </div>
+
+  <div class="mt-1">
+    
+      <span class="post-meta mr-2">
+        <i class="iconfont icon-chart"></i>
+        
+          45k 字
+        
+      </span>
+    
+
+    
+      <span class="post-meta mr-2">
+        <i class="iconfont icon-clock-fill"></i>
+        
+        
+        
+          380 分钟
+        
+      </span>
+    
+
+    
+    
+  </div>
+
+
+        
+      </div>
+
+      
+    </div>
+  </div>
+</div>
+
+</div>
+
+  </header>
+
+  <main>
+    
+      
+
+<div class="container-fluid nopadding-x">
+  <div class="row nomargin-x">
+    <div class="side-col d-none d-lg-block col-lg-2">
+      
+
+    </div>
+
+    <div class="col-lg-8 nopadding-x-md">
+      <div class="container nopadding-x-md" id="board-ctn">
+        <div id="board">
+          <article class="post-content mx-auto">
+            <!-- SEO header -->
+            <h1 style="display: none">The Beginner&#39;s Guide to TLA+: Specifying and Verifying Distributed Systems</h1>
+            
+            
+              <div class="markdown-body">
+                
+                <p><a target="_blank" rel="noopener" href="https://lamport.azurewebsites.net/video/videos.html">The TLA+ Video Course</a> is excellent material for learning TLA+. However, the most effective way to learn something new is to try it out, fail, and try again. This post is a record of what I've learned from trying out some of the TLA+ examples from that course.</p>
+<h2 id="running-tla-from-the-command-line-on-linux">Running TLA+ from the Command Line on Linux</h2>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><code class="hljs bash">docker run -it --<span class="hljs-built_in">rm</span> amazoncorretto:11 bash<br>yum install -y git<br>git <span class="hljs-built_in">clone</span> https://github.com/pmer/tla-bin.git<br><span class="hljs-built_in">cd</span> tla-bin<br>./download_or_update_tla.sh --nightly<br>./install.sh<br>tlc -<span class="hljs-built_in">help</span><br></code></pre></td></tr></table></figure>
+<h2 id="simpleprogram">SimpleProgram</h2>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><code class="hljs cpp"><span class="hljs-type">int</span> i = <span class="hljs-number">0</span>;<br><span class="hljs-function"><span class="hljs-type">void</span> <span class="hljs-title">main</span><span class="hljs-params">()</span> </span>&#123;<br>  i = <span class="hljs-built_in">someNumber</span>();<br>  i = i + <span class="hljs-number">1</span>;<br>&#125;<br></code></pre></td></tr></table></figure>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br></pre></td><td class="code"><pre><code class="hljs tla+">--------------------------- MODULE SimpleProgram ---------------------------<br>\* SimpleProgram.tla<br>EXTENDS Integers<br>VARIABLES i, pc<br><br>Init ==<br>  /\ pc = &quot;start&quot;<br>  /\ i = 0<br><br>PhaseMiddle ==<br>  /\ pc = &quot;start&quot;<br>  /\ pc&#x27; = &quot;middle&quot;<br>  /\ i&#x27; \in 1..1000<br><br>PhaseDone ==<br>  /\ pc = &quot;middle&quot;<br>  /\ pc&#x27; = &quot;done&quot;<br>  /\ i&#x27; = i + 1<br><br>Next ==<br>  \/ PhaseMiddle<br>  \/ PhaseDone<br>  \* The simplest formula that does not equal true<br>  \* for any values of pc, i, pc&#x27;, i&#x27;.<br>  \* This formula essentially means &quot;there are no possible next states&quot;.<br>  \/ FALSE<br>============================================================================<br></code></pre></td></tr></table></figure>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><code class="hljs cfg">\* SimpleProgram.cfg<br>INIT<br>Init<br><br>NEXT<br>Next<br></code></pre></td></tr></table></figure>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><code class="hljs bash">tlc SimpleProgram.tla -config SimpleProgram.cfg -deadlock<br><span class="hljs-comment"># Model checking completed. No error has been found.</span><br><span class="hljs-comment">#   Estimates of the probability that TLC did not check all reachable states</span><br><span class="hljs-comment">#   because two distinct states had the same fingerprint:</span><br><span class="hljs-comment">#   calculated (optimistic):  val = 0.0</span><br><span class="hljs-comment"># 2001 states generated, 2001 distinct states found, 0 states left on queue.</span><br><span class="hljs-comment"># The depth of the complete state graph search is 3.</span><br></code></pre></td></tr></table></figure>
+<h2 id="die-hard">Die Hard</h2>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br></pre></td><td class="code"><pre><code class="hljs tla+">--------------------------- MODULE DieHard ---------------------------------<br>\* DieHard.tla<br>EXTENDS Integers<br>VARIABLES three_gallon_jug, five_gallon_jug<br><br>Init ==<br>  /\ three_gallon_jug = 0<br>  /\ five_gallon_jug = 0<br><br>MakeThreeGallonJugFull ==<br>  /\ three_gallon_jug&#x27; = 3<br>  /\ five_gallon_jug&#x27; = five_gallon_jug<br><br>MakeFiveGallonJugFull ==<br>  /\ three_gallon_jug&#x27; = three_gallon_jug<br>  /\ five_gallon_jug&#x27; = 5<br><br>MakeThreeGallonJugEmpty ==<br>  /\ three_gallon_jug&#x27; = 0<br>  /\ five_gallon_jug&#x27; = five_gallon_jug<br><br>MakeFiveGallonJugEmpty ==<br>  /\ three_gallon_jug&#x27; = three_gallon_jug<br>  /\ five_gallon_jug&#x27; = 0<br><br>PourFromFiveGallonJugToThreeGallonJug ==<br>  /\ three_gallon_jug&#x27; =<br>    IF three_gallon_jug + five_gallon_jug &lt; 3<br>      THEN three_gallon_jug + five_gallon_jug<br>      ELSE 3<br>  /\ five_gallon_jug&#x27; =<br>    IF three_gallon_jug + five_gallon_jug &lt; 3<br>      THEN 0<br>      ELSE five_gallon_jug - (3 - three_gallon_jug)<br><br>PourFromThreeGallonJugToFiveGallonJug ==<br>  /\ three_gallon_jug&#x27; =<br>    IF five_gallon_jug + three_gallon_jug &lt; 5<br>      THEN 0<br>      ELSE three_gallon_jug - (5 - five_gallon_jug)<br>  /\ five_gallon_jug&#x27; =<br>    IF five_gallon_jug + three_gallon_jug &lt; 5<br>      THEN five_gallon_jug + three_gallon_jug<br>      ELSE 5<br><br>Next ==<br>  \/ MakeThreeGallonJugFull<br>  \/ MakeFiveGallonJugFull<br>  \/ MakeThreeGallonJugEmpty<br>  \/ MakeFiveGallonJugEmpty<br>  \/ PourFromFiveGallonJugToThreeGallonJug<br>  \/ PourFromThreeGallonJugToFiveGallonJug<br><br>TypeOK ==<br>  /\ three_gallon_jug \in 0..3<br>  /\ five_gallon_jug \in 0..5<br><br>FiveGallonJugIsFour ==<br>  five_gallon_jug /= 4<br>============================================================================<br></code></pre></td></tr></table></figure>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><code class="hljs cfg">\* DieHard.cfg<br>INIT<br>Init<br><br>NEXT<br>Next<br><br>INVARIANT<br>TypeOK<br>FiveGallonJugIsFour<br></code></pre></td></tr></table></figure>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br></pre></td><td class="code"><pre><code class="hljs bash">tlc DieHard.tla -config DieHard.cfg<br><span class="hljs-comment"># Error: Invariant FiveGallonJugIsFour is violated.</span><br><span class="hljs-comment"># Error: The behavior up to this point is:</span><br><span class="hljs-comment"># State 1: &lt;Initial predicate&gt;</span><br><span class="hljs-comment"># /\ three_gallon_jug = 0</span><br><span class="hljs-comment"># /\ five_gallon_jug = 0</span><br><span class="hljs-comment">#</span><br><span class="hljs-comment"># State 2: &lt;MakeFiveGallonJugFull line 15, col 3 to line 16, col 25 of module DieHard&gt;</span><br><span class="hljs-comment"># /\ three_gallon_jug = 0</span><br><span class="hljs-comment"># /\ five_gallon_jug = 5</span><br><span class="hljs-comment">#</span><br><span class="hljs-comment"># State 3: &lt;PourFromFiveGallonJugToThreeGallonJug line 27, col 3 to line 34, col 51 of module DieHard&gt;</span><br><span class="hljs-comment"># /\ three_gallon_jug = 3</span><br><span class="hljs-comment"># /\ five_gallon_jug = 2</span><br><span class="hljs-comment">#</span><br><span class="hljs-comment"># State 4: &lt;MakeThreeGallonJugEmpty line 19, col 3 to line 20, col 39 of module DieHard&gt;</span><br><span class="hljs-comment"># /\ three_gallon_jug = 0</span><br><span class="hljs-comment"># /\ five_gallon_jug = 2</span><br><span class="hljs-comment">#</span><br><span class="hljs-comment"># State 5: &lt;PourFromFiveGallonJugToThreeGallonJug line 27, col 3 to line 34, col 51 of module DieHard&gt;</span><br><span class="hljs-comment"># /\ three_gallon_jug = 2</span><br><span class="hljs-comment"># /\ five_gallon_jug = 0</span><br><span class="hljs-comment">#</span><br><span class="hljs-comment"># State 6: &lt;MakeFiveGallonJugFull line 15, col 3 to line 16, col 25 of module DieHard&gt;</span><br><span class="hljs-comment"># /\ three_gallon_jug = 2</span><br><span class="hljs-comment"># /\ five_gallon_jug = 5</span><br><span class="hljs-comment">#</span><br><span class="hljs-comment"># State 7: &lt;PourFromFiveGallonJugToThreeGallonJug line 27, col 3 to line 34, col 51 of module DieHard&gt;</span><br><span class="hljs-comment"># /\ three_gallon_jug = 3</span><br><span class="hljs-comment"># /\ five_gallon_jug = 4</span><br></code></pre></td></tr></table></figure>
+<h2 id="transaction-commit">Transaction Commit</h2>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br><span class="line">86</span><br><span class="line">87</span><br><span class="line">88</span><br><span class="line">89</span><br><span class="line">90</span><br><span class="line">91</span><br><span class="line">92</span><br><span class="line">93</span><br><span class="line">94</span><br><span class="line">95</span><br><span class="line">96</span><br><span class="line">97</span><br><span class="line">98</span><br><span class="line">99</span><br><span class="line">100</span><br><span class="line">101</span><br><span class="line">102</span><br><span class="line">103</span><br><span class="line">104</span><br><span class="line">105</span><br><span class="line">106</span><br><span class="line">107</span><br><span class="line">108</span><br><span class="line">109</span><br><span class="line">110</span><br><span class="line">111</span><br><span class="line">112</span><br><span class="line">113</span><br><span class="line">114</span><br><span class="line">115</span><br><span class="line">116</span><br><span class="line">117</span><br><span class="line">118</span><br></pre></td><td class="code"><pre><code class="hljs tla+">--------------------------- MODULE TransactionCommit -----------------------<br>\* TransactionCommit.tla<br>EXTENDS Integers<br>CONSTANTS RM<br>VARIABLES rmState<br><br>\* The TLA+ syntax for an array expression:<br>\* [variable \in set |-&gt; expression]<br>\*<br>\* https://www.learntla.com/core/functions.html#function<br>\* First of all, throw away the programming definition of &quot;function&quot;.<br>\* The closest thing TLA+ has to a programmatic function are operators.<br>\* A function follows the mathematical definition,<br>\* a mapping of values in one set to another set.<br>\* e.g., F == [x \in S |-&gt; expr]<br>\* The set we&#x27;re mapping from, S, is the domain of the function,<br>\* and can be retrieved by writing DOMAIN F.<br>\*<br>\* https://www.learntla.com/core/functions.html#using-functions<br>\* Why functions over operators?<br>\* We rarely use functions for computations -<br>\* operators are far superior for that.<br>\* Functions are important as values.<br>\* We can assign them to variables and manipulate them like any other value.<br>Init == rmState = [rm \in RM |-&gt; &quot;working&quot;]<br><br>Prepare(r) ==<br>  /\ rmState[r] = &quot;working&quot;<br>  \* rmState&#x27;[r] = &quot;prepared&quot; is wrong.<br>  \* This formula says the value of rmState[r] in the new state is &quot;prepared&quot;.<br>  \* It says nothing about the value of rmState[s] in the new state<br>  \* for an RM s with s != r.<br>  \*<br>  \* rmState&#x27; = [s \in RM |-&gt; IF s = r THEN &quot;prepared&quot; ELSE rmState[s]]<br>  \* This is correct, but it&#x27;s too long-winded.<br>  \* We need a shorter way to write this expression.<br>  \* TLA+ provides this EXCEPT construct. Everyone hates it.<br>  \* What does the exclamation point (usually read as bang) mean?<br>  \* It means nothing. It&#x27;s just syntax. But you&#x27;ll get used to it.<br>  /\ rmState&#x27; = [rmState EXCEPT ![r] = &quot;prepared&quot;]<br>DecideToCommit(r) ==<br>  /\ rmState[r] = &quot;prepared&quot;<br>  \* We have to change the bound variable r to some other variable like s<br>  \* to avoid a name conflict with this r.<br>  \*<br>  \* The scope of \A and \E extends as far as possible.<br>  \* The expression \A x \in S: ... extends<br>  \* to the end of its enclosing expression unless explicitly ended<br>  \* - by parentheses, (\A x \in S: ...)<br>  \* - or by similar brackets or braces<br>  \* - or by the end of a list item (which adds implicit parentheses),<br>  \*   /\<br>  \*   /\ \A x \in S: ...<br>  \*   /\<br>  \* - e.g., This expression<br>  \*      \A x \in S: ...<br>  \*   /\ \A x \in T: ...<br>  \*   is parsed like this \A x \in S: (... \A x \in T: ...).<br>  /\ (\A s \in RM: rmState[s] \in &#123;&quot;prepared&quot;, &quot;committed&quot;&#125;)<br>  /\ rmState&#x27; = [rmState EXCEPT ![r] = &quot;committed&quot;]<br>DecideToAbort(r) ==<br>  /\ rmState[r] \in &#123;&quot;working&quot;, &quot;prepared&quot;&#125;<br>  \* DecideToAbort(r) depends on the states of all the resource managers.<br>  \* How can this be implemented?<br>  \* What programming language allows a single step<br>  \* to examine the states of a whole set of processes?<br>  \* We don&#x27;t care.<br>  \* We&#x27;re writing a spec of what transaction commit should do,<br>  \* not how it’s implemented.<br>  /\ (\A s \in RM: rmState[s] /= &quot;committed&quot;)<br>  /\ rmState&#x27; = [rmState EXCEPT ![r] = &quot;aborted&quot;]<br>Next ==<br>  \E r \in RM:<br>    \/ Prepare(r)<br>    \/ DecideToCommit(r)<br>    \/ DecideToAbort(r)<br><br>TypeOK ==<br>  \* https://www.learntla.com/core/functions.html#using-functions<br>  \* In a spec I once wrote, I had to assign tasks to CPUs.<br>  \* Some tasks needed to be assigned to many CPUs,<br>  \* but each CPU should only have one task.<br>  \* In that spec, the best solution was to store assignments as functions,<br>  \* where each task mapped to a set of CPUs.<br>  \* variables<br>  \*   assignments = [t \in Tasks |-&gt; &#123;&#125;]<br>  \* Then I could write assignment[t] := assignment[t] \union &#123;cpu&#125;<br>  \* to assign cpu to task t.<br>  \* For my invariant, I said no two tasks shared a CPU assignment.<br>  \* OnlyOneTaskPerCpu ==<br>  \*   \A t1, t2 \in Tasks, c \in CPU:<br>  \*     /\ (t1 # t2)<br>  \*     /\ c \in assignments[t1]<br>  \*     =&gt; c \notin assignments[t2]<br>  \*<br>  \* https://www.learntla.com/core/functions.html#function-sets<br>  \* The syntax for function sets is [S -&gt; T]<br>  \* (T is sometimes referred to as the &quot;codomain&quot;) and<br>  \* is &quot;every function where the domain is S and all of the values are in T.&quot;<br>  \* In the prior task example, assignments was always a function<br>  \* in the function set [Tasks -&gt; SUBSET CPUs].<br>  \* A function set of form [A -&gt; B] will have B^A elements in it.<br>  \* If there were two tasks and three CPUs,<br>  \* that would be (2^3)^2 = 64 (B = 8, A = 2) possible functions.<br>  \* A good way to remember this: [1..n -&gt; BOOLEAN] is<br>  \* the set of all binary strings of length n,<br>  \* and we know there are 2^n such strings.<br>  \*<br>  \* The set of all arrays indexed by elements of RM<br>  \* with values in &#123;&quot;working&quot;, &quot;prepared&quot;, &quot;committed&quot;, &quot;aborted&quot;&#125;.<br>  rmState \in [RM -&gt; &#123;&quot;working&quot;, &quot;prepared&quot;, &quot;committed&quot;, &quot;aborted&quot;&#125;]<br><br>Consistent ==<br>  \* An abbreviation for \A r1 \in RM: \A r2 \in RM:<br>  \A r1, r2 \in RM:<br>    ~ /\ rmState[r1] = &quot;aborted&quot;<br>      /\ rmState[r2] = &quot;committed&quot;<br>============================================================================<br></code></pre></td></tr></table></figure>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><code class="hljs cfg">\* TransactionCommit.cfg<br>CONSTANT<br>RM = &#123;&quot;rm1&quot;, &quot;rm2&quot;, &quot;rm3&quot;&#125;<br><br>INIT<br>Init<br><br>NEXT<br>Next<br><br>INVARIANT<br>TypeOK<br>Consistent<br></code></pre></td></tr></table></figure>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><code class="hljs bash">tlc TransactionCommit.tla -config TransactionCommit.cfg -deadlock<br><span class="hljs-comment"># # Always be suspicious of success.</span><br><span class="hljs-comment"># # Check the statistics of the TLC run.</span><br><span class="hljs-comment"># # Did TLC find a reasonable number of states</span><br><span class="hljs-comment"># # that can be reached by behaviors?</span><br><span class="hljs-comment"># Model checking completed. No error has been found.</span><br><span class="hljs-comment">#   Estimates of the probability that TLC did not check all reachable states</span><br><span class="hljs-comment">#   because two distinct states had the same fingerprint:</span><br><span class="hljs-comment">#   calculated (optimistic):  val = 1.1E-16</span><br><span class="hljs-comment"># 94 states generated, 34 distinct states found, 0 states left on queue.</span><br><span class="hljs-comment"># The depth of the complete state graph search is 7.</span><br></code></pre></td></tr></table></figure>
+<h2 id="two-phase">Two Phase</h2>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br><span class="line">86</span><br><span class="line">87</span><br><span class="line">88</span><br><span class="line">89</span><br><span class="line">90</span><br><span class="line">91</span><br><span class="line">92</span><br><span class="line">93</span><br><span class="line">94</span><br><span class="line">95</span><br><span class="line">96</span><br><span class="line">97</span><br><span class="line">98</span><br><span class="line">99</span><br><span class="line">100</span><br><span class="line">101</span><br><span class="line">102</span><br><span class="line">103</span><br><span class="line">104</span><br><span class="line">105</span><br><span class="line">106</span><br><span class="line">107</span><br><span class="line">108</span><br><span class="line">109</span><br><span class="line">110</span><br><span class="line">111</span><br><span class="line">112</span><br><span class="line">113</span><br><span class="line">114</span><br><span class="line">115</span><br><span class="line">116</span><br><span class="line">117</span><br><span class="line">118</span><br><span class="line">119</span><br><span class="line">120</span><br><span class="line">121</span><br><span class="line">122</span><br><span class="line">123</span><br><span class="line">124</span><br><span class="line">125</span><br><span class="line">126</span><br><span class="line">127</span><br><span class="line">128</span><br><span class="line">129</span><br><span class="line">130</span><br><span class="line">131</span><br><span class="line">132</span><br><span class="line">133</span><br><span class="line">134</span><br><span class="line">135</span><br><span class="line">136</span><br><span class="line">137</span><br><span class="line">138</span><br><span class="line">139</span><br><span class="line">140</span><br><span class="line">141</span><br><span class="line">142</span><br><span class="line">143</span><br><span class="line">144</span><br><span class="line">145</span><br><span class="line">146</span><br><span class="line">147</span><br></pre></td><td class="code"><pre><code class="hljs tla">--------------------------- MODULE TwoPhase --------------------------------<br>\* TwoPhase.tla<br>EXTENDS Integers<br>CONSTANTS RM<br>VARIABLES rmState, tmState, tmPrepared, msgs<br><br>\* https://www.learntla.com/core/functions.html#structures<br>\* In TLA+, this is the struct:<br>\* st == [a |-&gt; 1, b |-&gt; &#123;&#125;]<br>\* You index structs the same way you do sequences so st[&quot;a&quot;] = 1.<br>\* You can also write it in a more &quot;object&quot; like with a dot instead: st.a = 1.<br>\* We want some way to generate sets of structs,<br>\* so we can stick them in our type invariants. Here’s how:<br>\* BankTransactionType == [acct: Accounts,<br>\*                         amnt: 1..10,<br>\*                         type: &#123;&quot;deposit&quot;, &quot;withdraw&quot;&#125;]<br>\* This is the set of all structures<br>\* where s.acct \in Accounts, s.amnt \in 1..10, etc.<br>\*<br>\* https://www.learntla.com/core/functions.html#getting-a-struct-s-keys<br>\* Both sequences and structures are just syntactic sugar.<br>\* TLA+ has only two &quot;real&quot; collections: sets and functions.<br>\* Sequences and structures are both particular classes of functions.<br>\*<br>\* https://www.learntla.com/core/functions.html#function<br>\* F == [x \in S |-&gt; expr]<br>\* The set we&#x27;re mapping from, S, is the domain of the function,<br>\* and can be retrieved by writing DOMAIN F.<br>\* That&#x27;s why we could also use DOMAIN with sequences and structures:<br>\* 1. A sequence is just a function where the domain is 1..n.<br>\* 2. A struct is just a function where the domain is a set of strings.<br>\*<br>\* https://lamport.azurewebsites.net/video/video6-script.pdf<br>\* A record corresponds roughly to a Struct in C.<br>\* The definition r == [prof |-&gt; &quot;Fred&quot;, num |-&gt; 42]<br>\* defines r to be a record with two fields prof and num.<br>\* This record is actually a function, let&#x27;s call it f,<br>\* whose domain is the set containing the two strings prof and num,<br>\* such that f of the string prof equals the string &quot;Fred&quot; and<br>\* f of the string num equals the number 42.<br>\*<br>\* [f EXCEPT ![&quot;prof&quot;] = &quot;Red&quot;]<br>\* This EXCEPT expression equals the record that&#x27;s the same as f<br>\* except its prof field equals the string Red.<br>\* It can be abbreviated as [f EXCEPT !.prof = &quot;Red&quot;]<br>Messages ==<br>         [type: &#123;&quot;Prepared&quot;&#125;, rm: RM]<br>  \* &#123;[type |-&gt; &quot;Commit&quot;], [type |-&gt; &quot;Abort&quot;]&#125;<br>  \* Each record represents a message sent by the TM to all RMs.<br>  \union [type: &#123;&quot;Commit&quot;, &quot;Abort&quot;&#125;]<br><br>Init ==<br>  /\ rmState = [rm \in RM |-&gt; &quot;working&quot;]<br>  /\ tmState = &quot;init&quot;<br>  /\ tmPrepared = &#123;&#125;<br>  /\ msgs = &#123;&#125;<br><br>TMRcvPreparedMsg(r) ==<br>  \* These two conjunctions have no primes.<br>  \* They&#x27;re conditions on the first state of a step.<br>  \* They&#x27;re called enabling conditions of the formula.<br>  \* Enabling conditions should almost always go at the beginning of<br>  \* an action formula – a formula that contains primed variables.<br>  \* That makes the formula easier to understand,<br>  \* and TLC often can&#x27;t handle the action formula if you don&#x27;t.<br>  /\ tmState = &quot;init&quot;<br>  /\ [type |-&gt; &quot;Prepared&quot;, rm |-&gt; r] \in msgs<br>  \* An action formula.<br>  /\ tmPrepared&#x27; = tmPrepared \union &#123;r&#125;<br>  \* It asserts rmState, tmState, and msgs are left unchanged,<br>  \* which is equivalent to<br>  \* /\ rmState&#x27; = rmState<br>  \* /\ tmState&#x27; = tmState<br>  \* /\ msgs&#x27; = msgs<br>  \* The step doesn&#x27;t remove the message from msgs.<br>  /\ UNCHANGED &lt;&lt;rmState, tmState, msgs&gt;&gt;<br><br>TMDecideToCommit ==<br>  /\ tmState = &quot;init&quot;<br>  /\ RM \subseteq tmPrepared<br>  /\ tmState&#x27; = &quot;done&quot;<br>  \* Since two-phase commit requires no assumptions about the order in which<br>  \* different messages are received, the simplest natural representation<br>  \* is to let msgs be a single set containing all messages in transit.<br>  \* Receiving a message removes it from the set msgs.<br>  \* There&#x27;s a simpler method that&#x27;s not obvious to most people.<br>  \* It&#x27;s to let msgs be the set of all messages that have ever been sent.<br>  \* So the action of receiving a message<br>  \* doesn&#x27;t remove the message from the set.<br>  \* 1. One advantage is that a single message in msgs<br>  \*    can be received by several processes.<br>  \* 2. It also means that a process can<br>  \*    received the same message multiple times.<br>  \*    This can happen with real message passing, and it’s useful to know that<br>  \*    the two-phase commit protocol still works even if it does happen.<br>  /\ msgs&#x27; = msgs \union [type: &#123;&quot;Commit&quot;&#125;]<br>  /\ UNCHANGED &lt;&lt;rmState, tmPrepared&gt;&gt;<br><br>TMDecideToAbort ==<br>  /\ tmState = &quot;init&quot;<br>  /\ tmState&#x27; = &quot;done&quot;<br>  /\ msgs&#x27; = msgs \union [type: &#123;&quot;Abort&quot;&#125;]<br>  /\ UNCHANGED &lt;&lt;rmState, tmPrepared&gt;&gt;<br><br>RMPrepare(r) ==<br>  /\ rmState[r] = &quot;working&quot;<br>  /\ rmState&#x27; = [rmState EXCEPT ![r] = &quot;prepared&quot;]<br>  /\ msgs&#x27; = msgs \union [type: &#123;&quot;Prepared&quot;&#125;, rm: &#123;r&#125;]<br>  /\ UNCHANGED &lt;&lt;tmState, tmPrepared&gt;&gt;<br><br>RMDecideToAbort(r) ==<br>  /\ rmState[r] = &quot;working&quot;<br>  /\ rmState&#x27; = [rmState EXCEPT ![r] = &quot;aborted&quot;]<br>  /\ UNCHANGED &lt;&lt;tmState, tmPrepared, msgs&gt;&gt;<br><br>RMRcvCommitMsg(r) ==<br>  /\ rmState[r] = &quot;prepared&quot;<br>  /\ [type |-&gt; &quot;Commit&quot;] \in msgs<br>  /\ rmState&#x27; = [rmState EXCEPT ![r] = &quot;committed&quot;]<br>  /\ UNCHANGED &lt;&lt;tmState, tmPrepared, msgs&gt;&gt;<br><br>RMRcvAbortMsg(r) ==<br>  /\ rmState[r] \in &#123;&quot;working&quot;, &quot;prepared&quot;&#125;<br>  /\ [type |-&gt; &quot;Abort&quot;] \in msgs<br>  /\ rmState&#x27; = [rmState EXCEPT ![r] = &quot;aborted&quot;]<br>  /\ UNCHANGED &lt;&lt;tmState, tmPrepared, msgs&gt;&gt;<br><br>Next ==<br>  \/ TMDecideToCommit<br>  \/ TMDecideToAbort<br>  \/ (\E r \in RM:<br>        \/ TMRcvPreparedMsg(r)<br>        \/ RMPrepare(r)<br>        \/ RMDecideToAbort(r)<br>        \/ RMRcvCommitMsg(r)<br>        \/ RMRcvAbortMsg(r))<br><br>TypeOK ==<br>  /\ rmState \in [RM -&gt; &#123;&quot;working&quot;, &quot;prepared&quot;, &quot;committed&quot;, &quot;aborted&quot;&#125;]<br>  /\ tmState \in &#123;&quot;init&quot;, &quot;done&quot;&#125;<br>  /\ tmPrepared \subseteq RM<br>  /\ msgs \subseteq Messages<br><br>Consistent == \A r1, r2 \in RM:<br>  ~ (/\ rmState[r1] = &quot;committed&quot;<br>     /\ rmState[r2] = &quot;aborted&quot;)<br>============================================================================<br></code></pre></td></tr></table></figure>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><code class="hljs cfg">\* TwoPhase.cfg<br>CONSTANT<br>RM = &#123;&quot;rm1&quot;, &quot;rm2&quot;, &quot;rm3&quot;&#125;<br><br>INIT<br>Init<br><br>NEXT<br>Next<br><br>INVARIANT<br>TypeOK<br>Consistent<br></code></pre></td></tr></table></figure>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><code class="hljs bash">tlc TwoPhase.tla -config TwoPhase.cfg -deadlock<br><span class="hljs-comment"># Model checking completed. No error has been found.</span><br><span class="hljs-comment">#   Estimates of the probability that TLC did not check all reachable states</span><br><span class="hljs-comment">#   because two distinct states had the same fingerprint:</span><br><span class="hljs-comment">#   calculated (optimistic):  val = 8.1E-15</span><br><span class="hljs-comment"># 810 states generated, 288 distinct states found, 0 states left on queue.</span><br><span class="hljs-comment"># The depth of the complete state graph search is 11.</span><br></code></pre></td></tr></table></figure>
+<h2 id="synod-basic-protocol">Synod Basic Protocol</h2>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br><span class="line">86</span><br><span class="line">87</span><br><span class="line">88</span><br><span class="line">89</span><br><span class="line">90</span><br><span class="line">91</span><br><span class="line">92</span><br><span class="line">93</span><br><span class="line">94</span><br><span class="line">95</span><br><span class="line">96</span><br><span class="line">97</span><br><span class="line">98</span><br><span class="line">99</span><br><span class="line">100</span><br><span class="line">101</span><br><span class="line">102</span><br><span class="line">103</span><br><span class="line">104</span><br><span class="line">105</span><br><span class="line">106</span><br><span class="line">107</span><br><span class="line">108</span><br><span class="line">109</span><br><span class="line">110</span><br><span class="line">111</span><br><span class="line">112</span><br><span class="line">113</span><br><span class="line">114</span><br><span class="line">115</span><br><span class="line">116</span><br><span class="line">117</span><br><span class="line">118</span><br><span class="line">119</span><br><span class="line">120</span><br><span class="line">121</span><br><span class="line">122</span><br><span class="line">123</span><br><span class="line">124</span><br><span class="line">125</span><br><span class="line">126</span><br><span class="line">127</span><br><span class="line">128</span><br><span class="line">129</span><br><span class="line">130</span><br><span class="line">131</span><br><span class="line">132</span><br><span class="line">133</span><br><span class="line">134</span><br><span class="line">135</span><br><span class="line">136</span><br><span class="line">137</span><br><span class="line">138</span><br><span class="line">139</span><br><span class="line">140</span><br><span class="line">141</span><br><span class="line">142</span><br><span class="line">143</span><br><span class="line">144</span><br><span class="line">145</span><br><span class="line">146</span><br><span class="line">147</span><br><span class="line">148</span><br><span class="line">149</span><br><span class="line">150</span><br><span class="line">151</span><br><span class="line">152</span><br><span class="line">153</span><br><span class="line">154</span><br><span class="line">155</span><br><span class="line">156</span><br><span class="line">157</span><br><span class="line">158</span><br><span class="line">159</span><br><span class="line">160</span><br><span class="line">161</span><br><span class="line">162</span><br><span class="line">163</span><br><span class="line">164</span><br><span class="line">165</span><br><span class="line">166</span><br><span class="line">167</span><br><span class="line">168</span><br><span class="line">169</span><br><span class="line">170</span><br><span class="line">171</span><br><span class="line">172</span><br><span class="line">173</span><br><span class="line">174</span><br><span class="line">175</span><br><span class="line">176</span><br><span class="line">177</span><br><span class="line">178</span><br><span class="line">179</span><br><span class="line">180</span><br><span class="line">181</span><br><span class="line">182</span><br><span class="line">183</span><br><span class="line">184</span><br><span class="line">185</span><br><span class="line">186</span><br><span class="line">187</span><br><span class="line">188</span><br><span class="line">189</span><br><span class="line">190</span><br><span class="line">191</span><br><span class="line">192</span><br><span class="line">193</span><br><span class="line">194</span><br><span class="line">195</span><br><span class="line">196</span><br><span class="line">197</span><br><span class="line">198</span><br><span class="line">199</span><br><span class="line">200</span><br><span class="line">201</span><br><span class="line">202</span><br><span class="line">203</span><br><span class="line">204</span><br><span class="line">205</span><br><span class="line">206</span><br><span class="line">207</span><br><span class="line">208</span><br><span class="line">209</span><br><span class="line">210</span><br><span class="line">211</span><br><span class="line">212</span><br><span class="line">213</span><br><span class="line">214</span><br><span class="line">215</span><br><span class="line">216</span><br><span class="line">217</span><br><span class="line">218</span><br><span class="line">219</span><br><span class="line">220</span><br><span class="line">221</span><br><span class="line">222</span><br><span class="line">223</span><br><span class="line">224</span><br><span class="line">225</span><br><span class="line">226</span><br><span class="line">227</span><br><span class="line">228</span><br><span class="line">229</span><br><span class="line">230</span><br><span class="line">231</span><br><span class="line">232</span><br><span class="line">233</span><br><span class="line">234</span><br><span class="line">235</span><br><span class="line">236</span><br><span class="line">237</span><br><span class="line">238</span><br><span class="line">239</span><br><span class="line">240</span><br><span class="line">241</span><br><span class="line">242</span><br><span class="line">243</span><br><span class="line">244</span><br><span class="line">245</span><br><span class="line">246</span><br><span class="line">247</span><br><span class="line">248</span><br><span class="line">249</span><br><span class="line">250</span><br><span class="line">251</span><br><span class="line">252</span><br><span class="line">253</span><br><span class="line">254</span><br><span class="line">255</span><br><span class="line">256</span><br><span class="line">257</span><br><span class="line">258</span><br><span class="line">259</span><br><span class="line">260</span><br><span class="line">261</span><br><span class="line">262</span><br><span class="line">263</span><br><span class="line">264</span><br><span class="line">265</span><br><span class="line">266</span><br><span class="line">267</span><br><span class="line">268</span><br><span class="line">269</span><br><span class="line">270</span><br><span class="line">271</span><br><span class="line">272</span><br><span class="line">273</span><br><span class="line">274</span><br><span class="line">275</span><br><span class="line">276</span><br><span class="line">277</span><br><span class="line">278</span><br><span class="line">279</span><br><span class="line">280</span><br><span class="line">281</span><br><span class="line">282</span><br><span class="line">283</span><br><span class="line">284</span><br><span class="line">285</span><br><span class="line">286</span><br><span class="line">287</span><br><span class="line">288</span><br><span class="line">289</span><br><span class="line">290</span><br><span class="line">291</span><br><span class="line">292</span><br><span class="line">293</span><br><span class="line">294</span><br><span class="line">295</span><br><span class="line">296</span><br><span class="line">297</span><br><span class="line">298</span><br><span class="line">299</span><br><span class="line">300</span><br><span class="line">301</span><br><span class="line">302</span><br><span class="line">303</span><br><span class="line">304</span><br><span class="line">305</span><br><span class="line">306</span><br><span class="line">307</span><br><span class="line">308</span><br><span class="line">309</span><br><span class="line">310</span><br><span class="line">311</span><br><span class="line">312</span><br><span class="line">313</span><br><span class="line">314</span><br><span class="line">315</span><br><span class="line">316</span><br><span class="line">317</span><br><span class="line">318</span><br><span class="line">319</span><br><span class="line">320</span><br><span class="line">321</span><br><span class="line">322</span><br><span class="line">323</span><br><span class="line">324</span><br><span class="line">325</span><br><span class="line">326</span><br><span class="line">327</span><br><span class="line">328</span><br><span class="line">329</span><br><span class="line">330</span><br><span class="line">331</span><br><span class="line">332</span><br><span class="line">333</span><br><span class="line">334</span><br><span class="line">335</span><br><span class="line">336</span><br><span class="line">337</span><br><span class="line">338</span><br><span class="line">339</span><br><span class="line">340</span><br><span class="line">341</span><br><span class="line">342</span><br><span class="line">343</span><br><span class="line">344</span><br><span class="line">345</span><br><span class="line">346</span><br><span class="line">347</span><br><span class="line">348</span><br><span class="line">349</span><br><span class="line">350</span><br><span class="line">351</span><br><span class="line">352</span><br><span class="line">353</span><br><span class="line">354</span><br><span class="line">355</span><br><span class="line">356</span><br><span class="line">357</span><br><span class="line">358</span><br><span class="line">359</span><br><span class="line">360</span><br><span class="line">361</span><br><span class="line">362</span><br><span class="line">363</span><br><span class="line">364</span><br><span class="line">365</span><br><span class="line">366</span><br><span class="line">367</span><br><span class="line">368</span><br><span class="line">369</span><br><span class="line">370</span><br><span class="line">371</span><br><span class="line">372</span><br><span class="line">373</span><br><span class="line">374</span><br><span class="line">375</span><br><span class="line">376</span><br><span class="line">377</span><br><span class="line">378</span><br><span class="line">379</span><br><span class="line">380</span><br><span class="line">381</span><br><span class="line">382</span><br></pre></td><td class="code"><pre><code class="hljs tla">--------------------------- MODULE SynodBasicProtocol ----------------------<br>\* SynodBasicProtocol.tla<br>EXTENDS Integers, FiniteSets, TLC<br>CONSTANTS PRIESTS, DECREES, BALLOT_IDS<br>VARIABLES priestStatus, ledgers, usedBallotIds, msgs<br><br>\* https://github.com/tlaplus/tlaplus/issues/404<br>SYMM == Permutations(PRIESTS) \union Permutations(DECREES)<br>\* I am uncertain whether or not BALLOT_IDS qualifies as a symmetry set.<br>\* \union Permutations(BALLOT_IDS)<br><br>\* This ASSUME statement asserts assumptions being made about the constants.<br>ASSUME<br>  /\ BALLOT_IDS \subseteq Nat<br>  /\ IsFiniteSet(BALLOT_IDS)<br><br>BlankDecree == &quot;BLANK&quot;<br><br>GetQuorum(ballotId) ==<br>  &#123;m.to: m \in &#123;m \in msgs: m.type = &quot;BeginBallot&quot; /\ m.ballotId = ballotId&#125;&#125;<br><br>GetDecree(ballotId) ==<br>  (CHOOSE m \in msgs: m.type = &quot;BeginBallot&quot; /\ m.ballotId = ballotId).decree<br><br>Init ==<br>  /\ priestStatus =<br>    [<br>      p \in PRIESTS |-&gt;<br>      [<br>        lastTriedBallotId |-&gt; -1,<br>        prevVote          |-&gt;<br>          [priest |-&gt; p, ballotId |-&gt; -1, decree |-&gt; BlankDecree],<br>        nextBallotId      |-&gt; -1<br>      ]<br>    ]<br>  /\ ledgers = [p \in PRIESTS |-&gt; [decree |-&gt; BlankDecree]]<br>  /\ usedBallotIds = &#123;&#125;<br>  /\ msgs = &#123;&#125;<br><br>\* Step (1)<br>\* Priest $p$ chooses a new ballot number $b$<br>\* greater than $\operatorname&#123;lastTried&#125;(p)$,<br>\* sets $\operatorname&#123;lastTried&#125;(p)$ to $b$,<br>\* and sends a $\operatorname&#123;NextBallot&#125;(b)$ message<br>\* to some set of priests.<br>SendNextBallotMsg(p) ==<br>  \* This set minus operator is defined as follows.<br>  \* For any sets S and T,<br>  \* S set minus T is the set of all elements in S that are not in T.<br>  \E b \in BALLOT_IDS \ usedBallotIds:<br>    /\ ledgers[p].decree = BlankDecree<br>    \* The following use of CHOOSE is incorrect:<br>    \* b == CHOOSE n \in availBallotIds: n &gt; priestStatus[p].lastTriedBallotId<br>    \* Because there may be multiple values in availBallotIds that<br>    \* satisfy n &gt; priestStatus[p].lastTriedBallotId.<br>    \* Instead, EXISTS should be used here.<br>    \* The difference between CHOOSE and EXISTS will be explained later.<br>    /\ b &gt; priestStatus[p].lastTriedBallotId<br>    /\ priestStatus&#x27; =<br>      [priestStatus EXCEPT ![p].lastTriedBallotId = b]<br>      \* The expression above is a shorter way to say<br>      \* the same thing as the next expression.<br>      \* [<br>      \*   priestStatus EXCEPT ![p] =<br>      \*     [priestStatus[p] EXCEPT !.lastTriedBallotId = b]<br>      \* ]<br>    /\ usedBallotIds&#x27; = usedBallotIds \union &#123;b&#125;<br>    /\ msgs&#x27; = msgs \union<br>      &#123;[<br>        type     |-&gt; &quot;NextBallot&quot;,<br>        ballotId |-&gt; b<br>      ]&#125;<br>    /\ UNCHANGED &lt;&lt;ledgers&gt;&gt;<br><br>\* Step (2)<br>\* Upon receipt of a $\operatorname&#123;NextBallot&#125;(b)$ message from $p$<br>\* with $b &gt; \operatorname&#123;nextBal&#125;(q)$,<br>\* priest $q$ sets $\operatorname&#123;nextBal&#125;(q)$ to $b$ and<br>\* sends a $\operatorname&#123;LastVote&#125;(b, v)$ message to $p$,<br>\* where $v$ equals $\operatorname&#123;prevVote&#125;(q)$.<br>ReceiveNextBallotMsg(q) ==<br>  \E b \in BALLOT_IDS:<br>    /\ [type |-&gt; &quot;NextBallot&quot;, ballotId |-&gt; b] \in msgs<br>    /\ b &gt; priestStatus[q].nextBallotId<br>    /\ priestStatus&#x27; =<br>      [priestStatus EXCEPT ![q].nextBallotId = b]<br>      \* The expression above is a shorter way to say<br>      \* the same thing as the next expression.<br>      \* [priestStatus EXCEPT ![q] = [priestStatus[q] EXCEPT !.nextBallotId = b]]<br>    /\ msgs&#x27; = msgs \union &#123;[<br>        type     |-&gt; &quot;LastVote&quot;,<br>        ballotId |-&gt; b,<br>        vote     |-&gt; priestStatus[q].prevVote<br>      ]&#125;<br>    /\ UNCHANGED &lt;&lt;ledgers, usedBallotIds&gt;&gt;<br><br>\* Step (3)<br>\* After receiving a $\operatorname&#123;LastVote&#125;(b, v)$ message<br>\* from every priest in some majority set $Q$,<br>\* where $b = \operatorname&#123;lastTried&#125;(p)$,<br>\* priest $p$ initiates a new ballot<br>\* with number $b$, quorum $Q$, and decree $d$,<br>\* where $d$ is chosen to satisfy $\operatorname&#123;B3&#125;$.<br>\* He then sends a $\operatorname&#123;BeginBallot&#125;(b, d)$ message<br>\* to every priest in $Q$.<br>ReceiveLastVoteMsg(p) ==<br>  \* SUBSET PRIESTS is the set of all subsets of the set PRIESTS.<br>  \* Mathematicians call it the powerset of PRIESTS and<br>  \* write it \mathcal&#123;P&#125;(Acceptor).<br>  \E majority \in SUBSET PRIESTS, dec \in DECREES:<br>    \* The LET clause makes these definitions local to the let-in expression.<br>    \* The defined identifiers can be used only in the expression.<br>    LET<br>      b == priestStatus[p].lastTriedBallotId<br>      \* https://www.learntla.com/core/operators.html#map-and-filter<br>      lastVoteMsgs ==<br>        &#123;<br>          m \in msgs:<br>            /\ m.type = &quot;LastVote&quot;<br>            /\ m.ballotId = b<br>            /\ m.vote.priest \in majority<br>        &#125;<br>      v ==<br>        (CHOOSE m \in lastVoteMsgs:<br>          \A n \in lastVoteMsgs:<br>            m.vote.ballotId &gt;= n.vote.ballotId).vote<br>      d ==<br>        IF v.ballotId = -1 /\ v.decree = BlankDecree<br>          THEN dec<br>          ELSE v.decree<br>    IN<br>      /\ &#123;m \in msgs: m.type = &quot;BeginBallot&quot; /\ m.ballotId = b&#125; = &#123;&#125;<br>      \* https://www.learntla.com/core/operators.html#map-and-filter<br>      /\ &#123;m.vote.priest: m \in lastVoteMsgs&#125; = majority<br>      /\ Cardinality(majority) * 2 &gt; Cardinality(PRIESTS)<br>      /\ msgs&#x27; = msgs \union<br>        [<br>          type     : &#123;&quot;BeginBallot&quot;&#125;,<br>          ballotId : &#123;b&#125;,<br>          decree   : &#123;d&#125;,<br>          to       : majority<br>        ]<br>      /\ UNCHANGED &lt;&lt;priestStatus, ledgers, usedBallotIds&gt;&gt;<br><br>\* Step (4)<br>\* Upon receipt of a $\operatorname&#123;BeginBallot&#125;(b, d)$ message<br>\* with $b = \operatorname&#123;nextBal&#125;(q)$,<br>\* priest $q$ casts his vote in ballot number $b$,<br>\* sets $\operatorname&#123;prevVote&#125;(q)$ to this vote,<br>\* and sends a $\operatorname&#123;Voted&#125;(b, q)$ message to $p$.<br>ReceiveBeginBallotMsg(q) ==<br>  \E d \in DECREES:<br>    LET<br>      b == priestStatus[q].nextBallotId<br>    IN<br>      /\<br>        [<br>          type     |-&gt; &quot;BeginBallot&quot;,<br>          ballotId |-&gt; b,<br>          decree   |-&gt; d,<br>          to       |-&gt; q<br>        ] \in msgs<br>      /\ priestStatus&#x27; =<br>        [<br>          priestStatus EXCEPT ![q].prevVote.priest = q,<br>                              ![q].prevVote.ballotId = b,<br>                              ![q].prevVote.decree = d<br>        ]<br>        \* The expression above is a shorter way to say<br>        \* the same thing as the next expression.<br>        \* [<br>        \*   priestStatus EXCEPT ![q] =<br>        \*     [<br>        \*       priestStatus[q] EXCEPT !.prevVote =<br>        \*         [priest |-&gt; q, ballotId |-&gt; b, decree |-&gt; d]<br>        \*     ]<br>        \* ]<br>      /\ msgs&#x27; = msgs \union<br>        &#123;[<br>          type     |-&gt; &quot;Voted&quot;,<br>          ballotId |-&gt; b,<br>          from     |-&gt; q<br>        ]&#125;<br>      /\ UNCHANGED &lt;&lt;ledgers, usedBallotIds&gt;&gt;<br><br>\* Step (5)<br>\* If $p$ has received a $\operatorname&#123;Voted&#125;(b, q)$ message<br>\* from every priest $q$ in $Q$ (the quorum for ballot number $b$),<br>\* where $b = \operatorname&#123;lastTried&#125;(p)$,<br>\* then he writes $d$ (the decree of that ballot) in his ledger and<br>\* sends a $\operatorname&#123;Success&#125;(d)$ message to every priest.<br>ReceiveVotedMsg(p) ==<br>  LET<br>    b == priestStatus[p].lastTriedBallotId<br>    votedMsgs ==<br>      &#123;m \in msgs: m.type = &quot;Voted&quot; /\ m.ballotId = b&#125;<br>  IN<br>    /\ GetQuorum(b) # &#123;&#125;<br>    /\ &#123;m.from: m \in votedMsgs&#125; = GetQuorum(b)<br>    /\ ledgers[p].decree = BlankDecree<br>    /\ ledgers&#x27; = [ledgers EXCEPT ![p] = [decree |-&gt; GetDecree(b)]]<br>    /\ msgs&#x27; = msgs \union<br>      &#123;[<br>        type     |-&gt; &quot;Success&quot;,<br>        ballotId |-&gt; b,<br>        decree   |-&gt; GetDecree(b)<br>      ]&#125;<br>    /\ UNCHANGED &lt;&lt;priestStatus, usedBallotIds&gt;&gt;<br><br>\* Step (6)<br>\* Upon receiving a $\operatorname&#123;Success&#125;(d)$ message,<br>\* a priest enters decree $d$ in his ledger.<br>ReceiveSuccessMsg(q) ==<br>  LET<br>    successMsgs == &#123;m \in msgs: m.type = &quot;Success&quot;&#125;<br>    decrees == &#123;m.decree: m \in successMsgs&#125;<br>  IN<br>    /\ decrees # &#123;&#125;<br>    /\ ledgers[q].decree = BlankDecree<br>    /\ ledgers&#x27; =<br>        \* The Difference Between CHOOSE and EXISTS, and When to Use CHOOSE<br>        \* https://lamport.azurewebsites.net/video/video7-script.pdf<br>        \*<br>        \* x&#x27; \in 1..99<br>        \* The formula x&#x27; in the set 1..99 allows the value of x in the next<br>        \* state to be any of the 99 numbers from 1 to 99.<br>        \*<br>        \* CHOOSE i \in 1..99: TRUE<br>        \* The above expression equals an unspecified integer<br>        \* between 1 and 99. We don&#x27;t know which one.<br>        \* It might or might not equal 37; the semantics of TLA+ don&#x27;t say.<br>        \*<br>        \* However, there is no nondeterminism in a mathematical expression.<br>        \* Any expression always equals itself, including a CHOOSE expression.<br>        \* So this CHOOSE expression always equals itself:<br>        \* (CHOOSE i \in 1..99: TRUE) = (CHOOSE i \in 1..99: TRUE)<br>        \* If this CHOOSE expression equals 37 today,<br>        \* it will still equal 37 next week.<br>        \* TLC will always get the same number<br>        \* when it evaluates this expression.<br>        \* But you shouldn&#x27;t care what number.<br>        \*<br>        \* x&#x27; = CHOOSE i \in 1..99: TRUE<br>        \* The formula x&#x27; equals this CHOOSE expression allows<br>        \* the value of x in the next state to be some particular number<br>        \* between 1 and 99 — perhaps 37.<br>        \* There&#x27;s no reason why you&#x27;d ever want to write something like this.<br>        \* You should write this CHOOSE v \in S: P expression only when<br>        \* there&#x27;s exactly one value v in S satisfying formula P.<br>        \* Or when it&#x27;s part of a larger expression whose value<br>        \* doesn&#x27;t depend on which possible value of v is chosen.<br>        \* e.g., (CHOOSE m \in mset: m.bal = maxbal).val<br>        \* This CHOOSE expression can allow<br>        \* more than one possible choice for m.<br>        \* However, in any reachable state of the algorithm,<br>        \* all possible choices of m have the same value of m.val.<br>        [ledgers EXCEPT ![q] = [decree |-&gt; CHOOSE d \in decrees: TRUE]]<br>    /\ UNCHANGED &lt;&lt;priestStatus, usedBallotIds, msgs&gt;&gt;<br><br>Next == \E p \in PRIESTS:<br>  \/ SendNextBallotMsg(p)<br>  \/ ReceiveNextBallotMsg(p)<br>  \/ ReceiveLastVoteMsg(p)<br>  \/ ReceiveBeginBallotMsg(p)<br>  \/ ReceiveVotedMsg(p)<br>  \/ ReceiveSuccessMsg(p)<br><br>TypeOK ==<br>  LET<br>    validBallotIds == &#123;-1&#125; \union BALLOT_IDS<br>    validDecrees == &#123;BlankDecree&#125; \union DECREES<br>  IN<br>    /\ DOMAIN priestStatus = PRIESTS<br>    /\ \A p \in PRIESTS:<br>      priestStatus[p] \in<br>        [<br>          lastTriedBallotId : validBallotIds,<br>          prevVote          :<br>            [<br>              priest   : PRIESTS,<br>              ballotId : validBallotIds,<br>              decree   : validDecrees<br>            ],<br>          nextBallotId      : validBallotIds<br>        ]<br>    /\ ledgers \in [PRIESTS -&gt; [decree: validDecrees]]<br>    /\ usedBallotIds \subseteq BALLOT_IDS<br>    /\ msgs \subseteq<br>             [type: &#123;&quot;NextBallot&quot;&#125;, ballotId: BALLOT_IDS]<br>      \union [type     : &#123;&quot;LastVote&quot;&#125;,<br>              ballotId : BALLOT_IDS,<br>              vote     : [priest   : PRIESTS,<br>                          ballotId : validBallotIds,<br>                          decree   : validDecrees]]<br>      \union [type     : &#123;&quot;BeginBallot&quot;&#125;,<br>              ballotId : BALLOT_IDS,<br>              decree   : DECREES,<br>              to       : PRIESTS]<br>      \union [type     : &#123;&quot;Voted&quot;&#125;,<br>              ballotId : BALLOT_IDS,<br>              from     : PRIESTS]<br>      \union [type     : &#123;&quot;Success&quot;&#125;,<br>              ballotId : BALLOT_IDS,<br>              decree   : DECREES]<br><br>B1Consistent ==<br>  \* $\operatorname&#123;B1&#125;(\mathcal&#123;B&#125;)$<br>  \* Each ballot in $\mathcal&#123;B&#125;$ has a unique ballot number.<br>  /\ \A p1, p2 \in &#123;p \in PRIESTS: priestStatus[p].lastTriedBallotId # -1&#125;:<br>    \/ p1 = p2<br>    \/ priestStatus[p1].lastTriedBallotId # priestStatus[p2].lastTriedBallotId<br>  /\ \A m1, m2 \in &#123;m \in msgs: m.type = &quot;BeginBallot&quot;&#125;:<br>    \/ m1.decree = m2.decree<br>    \/ m1.ballotId # m2.ballotId<br><br>B2Consistent ==<br>  \* $\operatorname&#123;B2&#125;(\mathcal&#123;B&#125;)$<br>  \* The quorums of any two ballots in $\mathcal&#123;B&#125;$<br>  \* have at least one priest in common.<br>  \A m1, m2 \in &#123;m \in msgs: m.type = &quot;BeginBallot&quot;&#125;:<br>    GetQuorum(m1.ballotId) \intersect GetQuorum(m2.ballotId) # &#123;&#125;<br><br>B3Consistent ==<br>  \* $\operatorname&#123;B3&#125;(\mathcal&#123;B&#125;)$<br>  \* For every ballot $B$ in $\mathcal&#123;B&#125;$,<br>  \* if any priest in $B$&#x27;s quorum voted in an earlier ballot in $\mathcal&#123;B&#125;$,<br>  \* then the decree of $B$ equals<br>  \* the decree of the latest of those earlier ballots.<br>  \A beginBallotMsg \in &#123;m \in msgs: m.type = &quot;BeginBallot&quot;&#125;:<br>    LET<br>      quorum == GetQuorum(beginBallotMsg.ballotId)<br>      votedMsgs ==<br>        &#123;<br>          m \in msgs:<br>            /\ m.type = &quot;Voted&quot;<br>            /\ m.ballotId &lt; beginBallotMsg.ballotId<br>            /\ m.from \in quorum<br>        &#125;<br>    IN<br>      \/ votedMsgs = &#123;&#125;<br>      \/<br>        LET<br>          latestEarlierBallotId ==<br>            (CHOOSE latestMsg \in votedMsgs:<br>              \A m \in votedMsgs:<br>                latestMsg.ballotId &gt;= m.ballotId).ballotId<br>          latestEarlierDecree ==<br>            (CHOOSE m \in msgs:<br>              /\ m.type = &quot;BeginBallot&quot;<br>              /\ m.ballotId = latestEarlierBallotId).decree<br>        IN<br>          beginBallotMsg.decree = latestEarlierDecree<br><br>LemmaConsistent ==<br>  \* Lemma<br>  \* To show that these conditions imply consistency,<br>  \* the Paxons first showed that<br>  \* $\operatorname&#123;B1&#125;(\mathcal&#123;B&#125;)$ – $\operatorname&#123;B3&#125;(\mathcal&#123;B&#125;)$<br>  \* imply that, if a ballot $B$ in $\mathcal&#123;B&#125;$ is successful,<br>  \* then any later ballot in $\mathcal&#123;B&#125;$ is for the same decree as $B$.<br>  \A m1 \in &#123;m \in msgs: m.type = &quot;Success&quot;&#125;:<br>    \A m2 \in &#123;m \in msgs: m.type = &quot;BeginBallot&quot; /\ m.ballotId &gt; m1.ballodId&#125;:<br>      m2.decree = m1.decree<br><br>Theorem1Consistent ==<br>  \* Theorem 1<br>  \* Any two successful ballots are for the same decree.<br>  \A m1, m2 \in &#123;m \in msgs: m.type = &quot;Success&quot;&#125;: m1.decree = m2.decree<br><br>LedgerConsistent ==<br>  \A p1, p2 \in PRIESTS:<br>    \/ ledgers[p1].decree = BlankDecree<br>    \/ ledgers[p2].decree = BlankDecree<br>    \/ ledgers[p1] = ledgers[p2]<br><br>Consistent ==<br>  /\ B1Consistent<br>  /\ B2Consistent<br>  /\ B3Consistent<br>  /\ Theorem1Consistent<br>  /\ LedgerConsistent<br>============================================================================<br></code></pre></td></tr></table></figure>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br></pre></td><td class="code"><pre><code class="hljs cfg">\* SynodBasicProtocol-WithoutSymmetrySets.cfg<br>CONSTANT<br>PRIESTS = &#123;p1, p2, p3&#125;<br>DECREES = &#123;d1, d2, d3&#125;<br>\* Even a modest increase in the range of BALLOT_IDS,<br>\* from 0..2 to 0..10,<br>\* can significantly increase the number of possible distinct states.<br>BALLOT_IDS = &#123;0, 1, 2&#125;<br><br>INIT<br>Init<br><br>NEXT<br>Next<br><br>INVARIANT<br>TypeOK<br>Consistent<br></code></pre></td></tr></table></figure>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><code class="hljs bash"><span class="hljs-built_in">export</span> JAVA_OPTS=<span class="hljs-string">&quot;-Xms80g -XX:+UseParallelGC&quot;</span><br>tlc SynodBasicProtocol.tla -config SynodBasicProtocol-WithoutSymmetrySets.cfg -deadlock -workers 40<br><span class="hljs-comment"># Model checking completed. No error has been found.</span><br><span class="hljs-comment">#   Estimates of the probability that TLC did not check all reachable states</span><br><span class="hljs-comment">#   because two distinct states had the same fingerprint:</span><br><span class="hljs-comment">#   calculated (optimistic):  val = 6.2E-5</span><br><span class="hljs-comment">#   based on the actual fingerprints:  val = 9.9E-6</span><br><span class="hljs-comment"># 81223510 states generated, 18306583 distinct states found, 0 states left on queue.</span><br><span class="hljs-comment"># The depth of the complete state graph search is 28.</span><br><span class="hljs-comment"># The average outdegree of the complete state graph is 1 (minimum is 0, the maximum 21 and the 95th percentile is 3).</span><br><span class="hljs-comment"># Finished in 07min 49s at (2023-07-08 21:12:20)</span><br></code></pre></td></tr></table></figure>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br></pre></td><td class="code"><pre><code class="hljs cfg">\* SynodBasicProtocol-WithSymmetrySets.cfg<br>CONSTANT<br>\* https://tla.msr-inria.inria.fr/tlatoolbox/doc/model/model-values.html<br>\* For example, the spec might have a constant Proc<br>\* whose value represents a set of processes.<br>\* You could just let a process be a number,<br>\* substituting an ordinary value like &#123;1, 2, 3&#125; for Proc.<br>\* However, a better way is to represent a process by a TLC model value.<br>\* A model value is an unspecified value that<br>\* TLC considers to be unequal to any value that you can express in TLA+.<br>\* You can substitute the set &#123;p1, p2, p3&#125; of three model values for Proc.<br>\* If by mistake you write an expression like p+1<br>\* where the value of p is a process,<br>\* TLC will report an error when it tries to evaluate that expression<br>\* because it knows that a process is a model value and thus not a number.<br>\* An important reason for substituting a set of model values for Proc is to<br>\* let TLC take advantage of symmetry.<br>PRIESTS = &#123;p1, p2, p3&#125;<br>DECREES = &#123;d1, d2, d3&#125;<br>BALLOT_IDS = &#123;0, 1, 2&#125;<br><br>SYMMETRY<br>SYMM<br><br>INIT<br>Init<br><br>NEXT<br>Next<br><br>INVARIANT<br>TypeOK<br>Consistent<br></code></pre></td></tr></table></figure>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><code class="hljs bash"><span class="hljs-built_in">export</span> JAVA_OPTS=<span class="hljs-string">&quot;-Xms80g -XX:+UseParallelGC&quot;</span><br>tlc SynodBasicProtocol.tla -config SynodBasicProtocol-WithSymmetrySets.cfg -deadlock -workers 40<br><span class="hljs-comment"># Model checking completed. No error has been found.</span><br><span class="hljs-comment">#   Estimates of the probability that TLC did not check all reachable states</span><br><span class="hljs-comment">#   because two distinct states had the same fingerprint:</span><br><span class="hljs-comment">#   calculated (optimistic):  val = 1.3E-7</span><br><span class="hljs-comment">#   based on the actual fingerprints:  val = 1.3E-7</span><br><span class="hljs-comment"># 3663798 states generated, 809615 distinct states found, 0 states left on queue.</span><br><span class="hljs-comment"># The depth of the complete state graph search is 28.</span><br><span class="hljs-comment"># The average outdegree of the complete state graph is 1 (minimum is 0, the maximum 12 and the 95th percentile is 3).</span><br><span class="hljs-comment"># Finished in 31s at (2023-07-08 21:22:58)</span><br></code></pre></td></tr></table></figure>
+<ul>
+<li>According to the research paper <a target="_blank" rel="noopener" href="https://www.researchgate.net/publication/304894406_The_Investigation_of_TLC_Model_Checker_Properties">ResearchGate: The Investigation of TLC Model Checker Properties</a>, there are two approaches for TLC method usage: the breadth-first search (BFS) of transition system states and the depth-first search (DFS). To optimize the search time, it is common to skip some states that have been searched before, such as:
+<ul>
+<li>Equal states: If the TLC model checker has encountered the state <code>xs == &#123;x1, x2, x3&#125;</code> before, it does not need to search it again.</li>
+<li>Symmetry states: For example, if the TLC model checker has searched the state <code>xs == [x1 |-&gt; 1, x2 |-&gt; 2, x3 |-&gt; 3]</code> and <strong>all</strong> subsequent expressions (e.g., <code>DOMAIN</code>) are symmetric for that state, then it does not need to search the symmetry state (e.g., <code>xs == [x3 |-&gt; 1, x2 |-&gt; 2, x1 |-&gt; 1]</code>, by interchanging <code>x1</code> and <code>x3</code>).
+<ul>
+<li>Symmetry states are generated based on symmetry sets. However, the precise relationship between symmetry states and symmetry sets is unclear to me.</li>
+</ul></li>
+</ul></li>
+<li>According to the guide <a target="_blank" rel="noopener" href="https://tla.msr-inria.inria.fr/tlatoolbox/doc/model/model-values.html">The Microsoft Research-Inria Joint Center: Model Values and Symmetry</a>, a set <code>S</code> of model values should be declared as a symmetry set only if <strong>the specification and all properties</strong> being checked are symmetric for <code>S</code> after the substitutions for constants and defined operators specified by the model are made.
+<ul>
+<li>An expression is symmetric for a set <code>S</code> if and only if interchanging any two values of <code>S</code> does not change the value of the expression. The expression <code>&#123;&#123;x1, x2&#125;, &#123;x1, x3&#125;, &#123;x2, x3&#125;&#125;</code> is symmetric for the set <code>&#123;x1, x2, x3&#125;</code> -- for example, interchanging <code>x1</code> and <code>x3</code> in this expression produces <code>&#123;&#123;x3, x2&#125;, &#123;x3, x1&#125;, &#123;x2, x1&#125;&#125;</code>, which is equal to the original expression.</li>
+<li>According to <a target="_blank" rel="noopener" href="https://lamport.azurewebsites.net/video/video7-script.pdf">TLA+ Video Course</a>, there are two criteria to determine if a set is a symmetry set:
+<ul>
+<li>It's OK to use elements of a symmetry set in an expression assigned to another constant if the expression is symmetric in the elements of the symmetry set. There's one additional condition for symmetry sets.</li>
+<li>Elements of a symmetry set, or a constant assigned elements of a symmetry set may not appear in a <code>CHOOSE</code> expression.</li>
+</ul></li>
+<li>I believe the reasons for these criteria are:
+<ul>
+<li>A set itself exhibits symmetry. For example, <code>&#123;x1, x2, x3&#125;</code> = <code>&#123;x3, x2, x1&#125;</code>.</li>
+<li>Declaring a constant that is constructed from the set and whose value depends on the ordering of elements in the set can break the symmetry. For example, the constant <code>&#123;&#123;x1, x2&#125;, &#123;x2, x3&#125;&#125;</code> makes the set <code>&#123;x1, x2, x3&#125;</code> not symmetric. This is because interchanging <code>x1</code> and <code>x2</code> yields <code>&#123;&#123;x2, x1&#125;, &#123;x1, x3&#125;&#125;</code>, which is not equal to the original constant <code>&#123;&#123;x1, x2&#125;, &#123;x2, x3&#125;&#125;</code>.</li>
+<li>According to the guide <a target="_blank" rel="noopener" href="https://tla.msr-inria.inria.fr/tlatoolbox/doc/model/model-values.html">The Microsoft Research-Inria Joint Center: Model Values and Symmetry</a>, the <strong>only</strong> TLA+ operator that can produce a non-symmetric expression when applied to a symmetric expression is <code>CHOOSE</code>. For example, the expression <code>CHOOSE x \in &#123;x1, x2, x3&#125;: TRUE</code> is not symmetric for <code>&#123;x1, x2, x3&#125;</code>.</li>
+</ul></li>
+</ul></li>
+</ul>
+<h2 id="ordinary-expressions">Ordinary Expressions</h2>
+<p>The content of this section is derived from <a target="_blank" rel="noopener" href="https://lamport.azurewebsites.net/video/video8a-script.pdf">the video script</a> for "The TLA+ Video Course, Lecture 8, Part 1" by Leslie Lamport.</p>
+<p>A module-closed expression is a TLA+ expression that (after expanding definitions) contains only:</p>
+<ul>
+<li>built-in TLA+ operators and constructs,</li>
+<li>numbers and strings, like 42 and "abc",</li>
+<li>declared constants and variables,</li>
+<li>identifiers declared locally within it.
+<ul>
+<li>forall: <code>\A v \in S: ...</code></li>
+<li>exists: <code>\E v \in S: ...</code></li>
+<li>function constructor: <code>[v \in S |-&gt; ...]</code></li>
+<li>set constructors: <code>&#123;v \in S: ...&#125;</code>, <code>&#123;...: v \in S&#125;</code></li>
+</ul></li>
+</ul>
+<p><code>\E v \in Nat: x' = x + v</code> is module-complete if <code>x</code> is a declared variable. However, the subexpression <code>x' = x + v</code> is not module-complete because <code>v</code> is locally declared outside it.</p>
+<p>A module-closed formula is a Boolean-valued module-closed expression. That is, one whose value is either <code>TRUE</code> or <code>FALSE</code>. For example, <code>(x \in 1..42) /\ (y' = x + 1)</code> - assuming x and y are declared variables.</p>
+<ul>
+<li>A constant expression is a (module-complete) expression that (after expanding all definitions) does not contain declared variables nor non-constant operators. The only non-constant operators that we've seen so far are <code>'</code> and <code>UNCHANGED</code>.
+<ul>
+<li>The value of a constant expression depends only on the values of the declared constants it contains.</li>
+</ul></li>
+<li>A state expression is a (module-complete) expression that can contain anything a constant expression can contain as well as variables declared in a <code>VARIABLES</code> statement. For example, <code>x + y[foo]</code> is a state expression, if <code>foo</code> is a declared constant and <code>x</code> and <code>y</code> are declared variables.
+<ul>
+<li>The value of a state expression depends on the values of declared constants and the values of declared variables. Let's ignore dependence on the values of declared constants.</li>
+<li>Remember that a state assigns values to variables. Then, a state expression has a value on a state. For example, if state <code>s</code> assigns <code>v &lt;- Nat</code> and <code>w &lt;- -42</code>, then the state expression <code>v \union &#123;w&#125;</code> has the value <code>Nat \union &#123;-42&#125;</code>.</li>
+<li>A constant expression is a state expression that has the same value on all states.</li>
+</ul></li>
+<li>An action expression can contain anything a state expression can as well as <code>'</code> and <code>UNCHANGED</code>.
+<ul>
+<li>An action expression has a value on a step (pair of states). For example, if state <code>s</code> assigns <code>p &lt;- 42</code> and state <code>t</code> assigns <code>q &lt;- 24</code>, then the action expression <code>p - q'</code> has the value <code>42 - 24</code> on the step <code>s -&gt; t</code>.</li>
+<li>A state expression is an action expression whose value on the step <code>s-&gt; t</code> depends only on the first state <code>s</code>.</li>
+</ul></li>
+</ul>
+<h2 id="temporal-formulas">Temporal Formulas</h2>
+<p>The content of this section is derived from <a target="_blank" rel="noopener" href="https://lamport.azurewebsites.net/video/video8a-script.pdf">the video script</a> for "The TLA+ Video Course, Lecture 8, Part 1" by Leslie Lamport.</p>
+<p>A temporal formula (TLA+ has only Boolean-valued temporal expressions – that is, temporal formulas) has a Boolean value on a behavior (A sequence of states is just what we've been calling a behavior) <code>s1 -&gt; s2 -&gt; s3 -&gt; ...</code>. We can write a specification as a temporal formula – a formula whose value is <code>TRUE</code> on the behaviors allowed by the spec.</p>
+<p>In general, the specification with initial formula <code>Init</code>, next-state formula <code>Next</code>, declared variables <code>v1, ..., vn</code> is expressed by the temporal formula <code>Init /\ [][Next]_&lt;&lt;v1, ..., vn&gt;&gt;</code>.</p>
+<ul>
+<li>A state formula like <code>Init</code> is true on a behavior (<code>s1 -&gt; s2 -&gt; s3 -&gt; s4 -&gt; ...</code>) if and only if it's true on the first state (<code>s1</code>) of the behavior.</li>
+<li>The temporal formula always <code>Next</code> (<code>[][Next]_&lt;&lt;v1, ..., vn&gt;&gt;</code>) is true on a behavior (<code>s1 -&gt; s2 -&gt; s3 -&gt; s4 -&gt; ...</code>) if and only if <code>Next</code> is true on every step of the behavior (<code>si -&gt; s(i+1)</code> for all <code>i</code>).</li>
+</ul>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><code class="hljs tla">Spec ==<br>  /\ Init<br>  /\ [][Next]_&#123;&lt;&lt;priestStatus, ledgers, usedBallotIds, msgs&gt;&gt;&#125;<br></code></pre></td></tr></table></figure>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><code class="hljs cfg">\* SynodBasicProtocol.cfg<br>CONSTANT<br>PRIESTS = &#123;p1, p2, p3&#125;<br>DECREES = &#123;d1, d2, d3&#125;<br>\* Even a modest increase in the range of BALLOT_IDS,<br>\* from 0..2 to 0..10,<br>\* can significantly increase the number of possible distinct states.<br>BALLOT_IDS = &#123;0&#125;<br><br>SPECIFICATION<br>Spec<br><br>INVARIANT<br>TypeOK<br>Consistent<br></code></pre></td></tr></table></figure>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><code class="hljs bash">tlc SynodBasicProtocol.tla -config SynodBasicProtocol.cfg -deadlock<br><span class="hljs-comment"># Model checking completed. No error has been found.</span><br><span class="hljs-comment">#   Estimates of the probability that TLC did not check all reachable states</span><br><span class="hljs-comment">#   because two distinct states had the same fingerprint:</span><br><span class="hljs-comment">#   calculated (optimistic):  val = 3.9E-14</span><br><span class="hljs-comment"># 1822 states generated, 565 distinct states found, 0 states left on queue.</span><br><span class="hljs-comment"># The depth of the complete state graph search is 12.</span><br><span class="hljs-comment"># The average outdegree of the complete state graph is 1 (minimum is 0, the maximum 12 and the 95th percentile is 3).</span><br><span class="hljs-comment"># Finished in 02s at (2023-07-09 07:01:51)</span><br></code></pre></td></tr></table></figure>
+<p>Let's now see what it means to apply the Always operator to a state formula.</p>
+<ul>
+<li>For the action <code>Next</code>, always <code>Next</code> is true on a behavior if and only if <code>Next</code> is true on every step of the behavior.</li>
+<li>The state formula <code>TypeOK</code> is an action whose value on <code>si -&gt; s(i+1)</code> <strong>depends only on <code>si</code></strong> (a state formula is an action formula whose value on a step depends only on the first state of the step), so <code>[]TypeOK</code> is true on a behavior (<code>s1 -&gt; s2 -&gt; s3 -&gt; s4 -&gt; ...</code>) if and only if <code>TypeOK</code> is true on every <strong>state</strong> of the behavior (<code>si</code> for all <code>i</code>).</li>
+<li>You can write <code>[]TypeOK</code>. You don't need the <code>[]_&lt;&lt;v1, ..., vn&gt;&gt;</code> for <code>[]StateFormula</code>.</li>
+</ul>
+<h2 id="stuttering-steps">Stuttering Steps</h2>
+<p>The content of this section is derived from <a target="_blank" rel="noopener" href="https://lamport.azurewebsites.net/video/video8b-script.pdf">the video script</a> for "The TLA+ Video Course, Lecture 8, Part 2" by Leslie Lamport.</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br></pre></td><td class="code"><pre><code class="hljs tla+">--------------------------- MODULE SimpleProgram ---------------------------<br>\* SimpleProgram.tla<br>EXTENDS Integers<br>VARIABLES i, j<br><br>Init ==<br>  /\ i = 0<br>  /\ j = 0<br><br>IncrIJ ==<br>  \/ /\ i = 0<br>     /\ i&#x27; = 1<br>     /\ UNCHANGED &lt;&lt;j&gt;&gt;<br>  \/ /\ j = 0<br>     /\ j&#x27; = 1<br>     /\ UNCHANGED &lt;&lt;i&gt;&gt;<br><br>SimpleProgramSpec ==<br>  /\ Init<br>  /\ [][IncrIJ]_&lt;&lt;i, j&gt;&gt;<br>============================================================================<br></code></pre></td></tr></table></figure>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br></pre></td><td class="code"><pre><code class="hljs tla+">--------------------------- MODULE SimpleProgramImpl -----------------------<br>\* SimpleProgramImpl.tla<br>EXTENDS Integers<br>VARIABLES i, j, k<br><br>Init ==<br>  /\ i = 0<br>  /\ j = 0<br>  /\ k = 0<br><br>IncrIJ ==<br>  \/ /\ i = 0<br>     /\ i&#x27; = 1<br>     /\ UNCHANGED &lt;&lt;j, k&gt;&gt;<br>  \/ /\ j = 0<br>     /\ j&#x27; = 1<br>     /\ UNCHANGED &lt;&lt;i, k&gt;&gt;<br><br>IncrK ==<br>  /\ k = 0<br>  /\ k&#x27; = 1<br>  /\ UNCHANGED &lt;&lt;i, j&gt;&gt;<br><br>IncrIJK ==<br>  \/ IncrIJ<br>  \/ IncrK<br><br>SimpleProgramImplSpec ==<br>  /\ Init<br>  /\ [][IncrIJK]_&lt;&lt;i, j, k&gt;&gt;<br><br>SP == INSTANCE SimpleProgram<br>SimpleProgramSpec == SP!SimpleProgramSpec<br>\* https://lamport.azurewebsites.net/video/video8b-script.pdf<br>\* 1. Asserts that for every behavior:<br>\*    if it satisfies SimpleProgramImplSpec, then it satisfies SimpleProgramSpec.<br>\* 2. Every behavior satisfying SimpleProgramImplSpec satisfies SimpleProgramSpec.<br>\* 3. SimpleProgramImplSpec implements SimpleProgramSpec.<br>THEOREM SimpleProgramImplSpec =&gt; SimpleProgramSpec<br>============================================================================<br></code></pre></td></tr></table></figure>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><code class="hljs cfg">\* SimpleProgramImpl.cfg<br>SPECIFICATION<br>SimpleProgramImplSpec<br><br>PROPERTY<br>\* THEOREM SimpleProgramImplSpec =&gt; SimpleProgramSpec<br>\* Let TLC check this theorem by adding SimpleProgramSpec<br>\* as a property to check<br>\* in a model you constructed for module SimpleProgramImpl.<br>SimpleProgramSpec<br></code></pre></td></tr></table></figure>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><code class="hljs bash">tlc SimpleProgramImpl.tla -config SimpleProgramImpl.cfg -deadlock<br><span class="hljs-comment"># Model checking completed. No error has been found.</span><br><span class="hljs-comment">#   Estimates of the probability that TLC did not check all reachable states</span><br><span class="hljs-comment">#   because two distinct states had the same fingerprint:</span><br><span class="hljs-comment">#   calculated (optimistic):  val = 2.2E-18</span><br><span class="hljs-comment"># 13 states generated, 8 distinct states found, 0 states left on queue.</span><br><span class="hljs-comment"># The depth of the complete state graph search is 4.</span><br><span class="hljs-comment"># The average outdegree of the complete state graph is 1 (minimum is 0, the maximum 3 and the 95th percentile is 3).</span><br><span class="hljs-comment"># Finished in 01s at (2023-07-12 01:48:18)</span><br></code></pre></td></tr></table></figure>
+<p>How can the theorem <code>SimpleProgramImplSpec =&gt; SimpleProgramSpec</code> make sense?</p>
+<ul>
+<li>The theorem <code>SimpleProgramImplSpec =&gt; SimpleProgramSpec</code> may not make sense because <code>SimpleProgramSpec</code> and <code>SimpleProgramImplSpec</code> refer to different state spaces constructed from different variables.
+<ul>
+<li><code>SimpleProgramSpec</code> is an assertion about behaviors whose states assign a value to the two variable <code>i</code> and <code>j</code>.</li>
+<li><code>SimpleProgramImplSpec</code> is an assertion about behaviors whose states assign values to the two variables <code>i</code>, <code>j</code> and <code>k</code>.</li>
+</ul></li>
+<li>Viewing states as implicitly containing infinitely many variables representing the entire universe is a key insight for understanding why theorems like <code>SimpleProgramImplSpec =&gt; SimpleProgramSpec</code> may hold. A formula denotes constraints on the values of variables in a state, but a state itself implicitly contains infinitely many variables that represent the entire universe. Two formulas may involve different variables yet still be assertions over this same implicit infinite state space.
+<ul>
+<li>For instance, the formula <code>i = 0</code> constrains the value of <code>i</code> but says nothing about other variables like <code>k</code>, <code>Mozart</code>, or <code>numberOfCustomersInTimbuktuStarbucks</code> that <strong>also exist</strong> in the state.</li>
+<li>Specifications are not programs; they're mathematical formulas. In math, when you write: <code>x + y = 7</code>, it doesn't mean that there's no variable <code>z</code> or <code>w</code>. The equations just say nothing about those other variables.</li>
+</ul></li>
+<li>It's useful to think about specifications as follows.
+<ul>
+<li>A specification does not describe the correct behavior of a system.</li>
+<li>Rather, it describes a universe in which the system <strong>and its environment</strong> are behaving correctly. The spec describes not only the system, but other parts of the universe that the system depends on.</li>
+<li>The spec says nothing about irrelevant parts of the universe.</li>
+</ul></li>
+</ul>
+<p>The theorem <code>SimpleProgramImplSpec =&gt; SimpleProgramSpec</code> makes sense because both formulas are assertions about the same kind of behavior. It asserts that every behavior satisfying <code>SimpleProgramImplSpec</code> satisfies <code>SimpleProgramSpec</code>. But how can it be true?</p>
+<ul>
+<li><code>SimpleProgramImplSpec</code> allows <code>IncrK</code> steps, which leave <code>i</code> and <code>j</code> unchanged. All <code>SimpleProgramSpec</code> steps change <code>i</code> or <code>j</code>. How can a behavior satisfying <code>SimpleProgramImplSpec</code> also satisfy <code>SimpleProgramSpec</code> if it has a <code>IncrK</code> step? How can the theorem be true?</li>
+<li>It's the "magic" of <code>[]_&lt;&lt;i, j&gt;&gt;</code>. <code>[IncrIJ]_&lt;&lt;i, j&gt;&gt;</code> is true on a behavior iff <code>IncrIJ \/ UNCHANGED &lt;&lt;i, j&gt;&gt;</code> is true on every step of the behavior, which is the same as the assertion that every step satisfies <code>IncrIJ</code> or leaves <code>i</code> and <code>j</code> unchanged. If steps leaving <code>i</code> and <code>j</code> unchanged were not allowed by <code>SimpleProgramSpec</code>, then the theorem <code>SimpleProgramImplSpec =&gt; SimpleProgramSpec</code> would not be true.</li>
+<li>Similarly, for the two-phase commit spec <code>TPSpec == TPInit /\ [][TPNext]_&lt;&lt;rmState, tmState, tmPrepared, msgs&gt;&gt;</code>, this always formula is true on a behavior if and only if every step of the behavior satisfies the next-state formula <code>TPNext</code> or else leaves <strong>all</strong> the specification variables unchanged.</li>
+</ul>
+<p>However, we cannot remove the stuttering steps allowed by <code>[]_&lt;&lt;i, j&gt;&gt;</code> in TLA+, because if we write <code>SimpleProgramSpec == Init /\ [][Next]_&lt;&lt;&gt;&gt;</code>, then this will allow stuttering steps, as explained by Stephan Merz in <a target="_blank" rel="noopener" href="https://groups.google.com/g/tlaplus/c/Pg5Yx3k_VaE">Google Groups: About stuttering steps, deadlock and Implementation</a>:</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><code class="hljs tla">  [Next]_&lt;&lt;&gt;&gt;<br>= Next \/ UNCHANGED &lt;&lt;&gt;&gt; \* By definition of [Next]_vars.<br>= Next \/ (&lt;&lt;&gt;&gt;&#x27; = &lt;&lt;&gt;&gt;) \* By definition of UNCHANGED.<br>= Next \/ (&lt;&lt;&gt;&gt; = &lt;&lt;&gt;&gt;)  \* Since &lt;&lt;&gt;&gt; is a constant expression.<br>= Next \/ TRUE<br></code></pre></td></tr></table></figure>
+<p>Now, <code>TRUE</code> allows for any step, including stuttering transitions: there is <strong>no way</strong> you can write a TLA+ specification that <strong>disallows</strong> stuttering steps.</p>
+<p>If we write <code>SimpleProgramSpec == Init /\ [][Next]_&lt;&lt;i&gt;&gt;</code>, then this will also allow stuttering steps:</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><code class="hljs tla">  [Next]_&lt;&lt;i&gt;&gt;<br>= Next \/ UNCHANGED &lt;&lt;i&gt;&gt;  \* By definition of [Next]_vars.<br>= Next \/ (&lt;&lt;i&gt;&gt;&#x27; = &lt;&lt;i&gt;&gt;) \* By definition of UNCHANGED.<br>= Next \/ (&lt;&lt;i&#x27;&gt;&gt; = &lt;&lt;i&gt;&gt;) \* Since &lt;&lt;&gt;&gt; is a constant expression.<br>= Next \/ (i&#x27; = i)<br></code></pre></td></tr></table></figure>
+<p>Now, <code>i' = i</code> allows for any step that keep <code>i</code> unchanged, including stuttering transitions.</p>
+<p>Steps that leave all the spec's variables unchanged are called stuttering steps. Every TLA+ spec allows them.</p>
+<ul>
+<li>If they didn't, TPSpec would allow the value of <code>numberOfCustomersInTimbuktuStarbucks</code> to change only when the protocol took a step. And that would be really weird.</li>
+<li>If they didn't, the two-phase commit spec would allow the value of every variable in the universe to change only when the two-phase commit protocol took a step. And that would be really weird.</li>
+<li>But the most important reason to allow stuttering steps is embodied in this theorem: <code>SimpleProgramImplSpec =&gt; SimpleProgramSpec</code>. Implementation becomes simple logical implication.
+<ul>
+<li>Mathematical simplicity is not an end in itself.</li>
+<li>It's a sign that we're doing things right.</li>
+</ul></li>
+</ul>
+<p>We represent a terminating execution by a behavior ending in an infinite sequence of stuttering steps. This is natural, because a behavior represents a history of the universe, and the universe keeps going even if the system we're specifying terminates. It is important to note that termination and deadlock are distinct concepts, as Leslie Lamport explained in <a target="_blank" rel="noopener" href="https://groups.google.com/g/tlaplus/c/EfE9YrfqmBU">Google Groups: Question about some concepts</a>: "Deadlock means reaching a state in which the only steps (state changes) allowed by the spec are stuttering steps (ones that change no declared variables of the spec)." Thus, a specification can reach a deadlock state even if stuttering steps are permitted.</p>
+<h2 id="weak-fairness-strong-fairness">Weak Fairness &amp; Strong Fairness</h2>
+<p>At this moment, I am finding it challenging to grasp the concepts of weak fairness and strong fairness, particularly as they relate to the formalization of fairness using the Linear Temporal Logic (LTL) operators <code>[]&lt;&gt;p</code> and <code>&lt;&gt;[]p</code>. These concepts require a deep understanding of LTL, which I am currently in the process of acquiring. Therefore, I have decided to temporarily skip this part of my studies. Once I have a more solid foundation in LTL, I will return to explore these topics in greater depth.</p>
+<h2 id="reference">Reference</h2>
+<ul>
+<li><a target="_blank" rel="noopener" href="https://lamport.azurewebsites.net/video/videos.html">The TLA+ Video Course</a></li>
+<li><a target="_blank" rel="noopener" href="https://medium.com/software-safety/introduction-to-tla-model-checking-in-the-command-line-c6871700a6a2">Medium: Introduction to TLA+ Model Checking in the Command Line</a></li>
+<li><a target="_blank" rel="noopener" href="https://www.learntla.com/index.html">Learn TLA+</a></li>
+<li><a target="_blank" rel="noopener" href="https://lamport.azurewebsites.net/pubs/auxiliary.pdf">Auxiliary Variables in TLA+</a></li>
+<li><a target="_blank" rel="noopener" href="https://emptysqua.re/blog/interactive-tla-plus/#is-the-spec-behaving-as-intended">A. Jesse Jiryu Davis: Current and Future Tools for Interactive TLA+</a></li>
+<li><a target="_blank" rel="noopener" href="https://www.tautvidas.com/blog/2019/01/debugging-tla-specifications-with-state-dumps/">Tautvidas Sipavičius: Debugging TLA+ specifications with state dumps</a></li>
+<li><a target="_blank" rel="noopener" href="https://github.com/tlaplus/tlaplus/issues/404">tlaplus/tlaplus Issues: Specifying symmetry set in cfg file manually</a></li>
+<li><a target="_blank" rel="noopener" href="https://tla.msr-inria.inria.fr/tlatoolbox/doc/model/model-values.html">The Microsoft Research-Inria Joint Center: Model Values and Symmetry</a></li>
+<li><a target="_blank" rel="noopener" href="https://www.researchgate.net/publication/304894406_The_Investigation_of_TLC_Model_Checker_Properties">ResearchGate: The Investigation of TLC Model Checker Properties</a></li>
+<li><a target="_blank" rel="noopener" href="https://groups.google.com/g/tlaplus/c/Pg5Yx3k_VaE">Google Groups: About stuttering steps, deadlock and Implementation</a></li>
+<li><a target="_blank" rel="noopener" href="https://groups.google.com/g/tlaplus/c/WhgEGDTziBM">Google Groups: About stuttering steps and deadlock in TLC</a></li>
+<li><a target="_blank" rel="noopener" href="https://groups.google.com/g/tlaplus/c/EfE9YrfqmBU">Google Groups: Question about some concepts</a></li>
+<li><a target="_blank" rel="noopener" href="https://www.hillelwayne.com/post/fairness/">HILLEL WAYNE: WEAK AND STRONG FAIRNESS</a></li>
+</ul>
+
+                
+              </div>
+            
+            <hr/>
+            <div>
+              <div class="post-metas my-3">
+  
+    <div class="post-meta mr-3 d-flex align-items-center">
+      <i class="iconfont icon-category"></i>
+      
+
+<span class="category-chains">
+  
+  
+    
+      <span class="category-chain">
+        
+  <a href="/categories/Computer-Science/" class="category-chain-item">Computer Science</a>
+  
+  
+    <span>></span>
+    
+  <a href="/categories/Computer-Science/Programming-Language/" class="category-chain-item">Programming Language</a>
+  
+  
+    <span>></span>
+    
+  <a href="/categories/Computer-Science/Programming-Language/TLA/" class="category-chain-item">TLA+</a>
+  
+  
+
+  
+
+  
+
+      </span>
+    
+  
+</span>
+
+    </div>
+  
+  
+</div>
+
+
+              
+  
+
+  <div class="license-box my-3">
+    <div class="license-title">
+      <div>The Beginner&#39;s Guide to TLA+: Specifying and Verifying Distributed Systems</div>
+      <div>https://clcanny.github.io/2023/06/26/computer-science/programming-language/tla+/the-beginner-s-guide-to-tla+-specifying-and-verifying-distributed-systems/</div>
+    </div>
+    <div class="license-meta">
+      
+        <div class="license-meta-item">
+          <div>作者</div>
+          <div>JunBin</div>
+        </div>
+      
+      
+        <div class="license-meta-item license-meta-date">
+          <div>发布于</div>
+          <div>2023年6月26日</div>
+        </div>
+      
+      
+      
+        <div class="license-meta-item">
+          <div>许可协议</div>
+          <div>
+            
+              
+              
+                <a target="_blank" href="https://creativecommons.org/licenses/by/4.0/">
+                  <span class="hint--top hint--rounded" aria-label="BY - 署名">
+                    <i class="iconfont icon-by"></i>
+                  </span>
+                </a>
+              
+            
+          </div>
+        </div>
+      
+    </div>
+    <div class="license-icon iconfont"></div>
+  </div>
+
+
+
+              
+                <div class="post-prevnext my-3">
+                  <article class="post-prev col-6">
+                    
+                    
+                      <a href="/2023/07/24/computer-science/programming-language/tla+/implementing-multi-decree-parliament-in-tla/" title="Implementing Multi-Decree Parliament In TLA+">
+                        <i class="iconfont icon-arrowleft"></i>
+                        <span class="hidden-mobile">Implementing Multi-Decree Parliament In TLA+</span>
+                        <span class="visible-mobile">上一篇</span>
+                      </a>
+                    
+                  </article>
+                  <article class="post-next col-6">
+                    
+                    
+                      <a href="/2023/03/06/computer-science/serializability/paper-interpretation-weak-consistency-a-generalized-theory-and-optimistic-implementations-for-distributed-transactions/" title="Paper Interpretation - Weak Consistency: A Generalized Theory and Optimistic Implementations for Distributed Transactions">
+                        <span class="hidden-mobile">Paper Interpretation - Weak Consistency: A Generalized Theory and Optimistic Implementations for Distributed Transactions</span>
+                        <span class="visible-mobile">下一篇</span>
+                        <i class="iconfont icon-arrowright"></i>
+                      </a>
+                    
+                  </article>
+                </div>
+              
+            </div>
+
+            
+          </article>
+        </div>
+      </div>
+    </div>
+
+    <div class="side-col d-none d-lg-block col-lg-2">
+      
+  <aside class="sidebar" style="margin-left: -1rem">
+    <div id="toc">
+  <p class="toc-header">
+    <i class="iconfont icon-list"></i>
+    <span>目录</span>
+  </p>
+  <div class="toc-body" id="toc-body"></div>
+</div>
+
+
+
+  </aside>
+
+
+    </div>
+  </div>
+</div>
+
+
+
+
+
+  
+
+
+
+  
+
+
+
+  
+
+
+
+  
+
+
+
+  
+
+
+
+  <script>
+  Fluid.utils.createScript('https://lib.baomitu.com/mermaid/8.14.0/mermaid.min.js', function() {
+    mermaid.initialize({"theme":"default"});
+
+    Fluid.events.registerRefreshCallback(function() {
+      if ('mermaid' in window) {
+        mermaid.init();
+      }
+    });
+  });
+</script>
+
+
+
+
+
+
+    
+
+    
+      <a id="scroll-top-button" aria-label="TOP" href="#" role="button">
+        <i class="iconfont icon-arrowup" aria-hidden="true"></i>
+      </a>
+    
+
+    
+      <div class="modal fade" id="modalSearch" tabindex="-1" role="dialog" aria-labelledby="ModalLabel"
+     aria-hidden="true">
+  <div class="modal-dialog modal-dialog-scrollable modal-lg" role="document">
+    <div class="modal-content">
+      <div class="modal-header text-center">
+        <h4 class="modal-title w-100 font-weight-bold">搜索</h4>
+        <button type="button" id="local-search-close" class="close" data-dismiss="modal" aria-label="Close">
+          <span aria-hidden="true">&times;</span>
+        </button>
+      </div>
+      <div class="modal-body mx-3">
+        <div class="md-form mb-5">
+          <input type="text" id="local-search-input" class="form-control validate">
+          <label data-error="x" data-success="v" for="local-search-input">关键词</label>
+        </div>
+        <div class="list-group" id="local-search-result"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+    
+
+    
+  </main>
+
+  <footer>
+    <div class="footer-inner">
+  
+    <div class="footer-content">
+       <a href="https://hexo.io" target="_blank" rel="nofollow noopener"><span>Hexo</span></a> <i class="iconfont icon-love"></i> <a href="https://github.com/fluid-dev/hexo-theme-fluid" target="_blank" rel="nofollow noopener"><span>Fluid</span></a> 
+    </div>
+  
+  
+  
+  
+</div>
+
+  </footer>
+
+  <!-- Scripts -->
+  
+  <script  src="https://lib.baomitu.com/nprogress/0.2.0/nprogress.min.js" ></script>
+  <link  rel="stylesheet" href="https://lib.baomitu.com/nprogress/0.2.0/nprogress.min.css" />
+
+  <script>
+    NProgress.configure({"showSpinner":false,"trickleSpeed":100})
+    NProgress.start()
+    window.addEventListener('load', function() {
+      NProgress.done();
+    })
+  </script>
+
+
+<script  src="https://lib.baomitu.com/jquery/3.6.0/jquery.min.js" ></script>
+<script  src="https://lib.baomitu.com/twitter-bootstrap/4.6.1/js/bootstrap.min.js" ></script>
+<script  src="/js/events.js" ></script>
+<script  src="/js/plugins.js" ></script>
+
+
+  <script  src="https://lib.baomitu.com/typed.js/2.0.12/typed.min.js" ></script>
+  <script>
+    (function (window, document) {
+      var typing = Fluid.plugins.typing;
+      var subtitle = document.getElementById('subtitle');
+      if (!subtitle || !typing) {
+        return;
+      }
+      var text = subtitle.getAttribute('data-typed-text');
+      
+        typing(text);
+      
+    })(window, document);
+  </script>
+
+
+
+
+  
+    <script  src="/js/img-lazyload.js" ></script>
+  
+
+
+
+
+  
+<script>
+  Fluid.utils.createScript('https://lib.baomitu.com/tocbot/4.18.2/tocbot.min.js', function() {
+    var toc = jQuery('#toc');
+    if (toc.length === 0 || !window.tocbot) { return; }
+    var boardCtn = jQuery('#board-ctn');
+    var boardTop = boardCtn.offset().top;
+
+    window.tocbot.init(Object.assign({
+      tocSelector     : '#toc-body',
+      contentSelector : '.markdown-body',
+      linkClass       : 'tocbot-link',
+      activeLinkClass : 'tocbot-active-link',
+      listClass       : 'tocbot-list',
+      isCollapsedClass: 'tocbot-is-collapsed',
+      collapsibleClass: 'tocbot-is-collapsible',
+      scrollSmooth    : true,
+      includeTitleTags: true,
+      headingsOffset  : -boardTop,
+    }, CONFIG.toc));
+    if (toc.find('.toc-list-item').length > 0) {
+      toc.css('visibility', 'visible');
+    }
+
+    Fluid.events.registerRefreshCallback(function() {
+      if ('tocbot' in window) {
+        tocbot.refresh();
+        var toc = jQuery('#toc');
+        if (toc.length === 0 || !tocbot) {
+          return;
+        }
+        if (toc.find('.toc-list-item').length > 0) {
+          toc.css('visibility', 'visible');
+        }
+      }
+    });
+  });
+</script>
+
+
+  <script src=https://lib.baomitu.com/clipboard.js/2.0.11/clipboard.min.js></script>
+
+  <script>Fluid.plugins.codeWidget();</script>
+
+
+  
+<script>
+  Fluid.utils.createScript('https://lib.baomitu.com/anchor-js/4.3.1/anchor.min.js', function() {
+    window.anchors.options = {
+      placement: CONFIG.anchorjs.placement,
+      visible  : CONFIG.anchorjs.visible
+    };
+    if (CONFIG.anchorjs.icon) {
+      window.anchors.options.icon = CONFIG.anchorjs.icon;
+    }
+    var el = (CONFIG.anchorjs.element || 'h1,h2,h3,h4,h5,h6').split(',');
+    var res = [];
+    for (var item of el) {
+      res.push('.markdown-body > ' + item.trim());
+    }
+    if (CONFIG.anchorjs.placement === 'left') {
+      window.anchors.options.class = 'anchorjs-link-left';
+    }
+    window.anchors.add(res.join(', '));
+
+    Fluid.events.registerRefreshCallback(function() {
+      if ('anchors' in window) {
+        anchors.removeAll();
+        var el = (CONFIG.anchorjs.element || 'h1,h2,h3,h4,h5,h6').split(',');
+        var res = [];
+        for (var item of el) {
+          res.push('.markdown-body > ' + item.trim());
+        }
+        if (CONFIG.anchorjs.placement === 'left') {
+          anchors.options.class = 'anchorjs-link-left';
+        }
+        anchors.add(res.join(', '));
+      }
+    });
+  });
+</script>
+
+
+  
+<script>
+  Fluid.utils.createScript('https://lib.baomitu.com/fancybox/3.5.7/jquery.fancybox.min.js', function() {
+    Fluid.plugins.fancyBox();
+  });
+</script>
+
+
+  <script>Fluid.plugins.imageCaption();</script>
+
+  <script  src="/js/local-search.js" ></script>
+
+
+
+
+
+<!-- 主题的启动项，将它保持在最底部 -->
+<!-- the boot of the theme, keep it at the bottom -->
+<script  src="/js/boot.js" ></script>
+
+
+  
+
+  <noscript>
+    <div class="noscript-warning">博客在允许 JavaScript 运行的环境下浏览效果更佳</div>
+  </noscript>
+</body>
+</html>

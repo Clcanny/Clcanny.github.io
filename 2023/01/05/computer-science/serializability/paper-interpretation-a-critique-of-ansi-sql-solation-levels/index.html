@@ -1,0 +1,1164 @@
+
+
+<!DOCTYPE html>
+<html lang="zh-CN" data-default-color-scheme=auto>
+
+
+
+<head>
+  <meta charset="UTF-8">
+  <link rel="apple-touch-icon" sizes="76x76" href="/img/fluid.png">
+  <link rel="icon" href="/img/fluid.png">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, shrink-to-fit=no">
+  <meta http-equiv="x-ua-compatible" content="ie=edge">
+  
+  <meta name="theme-color" content="#2f4154">
+  <meta name="author" content="JunBin">
+  <meta name="keywords" content="">
+  
+    <meta name="description" content="This article reorganizes the structure of the original paper to make it easier to understand (at least in my opinion), quotes some important content from its reference, and adds my personal understand">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Paper Interpretation - A Critique of ANSI SQL Isolation Levels">
+<meta property="og:url" content="https://clcanny.github.io/2023/01/05/computer-science/serializability/paper-interpretation-a-critique-of-ansi-sql-solation-levels/index.html">
+<meta property="og:site_name" content="On The Road">
+<meta property="og:description" content="This article reorganizes the structure of the original paper to make it easier to understand (at least in my opinion), quotes some important content from its reference, and adds my personal understand">
+<meta property="og:locale" content="zh_CN">
+<meta property="article:published_time" content="2023-01-05T15:56:24.000Z">
+<meta property="article:modified_time" content="2024-10-30T15:47:28.515Z">
+<meta property="article:author" content="JunBin">
+<meta name="twitter:card" content="summary_large_image">
+  
+  
+  
+  <title>Paper Interpretation - A Critique of ANSI SQL Isolation Levels - On The Road</title>
+
+  <link  rel="stylesheet" href="https://lib.baomitu.com/twitter-bootstrap/4.6.1/css/bootstrap.min.css" />
+
+
+
+  <link  rel="stylesheet" href="https://lib.baomitu.com/github-markdown-css/4.0.0/github-markdown.min.css" />
+
+  <link  rel="stylesheet" href="https://lib.baomitu.com/hint.css/2.7.0/hint.min.css" />
+
+  <link  rel="stylesheet" href="https://lib.baomitu.com/fancybox/3.5.7/jquery.fancybox.min.css" />
+
+
+
+<!-- 主题依赖的图标库，不要自行修改 -->
+<!-- Do not modify the link that theme dependent icons -->
+
+<link rel="stylesheet" href="//at.alicdn.com/t/font_1749284_hj8rtnfg7um.css">
+
+
+
+<link rel="stylesheet" href="//at.alicdn.com/t/font_1736178_lbnruvf0jn.css">
+
+
+<link  rel="stylesheet" href="/css/main.css" />
+
+
+  <link id="highlight-css" rel="stylesheet" href="/css/highlight.css" />
+  
+    <link id="highlight-css-dark" rel="stylesheet" href="/css/highlight-dark.css" />
+  
+
+
+
+
+  <script id="fluid-configs">
+    var Fluid = window.Fluid || {};
+    Fluid.ctx = Object.assign({}, Fluid.ctx)
+    var CONFIG = {"hostname":"clcanny.github.io","root":"/","version":"1.9.4","typing":{"enable":true,"typeSpeed":70,"cursorChar":"_","loop":false,"scope":[]},"anchorjs":{"enable":true,"element":"h1,h2,h3,h4,h5,h6","placement":"left","visible":"hover","icon":""},"progressbar":{"enable":true,"height_px":3,"color":"#29d","options":{"showSpinner":false,"trickleSpeed":100}},"code_language":{"enable":true,"default":"TEXT"},"copy_btn":true,"image_caption":{"enable":true},"image_zoom":{"enable":true,"img_url_replace":["",""]},"toc":{"enable":true,"placement":"right","headingSelector":"h1,h2,h3,h4,h5,h6","collapseDepth":0},"lazyload":{"enable":true,"loading_img":"/img/loading.gif","onlypost":false,"offset_factor":2},"web_analytics":{"enable":false,"follow_dnt":true,"baidu":null,"google":null,"gtag":null,"tencent":{"sid":null,"cid":null},"woyaola":null,"cnzz":null,"leancloud":{"app_id":null,"app_key":null,"server_url":null,"path":"window.location.pathname","ignore_local":false}},"search_path":"/local-search.xml"};
+
+    if (CONFIG.web_analytics.follow_dnt) {
+      var dntVal = navigator.doNotTrack || window.doNotTrack || navigator.msDoNotTrack;
+      Fluid.ctx.dnt = dntVal && (dntVal.startsWith('1') || dntVal.startsWith('yes') || dntVal.startsWith('on'));
+    }
+  </script>
+  <script  src="/js/utils.js" ></script>
+  <script  src="/js/color-schema.js" ></script>
+  
+
+
+  
+<meta name="generator" content="Hexo 7.0.0-rc1"></head>
+
+
+<body>
+  
+
+  <header>
+    
+
+<div class="header-inner" style="height: 70vh;">
+  <nav id="navbar" class="navbar fixed-top  navbar-expand-lg navbar-dark scrolling-navbar">
+  <div class="container">
+    <a class="navbar-brand" href="/">
+      <strong>Fluid</strong>
+    </a>
+
+    <button id="navbar-toggler-btn" class="navbar-toggler" type="button" data-toggle="collapse"
+            data-target="#navbarSupportedContent"
+            aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
+      <div class="animated-icon"><span></span><span></span><span></span></div>
+    </button>
+
+    <!-- Collapsible content -->
+    <div class="collapse navbar-collapse" id="navbarSupportedContent">
+      <ul class="navbar-nav ml-auto text-center">
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/">
+                <i class="iconfont icon-home-fill"></i>
+                <span>首页</span>
+              </a>
+            </li>
+          
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/archives/">
+                <i class="iconfont icon-archive-fill"></i>
+                <span>归档</span>
+              </a>
+            </li>
+          
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/categories/">
+                <i class="iconfont icon-category-fill"></i>
+                <span>分类</span>
+              </a>
+            </li>
+          
+        
+        
+          <li class="nav-item" id="search-btn">
+            <a class="nav-link" target="_self" href="javascript:;" data-toggle="modal" data-target="#modalSearch" aria-label="Search">
+              <i class="iconfont icon-search"></i>
+            </a>
+          </li>
+          
+        
+        
+          <li class="nav-item" id="color-toggle-btn">
+            <a class="nav-link" target="_self" href="javascript:;" aria-label="Color Toggle">
+              <i class="iconfont icon-dark" id="color-toggle-icon"></i>
+            </a>
+          </li>
+        
+      </ul>
+    </div>
+  </div>
+</nav>
+
+  
+
+<div id="banner" class="banner" parallax=true
+     style="background: url('/img/default.png') no-repeat center center; background-size: cover;">
+  <div class="full-bg-img">
+    <div class="mask flex-center" style="background-color: rgba(0, 0, 0, 0.3)">
+      <div class="banner-text text-center fade-in-up">
+        <div class="h2">
+          
+            <span id="subtitle" data-typed-text="Paper Interpretation - A Critique of ANSI SQL Isolation Levels"></span>
+          
+        </div>
+
+        
+          
+  <div class="mt-3">
+    
+    
+      <span class="post-meta">
+        <i class="iconfont icon-date-fill" aria-hidden="true"></i>
+        <time datetime="2023-01-05 23:56" pubdate>
+          2023年1月5日 晚上
+        </time>
+      </span>
+    
+  </div>
+
+  <div class="mt-1">
+    
+      <span class="post-meta mr-2">
+        <i class="iconfont icon-chart"></i>
+        
+          22k 字
+        
+      </span>
+    
+
+    
+      <span class="post-meta mr-2">
+        <i class="iconfont icon-clock-fill"></i>
+        
+        
+        
+          184 分钟
+        
+      </span>
+    
+
+    
+    
+  </div>
+
+
+        
+      </div>
+
+      
+    </div>
+  </div>
+</div>
+
+</div>
+
+  </header>
+
+  <main>
+    
+      
+
+<div class="container-fluid nopadding-x">
+  <div class="row nomargin-x">
+    <div class="side-col d-none d-lg-block col-lg-2">
+      
+
+    </div>
+
+    <div class="col-lg-8 nopadding-x-md">
+      <div class="container nopadding-x-md" id="board-ctn">
+        <div id="board">
+          <article class="post-content mx-auto">
+            <!-- SEO header -->
+            <h1 style="display: none">Paper Interpretation - A Critique of ANSI SQL Isolation Levels</h1>
+            
+            
+              <div class="markdown-body">
+                
+                <p>This article reorganizes the structure of the original paper to make it easier to understand (at least in my opinion), quotes some important content from its reference, and adds my personal understanding of some confusing details (although it may be wrong).</p>
+<h1 id="terminology">Terminology</h1>
+<ul>
+<li>A <strong>transaction</strong> groups a set of actions that transform the database from one consistent state to another.</li>
+<li>A <strong>history</strong> models the interleaved execution of a set of transactions as a linear ordering of their actions, such as Reads and Writes (i.e., inserts, updates, and deletes) of specific data items.</li>
+<li>The actions of committed transactions in the history are represented as graph nodes. If action <code>op1</code> of transaction <code>T1</code> conflicts with and precedes action <code>op2</code> of transaction <code>T2</code> in the history, then the pair <code>&lt;op1, op2&gt;</code> becomes an edge in the <strong>dependency graph</strong>.</li>
+<li>Two histories are equivalent if they have the same committed transactions and the same dependency graph.</li>
+<li><strong>Phenomena</strong> are the much broader interpretations of <strong>anomalies</strong>. <strong>Anomalies</strong> are strict interpretations of <strong>phenomena</strong>.
+<ul>
+<li>Let's take dirty read as an example. ANSI SQL Isolation defines dirty read as follows: Transaction <code>T1</code> modifies a data item. Another transaction <code>T2</code> then reads the data item before <code>T1</code> executes a COMMIT or ROLLBACK. If <code>T1</code> then performs a ROLLBACK, <code>T2</code> has read a data item that was never committed and so never really existed.</li>
+<li>The board interpretation is <code>P1: w1[x]...r2[x]...((c1 or a1) and (c2 or a2) in any order)</code>, and <code>P</code> is the capital first character of the word phenomena.</li>
+<li>The strict interpretation is <code>A1: w1[x]...r2[x]...(a1 and c2 in any order)</code>, and <code>A</code> is the capital first character of the word anomaly.</li>
+<li><code>P1</code> is a much broader interpretation than <code>A1</code>, since it prohibits all four possible commit-abort pairs by transactions <code>T1</code> and <code>T2</code>, while <code>A1</code> only prohibits two of the four.</li>
+</ul></li>
+<li><strong>Predicate lock</strong> is used to resolve conflicting actions that occur on a set of data items.</li>
+</ul>
+<h1 id="isolation-levels-defined-by-glpt-locking-isolation-levels">Isolation Levels Defined By GLPT &amp; Locking Isolation Levels</h1>
+<h2 id="isolation-levels-defined-by-glpt">Isolation Levels Defined By GLPT</h2>
+<p><a target="_blank" rel="noopener" href="https://web.stanford.edu/class/cs245/readings/granularity-of-locks.pdf">Granularity of Locks and Degrees of Consistency in a Shared Data Base, by J.N. Gray, R.A. Lorie, G.R. Putzolu and I.L. Traiger</a> defined Degrees of Consistency in three ways: locking, data-flow graphs, and anomalies. The anomaly definitions were too vague. The authors continue to get criticism for that aspect of the definitions in <a target="_blank" rel="noopener" href="https://dl.acm.org/doi/10.5555/573304">Transaction Processing: Concepts and Technique, by Jim Gray and Andreas Reuter</a>. Only the more mathematical definitions in terms of histories and dependency graphs or locking have stood the test of time.</p>
+<blockquote>
+<ul>
+<li>Definition 1 (anomalies):
+<ul>
+<li>Degree 3: Transaction <code>T</code> sees degree 3 consistency if:
+<ul>
+<li><code>T</code> does not overwrite dirty data of other transactions.</li>
+<li><code>T</code> does not commit any writes until it completes all its writes (i.e. until the end of transaction).</li>
+<li><code>T</code> does not read dirty data from other transactions.</li>
+<li>Other transactions do not dirty any data read by <code>T</code> before <code>T</code> completes.</li>
+</ul></li>
+<li>Degree 2: Transaction <code>T</code> sees degree 2 consistency if:
+<ul>
+<li><code>T</code> does not overwrite dirty data of other transactions.</li>
+<li><code>T</code> does not commit any writes before EOT.</li>
+<li><code>T</code> does not read dirty data of other transactions.</li>
+</ul></li>
+<li>Degree 1: Transaction <code>T</code> sees degree 1 consistency if:
+<ul>
+<li><code>T</code> does not overwrite dirty data of other transactions.</li>
+<li><code>T</code> does not commit any writes before EOT.</li>
+</ul></li>
+<li>Degree 0: Transaction <code>T</code> sees degree 0 consistency if:
+<ul>
+<li><code>T</code> does not overwrite dirty data of other transactions.</li>
+</ul></li>
+</ul></li>
+<li>Definition 2 (locking):
+<ul>
+<li>Degree 3: Transaction <code>T</code> observes degree 3 lock protocol if:
+<ul>
+<li><code>T</code> sets a long exclusive lock on any data it dirties.</li>
+<li><code>T</code> sets a long share lock on any data it reads.</li>
+</ul></li>
+<li>Degree 2: Transaction <code>T</code> observes degree 2 lock protocol if:
+<ul>
+<li><code>T</code> sets a long exclusive lock on any data it dirties.</li>
+<li><code>T</code> sets a (possibly short) share lock on any data it reads.</li>
+</ul></li>
+<li>Degree 1: Transaction <code>T</code> observes degree 1 lock protocol if:
+<ul>
+<li><code>T</code> sets a long exclusive lock on any data it dirties.</li>
+</ul></li>
+<li>Degree 0: Transaction <code>T</code> observes degree 0 lock protocol if:
+<ul>
+<li><code>T</code> sets a (possibly short) exclusive lock on any data it dirties.</li>
+</ul></li>
+</ul></li>
+<li>Definition 2' (locking):
+<ul>
+<li>Degree 3: <code>T</code> is well formed and <code>T</code> is two phase.</li>
+<li>Degree 2: <code>T</code> is well formed and <code>T</code> is two phase with respect to writes.</li>
+<li>Degree 1: <code>T</code> is well formed with respect to writes and <code>T</code> is two phase with respect to writes.</li>
+<li>Degree 0: <code>T</code> is well formed with respect to writes.</li>
+</ul></li>
+<li>Definition 3 (data-flow graphs):
+<ul>
+<li>Suppose that transaction <code>T</code> performs action <code>a</code> on entity <code>e</code> at some step in the schedule and that transaction <code>T'</code> performs action <code>a'</code> on entity <code>e</code> at a later step in the schedule. Further suppose that <code>T</code> does not equal <code>T'</code>. Then:
+<ul>
+<li><code>T &lt;&lt;&lt; T'</code>
+<ul>
+<li>if <code>a</code> is a write action and <code>a'</code> is a write action</li>
+<li>or <code>a</code> is a write action and <code>a'</code> is a read action</li>
+<li>or <code>a</code> is a read action and <code>a'</code> is a write action</li>
+</ul></li>
+<li><code>T &lt;&lt; T'</code>
+<ul>
+<li>if <code>a</code> is a write action and <code>a'</code> is a write action</li>
+<li>or <code>a</code> is a write action and <code>a'</code> is a read action</li>
+</ul></li>
+<li><code>T &lt; T'</code>
+<ul>
+<li>if <code>a</code> is a write action and <code>a'</code> is a write action</li>
+</ul></li>
+</ul></li>
+<li>Let <code>&lt;*</code> be the transitive closure of <code>&lt;</code>.</li>
+<li>A schedule is degree 1 (2 or 3) consistent if and only if the relation <code>&lt;*</code> (<code>&lt;&lt;*</code> or <code>&lt;&lt;&lt;*</code>) is a partial order.</li>
+</ul></li>
+</ul>
+</blockquote>
+<h2 id="locking-isolation-levels">Locking Isolation Levels</h2>
+<p>The ANSI isolation levels are related to the behavior of lock schedulers.</p>
+<h2 id="table-2-degrees-of-consistency-and-locking-isolation-levels-defined-in-terms-of-locks">Table 2: Degrees of Consistency and Locking Isolation Levels defined in terms of locks</h2>
+<p>Consequently, it is necessary to differentiate isolation levels defined in terms of locks from the ANSI SQL phenomenabased isolation levels. To make this distinction, the levels in Table 2 are labeled with the "Locking" prefix, as opposed to the "ANSI" prefix of Table 1.</p>
+<table>
+
+<thead>
+<tr class="header">
+<th style="text-align: left;">Consistency Level = Locking Isolation Level</th>
+<th style="text-align: left;">Read Locks on Data Items and Predicates (the same unless noted)</th>
+<th style="text-align: left;">Write Locks on Data Items and Predicates (always the same)</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">Degree 0</td>
+<td style="text-align: left;">none required</td>
+<td style="text-align: left;">Well-formed Writes</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Degree 1 = Locking READ UNCOMMITTED</td>
+<td style="text-align: left;">none required</td>
+<td style="text-align: left;">Well-formed Writes<br/>Long duration Write locks</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Degree 2 = Locking READ COMMITTED</td>
+<td style="text-align: left;">Well-formed Reads<br/>Short duration Read locks (both)</td>
+<td style="text-align: left;">Well-formed Writes<br/>Long duration Write locks</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Cursor Stability</td>
+<td style="text-align: left;">Well-formed Reads<br/>Read locks held on current of cursor<br/>Short duration Read Predicate locks</td>
+<td style="text-align: left;">Well-formed Writes<br/>Long duration Write locks</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Locking REPEATABLE READ</td>
+<td style="text-align: left;">Well-formed Reads<br/>Long duration data-item Read locks<br/>Short duration Read Predicate locks</td>
+<td style="text-align: left;">Well-formed Writes<br/>Long duration Write locks</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Degree 3 = Locking SERIALIZABLE</td>
+<td style="text-align: left;">Well-formed Reads<br/>Long duration Read locks (both)</td>
+<td style="text-align: left;">Well-formed Writes<br/>Long duration Write locks</td>
+</tr>
+</tbody>
+</table>
+<p>The fundamental serialization theorem is that well-formed two-phase locking guarantees serializability — each history arising under two-phase locking is equivalent to some serial history. Conversely, if a transaction is not well-formed or two-phased then, except in degenerate cases, non-serializable execution histories are possible [EGLT].</p>
+<p>We say Locking SERIALIZABLE == Serializable even though it is well known that a locking scheduler does not admit all possible Serializable histories.</p>
+<h1 id="ansi-sql-isolation-levels">ANSI SQL Isolation Levels</h1>
+<h2 id="phenomena-anomaly">Phenomena &amp; Anomaly</h2>
+<ul>
+<li>Dirty Read: Transaction <code>T1</code> modifies a data item. Another transaction <code>T2</code> then reads that data item before <code>T1</code> performs a COMMIT or ROLLBACK. If <code>T1</code> then performs a ROLLBACK, <code>T2</code> has read a data item that was never committed and so never really existed.</li>
+<li>Non-repeatable or Fuzzy Read: Transaction <code>T1</code> reads a data item. Another transaction <code>T2</code> then modifies or deletes that data item and commits. If <code>T1</code> then attempts to reread the data item, it receives a modified value or discovers that the data item has been deleted.</li>
+<li>Phantom: Transaction <code>T1</code> reads a set of data items satisfying some <code>&lt;search condition&gt;</code>. Transaction <code>T2</code> then creates data items that satisfy <code>T1</code>'s <search condition> and commits. If <code>T1</code> then repeats its read with the same <code>&lt;search condition&gt;</code>, it gets a set of data items different from the first read.</li>
+</ul>
+<table>
+
+<thead>
+<tr class="header">
+<th>Phenomena</th>
+<th>Histories</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Dirty Read</td>
+<td><code>P1: w1[x]...r2[x]...((c1 or a1) and (c2 or a2) in any order)</code></td>
+</tr>
+<tr class="even">
+<td></td>
+<td><code>A1: w1[x]...r2[x]...(a1 and c2 in any order)</code></td>
+</tr>
+<tr class="odd">
+<td>Non-repeatable or Fuzzy Read</td>
+<td><code>P2: r1[x]...w2[x]...((c1 or a1) and (c2 or a2) in any order)</code></td>
+</tr>
+<tr class="even">
+<td></td>
+<td><code>A2: r1[x]...w2[x]...c2...r1[x]...c1</code></td>
+</tr>
+<tr class="odd">
+<td>Phantom</td>
+<td><code>P3: r1[P]...w2[y in P]...((c1 or a1) and (c2 or a2) any order)</code></td>
+</tr>
+<tr class="even">
+<td></td>
+<td><code>A3: r1[P]...w2[y in P]...c2...r1[P]...c1</code></td>
+</tr>
+</tbody>
+</table>
+<h2 id="table-1-ansi-sql-isolation-levels-defined-in-terms-of-the-three-original-phenomena">Table 1: ANSI SQL Isolation Levels Defined in terms of the Three Original Phenomena</h2>
+<table>
+
+<thead>
+<tr class="header">
+<th>Isolation Level</th>
+<th><code>P1</code> (or <code>A1</code>)<br/>Dirty Read</th>
+<th><code>P2</code> (or <code>A2</code>)<br/>Fuzzy Read</th>
+<th><code>P3</code> (or <code>A3</code>)<br/>Phantom</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>ANSI READ UNCOMMITTED</td>
+<td>Possible</td>
+<td>Possible</td>
+<td>Possible</td>
+</tr>
+<tr class="even">
+<td>ANSI READ COMMITTED</td>
+<td>Not Possible</td>
+<td>Possible</td>
+<td>Possible</td>
+</tr>
+<tr class="odd">
+<td>ANSI REPEATABLE READ</td>
+<td>Not Possible</td>
+<td>Not Possible</td>
+<td>Possible</td>
+</tr>
+<tr class="even">
+<td>ANOMALY SERIALIZABLE</td>
+<td>Not Possible</td>
+<td>Not Possible</td>
+<td>Not Possible</td>
+</tr>
+</tbody>
+</table>
+<p>Disallowing the three phenomena does not imply serializability, so Table 1 calls it ANOMALY SERIALIZABLE.</p>
+<h1 id="enhanced-ansi-sql-isolation-levels">Enhanced ANSI SQL Isolation Levels</h1>
+<h2 id="remark-3-ansi-sql-isolation-should-be-modified-to-require-p0-for-all-isolation-levels.">Remark 3: ANSI SQL isolation should be modified to require <code>P0</code> for all isolation levels.</h2>
+<p>Dirty Write: Transaction <code>T1</code> modifies a data item. Another transaction <code>T2</code> then further modifies that data item before <code>T1</code> performs a COMMIT or ROLLBACK. If <code>T1</code> or <code>T2</code> then performs a ROLLBACK, it is unclear what the correct data value should be. The broad interpretation of this is:</p>
+<p><code>P0: w1[x]...w2[x]...((c1 or a1) and (c2 or a2) in any order)</code></p>
+<p>Why Dirty Writes are bad?</p>
+<ul>
+<li>They can violate database consistency. Assume there is a constraint between <code>x</code> and <code>y</code> (e.g., <code>x=y</code>), and <code>T1</code> and <code>T2</code> each maintain the consistency of the constraint if run alone. However, the constraint can easily be violated if the two transactions write <code>x</code> and <code>y</code> in different orders, which can only happen if there are Dirty writes. For example consider the history <code>w1[x]w2[x]w2[y]c2w1[y]c1</code>. <code>T1</code>'s changes to <code>y</code> and <code>T2</code>'s to <code>x</code> both "survive". If <code>T1</code> writes 1 in both <code>x</code> and <code>y</code> while <code>T2</code> writes 2, the result will be <code>x=2</code>, <code>y=1</code> violating <code>x=y</code>.</li>
+<li>Without protection from <code>P0</code>, the system can't undo updates by restoring before images. Consider the history: <code>w1[x]w2[x]a1</code>. You don't want to undo <code>w1[x]</code> by restoring its before-image of <code>x</code>, because that would wipe out <code>w2</code>'s update. But if you don't restore its before-image, and transaction <code>T2</code> later aborts, you can't undo <code>w2[x]</code> by restoring its before-image either! (We assume that each operation remembers at most one before-image of a variable (e.g. <code>x</code>) written by another transaction.)</li>
+</ul>
+<p>So even the weakest locking systems hold long duration write locks. Otherwise, their recovery systems would fail. Then we get remark 3.</p>
+<p>Remark 3: ANSI SQL isolation should be modified to require <code>P0</code> for all isolation levels.</p>
+<h2 id="remark-4-ansi-meant-to-define-p1-p2-and-p3-instead-of-a1-a2-and-a3.">Remark 4: ANSI meant to define <code>P1</code>, <code>P2</code>, and <code>P3</code> instead of <code>A1</code>, <code>A2</code>, and <code>A3</code>.</h2>
+<p>Remark 4. Strict interpretations <code>A1</code>, <code>A2</code>, and <code>A3</code> have unintended weaknesses. The correct interpretations are the Broad ones. We assume in what follows that ANSI meant to define <code>P1</code>, <code>P2</code>, and <code>P3</code>.</p>
+<ul>
+<li><code>H1: r1[x=50]w1[x=10]r2[x=10]r2[y=50]c2r1[y=50]w1[y=90]c1</code>. <code>H1</code> is non-serializable, because transaction <code>T1</code> is transferring a quantity 40 from <code>x</code> to <code>y</code>, maintaining a total balance of 100, but <code>T2</code> reads an inconsistent state where the total balance is 60. H1 does not violate any of the anomalies <code>A1</code>, <code>A2</code>, or <code>A3</code>, but violates the broad interpretation of <code>A1</code>, the phenomenon <code>P1</code>.</li>
+<li><code>H2: r1[x=50]r2[x=50]w2[x=10]r2[y=50]w2[y=90]c2r1[y=90]c1</code>. <code>H2</code> is non-serializable, because transaction <code>T1</code> sees a total balance of 140. <code>H2</code> does not violate any of the anomalies <code>A1</code>, <code>A2</code>, or <code>A3</code>, but violates the broad interpretation of <code>A2</code>, the phenomenon <code>P2</code>.</li>
+<li><code>H3: r1[P]w2[insert y in P]r2[z]w2[z]c2r1[z]c1</code>. Here <code>T1</code> performs a <code>&lt;search condition&gt;</code> to find the list of active employees. Then <code>T2</code> performs an insert of a new active employee and then updates <code>z</code>, the count of employees in the company. Following this, <code>T1</code> reads the count of active employees as a check and sees a discrepancy. This history is clearly not serializable, but is allowed by <code>A3</code> since no predicate is evaluated twice. Again, the Broad interpretation solves the problem.</li>
+</ul>
+<h2 id="table-3-enhanced-ansi-sql-isolation-levels-defined-in-terms-of-the-four-phenomena">Table 3: Enhanced ANSI SQL Isolation Levels Defined in terms of the four phenomena</h2>
+<table>
+<thead>
+<tr class="header">
+<th>Isolation Level</th>
+<th><code>P0</code><br/>Dirty Write</th>
+<th><code>P1</code><br/>Dirty Read</th>
+<th><code>P2</code><br/>Fuzzy Read</th>
+<th><code>P3</code><br/>Phantom</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>READ UNCOMMITTED</td>
+<td>Not Possible</td>
+<td>Possible</td>
+<td>Possible</td>
+<td>Possible</td>
+</tr>
+<tr class="even">
+<td>READ COMMITTED</td>
+<td>Not Possible</td>
+<td>Not Possible</td>
+<td>Possible</td>
+<td>Possible</td>
+</tr>
+<tr class="odd">
+<td>REPEATABLE READ</td>
+<td>Not Possible</td>
+<td>Not Possible</td>
+<td>Not Possible</td>
+<td>Possible</td>
+</tr>
+<tr class="even">
+<td>SERIALIZABLE</td>
+<td>Not Possible</td>
+<td>Not Possible</td>
+<td>Not Possible</td>
+<td>Not Possible</td>
+</tr>
+</tbody>
+</table>
+<h1 id="difference-between-locking-isolation-levels-and-ansi-sql-isolation-levels">Difference Between Locking Isolation Levels And ANSI SQL Isolation Levels</h1>
+<p>Locking isolation levels are more isolated than the same-named ANSI levels. Locking READ UNCOMMITTED provides long duration write locking to avoid a phenomenon called "Dirty Writes," but ANSI SQL does not exclude this anomalous behavior other than ANSI SERIALIZABLE.</p>
+<p>Remark 6. For single version histories, it turns out that the <code>P0</code>, <code>P1</code>, <code>P2</code>, <code>P3</code> phenomena are disguised versions of locking. Thus the <strong>enhanced</strong> ANSI SQL isolation levels of Table 3 defined by these phenomena provide the same behavior as the locking isolation levels of Table 2:</p>
+<ul>
+<li>Prohibiting <code>P0</code> precludes a second transaction writing an item after the first transaction has written it, equivalent to saying that long-term Write locks are held on data items (and predicates).</li>
+<li>Prohibiting <code>P1</code> is equivalent to having well-formed reads on data items.</li>
+<li>Prohibiting <code>P2</code> means long-term Read locks on data items.</li>
+<li>Prohibiting <code>P3</code> means long-term Read predicate locks.</li>
+</ul>
+<p>And we infer that locking isolation levels are more isolated than the same-named ANSI levels in another way:</p>
+<ul>
+<li>Locking READ UNCOMMITTED == (ENHANCED) READ UNCOMMITTED &gt;&gt; ANSI READ UNCOMMITTED</li>
+<li>Locking READ COMMITTED == (ENHANCED) READ COMMITTED &gt;&gt; ANSI READ COMMITTED</li>
+<li>...</li>
+</ul>
+<h1 id="other-isolation-types">Other Isolation Types</h1>
+<h2 id="cursor-stability">Cursor Stability</h2>
+<h3 id="lost-update">Lost Update</h3>
+<p>Lost Update: The lost update anomaly occurs when transaction <code>T1</code> reads a data item and then <code>T2</code> updates the data item (possibly based on a previous read), then <code>T1</code> (based on its earlier read value) updates the data item and commits. In terms of histories, this is:</p>
+<p><code>P4: r1[x]...w2[x]...w1[x]...c1</code></p>
+<p>The problem, as illustrated in history <code>H4</code>, is that even if <code>T2</code> commits, <code>T2</code>'s update will be lost.</p>
+<p><code>H4: r1[x=100]r2[x=100]w2[x=120]c2w1[x=130]c1</code></p>
+<h3 id="cursor-stability-1">Cursor Stability</h3>
+<p>Cursor Stability is designed to prevent the lost update phenomenon.</p>
+<p>This is an example of using MySQL Cursor from <a target="_blank" rel="noopener" href="https://www.mysqltutorial.org/mysql-cursor/">MySQL Tutorial: MySQL Cursor</a>:</p>
+<figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><code class="hljs sql"><span class="hljs-keyword">DECLARE</span> curEmail <span class="hljs-keyword">CURSOR</span> <span class="hljs-keyword">FOR</span> <span class="hljs-keyword">SELECT</span> email <span class="hljs-keyword">FROM</span> employees;<br><span class="hljs-keyword">OPEN</span> curEmail;<br>getEmail: LOOP<br>  <span class="hljs-keyword">FETCH</span> curEmail <span class="hljs-keyword">INTO</span> emailAddress;<br>  IF finished <span class="hljs-operator">=</span> <span class="hljs-number">1</span> <span class="hljs-keyword">THEN</span><br>    LEAVE getEmail;<br>  <span class="hljs-keyword">END</span> IF;<br>  <span class="hljs-comment">-- Build email list.</span><br>  <span class="hljs-keyword">SET</span> emailList <span class="hljs-operator">=</span> CONCAT(emailAddress, &quot;;&quot;, emailList);<br><span class="hljs-keyword">END</span> LOOP getEmail;<br><span class="hljs-keyword">CLOSE</span> curEmail;<br></code></pre></td></tr></table></figure>
+<p>The Cursor Stability isolation level extends READ COMMITTED locking behavior for SQL cursors by adding a new read action for FETCH from a cursor and requiring that a lock be held on the current item of the cursor.</p>
+<ul>
+<li>The lock is held until the cursor moves or is closed, possibly by a commit.</li>
+<li>Naturally, the Fetching transaction can update the row, and in that case a write lock will be held on the row until the transaction commits, even after the cursor moves on with a subsequent Fetch.</li>
+<li>The notation is extended to include, <code>rc</code>, meaning read cursor, and <code>wc</code>, meaning write the current record of the cursor. A <code>rc1[x]</code> and a later <code>wc1[x]</code> precludes an intervening <code>w2[x]</code>.</li>
+</ul>
+<p><code>P4</code>, renamed <code>P4C</code>, is prevented in this case: <code>P4C: rc1[x]...w2[x]...w1[x]...c1</code>.</p>
+<h3 id="remark-7-strength-of-cursor-stability">Remark 7: Strength of Cursor Stability</h3>
+<p>Remark 7: READ COMMITTED &lt;&lt; Cursor Stability &lt;&lt; REPEATABLE READ</p>
+<p>The technique of putting a cursor on an item to hold its value stable can be used for multiple items, at the cost of using multiple cursors. Thus the programmer can parlay Cursor Stability to effective Locking REPEATABLE READ isolation for any transaction accessing a small, fixed number of data items. However this method is inconvenient and not at all general. Thus there are always histories fitting the <code>P4: r1[x]...w2[x]...w1[x]...c1</code> (when the user does not access <code>x</code> carefully by Cursor and FETCH?) (and of course the more general <code>P2: r1[x]...w2[x]...((c1 or a1) and (c2 or a2) in any order)</code>) phenomenon that are not precluded by Cursor Stability.</p>
+<h3 id="table-4.1-enhanced-ansi-sql-isolation-levels-defined-in-terms-of-the-six-phenomena">Table 4.1: Enhanced ANSI SQL Isolation Levels Defined in terms of the six phenomena</h3>
+<table>
+
+<thead>
+<tr class="header">
+<th>Isolation Level</th>
+<th><code>P0</code><br/>Dirty Write</th>
+<th><code>P1</code><br/>Dirty Read</th>
+<th><code>P4C</code><br/>Cursor Lost Update</th>
+<th><code>P4</code><br/>Lost Update</th>
+<th><code>P2</code><br/>Fuzzy Read</th>
+<th><code>P3</code><br/>Phantom</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>READ UNCOMMITTED<br/>== Degree 1</td>
+<td>Not Possible</td>
+<td>Possible</td>
+<td>Possible</td>
+<td>Possible</td>
+<td>Possible</td>
+<td>Possible</td>
+</tr>
+<tr class="even">
+<td>READ COMMITTED<br/>== Degree 2</td>
+<td>Not Possible</td>
+<td>Not Possible</td>
+<td>Possible</td>
+<td>Possible</td>
+<td>Possible</td>
+<td>Possible</td>
+</tr>
+<tr class="odd">
+<td>Cursor Stability</td>
+<td>Not Possible</td>
+<td>Not Possible</td>
+<td>Not Possible</td>
+<td>Sometimes Possible</td>
+<td>Sometimes Possible</td>
+<td>Possible</td>
+</tr>
+<tr class="even">
+<td>REPEATABLE READ</td>
+<td>Not Possible</td>
+<td>Not Possible</td>
+<td>Not Possible</td>
+<td>Not Possible</td>
+<td>Not Possible</td>
+<td>Possible</td>
+</tr>
+<tr class="odd">
+<td>SERIALIZABLE<br/>== Degree 3</td>
+<td>Not Possible</td>
+<td>Not Possible</td>
+<td>Not Possible</td>
+<td>Not Possible</td>
+<td>Not Possible</td>
+<td>Not Possible</td>
+</tr>
+</tbody>
+</table>
+<p>Why use the term "<strong>Sometimes Possible</strong>" other than "<strong>Possible</strong>" to describe the relationship between <code>P4</code>/<code>P2</code> and Cursor Stability? My understanding is: Users can avoid Lost Update or Fuzzy Read by using Cursor and FETCH, but Lost Update or Fuzzy Read can still happen if users don't use Cursor and FETCH correctly.</p>
+<h2 id="snapshot-isolation">Snapshot Isolation</h2>
+<p>Each transaction reads data from a snapshot of the (committed) data as of the time the transaction started, called its Start-Timestamp. This time may be any time before the transaction’s first Read. The transaction's writes (updates, inserts, and deletes) will also be reflected in this snapshot, to be read again if the transaction accesses (i.e., reads or updates) the data a second time. Updates by other transactions active after the transaction Start-Timestamp are invisible to the transaction.</p>
+<p>When the transaction <code>T1</code> is ready to commit, it gets a Commit-Timestamp, which is larger than any existing Start-Timestamp or Commit-Timestamp. The transaction successfully commits only if no other transaction <code>T2</code> with a Commit-Timestamp in <code>T1</code>'s execution interval [Start-Timestamp, Commit-Timestamp] wrote data that <code>T1</code> also wrote. Otherwise, <code>T1</code> will abort.</p>
+<p>When <code>T1</code> commits, its changes become visible to all transactions whose Start-Timestamps are larger than <code>T1</code>'s Commit-Timestamp.</p>
+<h3 id="how-to-analyze-the-strength-of-snapshot-isolation-map-mv-histories-to-sv-histories">How to analyze the strength of Snapshot Isolation: Map MV histories to SV histories</h3>
+<p><a target="_blank" rel="noopener" href="https://www.amazon.com/Concurrency-Control-Recovery-Database-Systems/dp/0201107155">Concurrency Control and Recovery in Database Systems, by Philip Bernstein, Vassos Hadzilacos and Nathan Goodman, Chapter 2.6: VIEW EQUIVALENCE</a> tells us:</p>
+<blockquote>
+<p>We want to define equivalence so that two histories are equivalent if they have the same effects. The effects of a history are the values produced by the Write operations of unaborted transactions. Since we don't know anything about the computation that each transaction performs, we don't know much about the value written by each Write. All we do know is that it is some function of the values read by each of the transaction's Reads that preceded the Write. Thus, if each transaction's Reads read the same value in two histories, then its Writes will produce the same values in both histories. From this observation and a little careful thought, we can see that (1) if each transaction reads each of its data items from the same Writes in both histories, then all Writes write the same values in both histories, and (2) if for each data item <code>x</code>, the <strong>final Write</strong> on <code>x</code> is the same in both histories, then the final value of all data items will be the same in both histories. And if all Writes write the same values in both histories and leave the database in the same final state, then the histories must be equivalent.</p>
+<p>Two histories are view equivalent if they have the same reads-from relationships and the same final writes.</p>
+</blockquote>
+<p><a target="_blank" rel="noopener" href="https://www.amazon.com/Concurrency-Control-Recovery-Database-Systems/dp/0201107155">Concurrency Control and Recovery in Database Systems, by Philip Bernstein, Vassos Hadzilacos and Nathan Goodman, Chapter 5: MULTIVERSION CONCURRENCY CONTROL, Analyzing Correctness</a> also tells us:</p>
+<blockquote>
+<p>Only a subset of serial MV histories, called 1-serial MV histories, are equivalent to serial 1V histories.</p>
+<p>For example, <code>w0[x=x0]w0[y=y0]c0r1[x=x0]r1[y=y0]w1[x=x1]w1[y=y1]c1r2[x=x0]r2[y=y1]c2</code> is a serial MV history, but not equivalent to a serial 1V history.</p>
+</blockquote>
+<p>But are all (serial/non-serial) MV histories equivalent to (non-serial) 1V histories? I think the answer is yes, but how to prove it?</p>
+<p>In <a href="">An Investigation of Transactional Isolation Levels, by P. O'Neil, E. O'Neil, H. Berenson, P.Bernstein, J. Gray and J. Melton</a>, we show that all Snapshot Isolation histories can be mapped to single-valued histories while preserving dataflow dependencies (the MV histories are said to be View Equivalent with the SV histories). For example:</p>
+<ul>
+<li><code>H1: r1[x=50]w1[x=10]r2[x=10]r2[y=50]c2r1[y=50]w1[y=90]c1</code> is a non-serializable history. <code>T1</code> is transferring a quantity 40 from <code>x</code> to <code>y</code>, maintaining a total balance of 100, but <code>T2</code> reads an inconsistent state where the total balance is 60.</li>
+<li>Under Snapshot Isolation, the same sequence of actions would lead to the multi-valued history: <code>H1.SI: r1[x0=50]w1[x1=10]r2[x0=50]r2[y0=50]c2r1[y0=50]w1[y1=90]c1</code>.</li>
+<li>The MV history <code>H1.SI</code> would map to the serializable SV history: <code>H1.SI.SV: r1[x=50]r1[y=50]r2[x=50]r2[y=50]c2w1[x=10]w1[y=90]c1</code>.</li>
+</ul>
+<p>Mapping of MV histories to SV histories is the only rigorous touchstone needed to place Snapshot Isolation in the Isolation Hierarchy.</p>
+<h3 id="snapshot-isolation-is-non-serializable">Snapshot Isolation is non-serializable</h3>
+<p><code>H5: r1[x=50]r1[y=50]r2[x=50]r2[y=50]w1[y=-40]w2[x=-40]c1c2</code></p>
+<p><code>H5</code> is non-serializable and has the same inter-transactional dataflows as could occur under Snapshot Isolation (there is no choice of versions read by the transactions). Here we assume that each transaction that writes a new value for <code>x</code> and <code>y</code> is expected to maintain the constraint that <code>x + y</code> should be positive, and while <code>T1</code> and <code>T2</code> both act properly in isolation, the constraint fails to hold in <code>H5</code>.</p>
+<h3 id="strength-of-snapshot-isolation">Strength of Snapshot Isolation</h3>
+<h4 id="remark-8-read-committed-snapshot-isolation">Remark 8: READ COMMITTED &lt;&lt; Snapshot Isolation</h4>
+<p>In Snapshot Isolation, first-committer-wins precludes <code>P0</code> (dirty writes), and the timestamp mechanism prevents <code>P1</code> (dirty reads), so Snapshot Isolation is no weaker than READ COMMITTED. In addition, <code>A5A</code> is possible under READ COMMITTED, but not under the Snapshot Isolation timestamp mechanism.</p>
+<h4 id="remark-9-repeatable-read-snapshot-isolation">Remark 9: REPEATABLE READ &gt;&gt;&lt;&lt; Snapshot Isolation</h4>
+<ul>
+<li>Write Skew (<code>A5B</code>) obviously can occur in a Snapshot Isolation history (e.g., <code>H5</code>), and in the Single Valued history interpretation we've been reasoning about, forbidding <code>P2</code> also precludes <code>A5B</code>. Therefore Snapshot Isolation admits history anomalies that REPEATABLE READ does not.
+<ul>
+<li><code>A5</code> (Data Item Constraint Violation): Suppose <code>C()</code> is a database constraint between two data items <code>x</code> and <code>y</code> in the database. Here are two anomalies arising from constraint violation:
+<ul>
+<li><code>A5A</code> (Read Skew). Suppose transaction <code>T1</code> reads <code>x</code>, and then a second transaction <code>T2</code> updates <code>x</code> and <code>y</code> to new values and commits. If now <code>T1</code> reads <code>y</code>, it may see an inconsistent state, and therefore produce an inconsistent state as output. In terms of histories, we have the anomaly: <code>A5A: r1[x]...w2[x]...w2[y]...c2...r1[y]...(c1 or a1)</code>.</li>
+<li><code>A5B</code> (Write Skew). Suppose <code>T1</code> reads <code>x</code> and <code>y</code>, which are consistent with <code>C()</code>, and then a <code>T2</code> reads <code>x</code> and <code>y</code>, writes <code>x</code>, and commits. Then <code>T1</code> writes <code>y</code>. If there were a constraint between <code>x</code> and <code>y</code>, it might be violated. In terms of histories, we have the anomaly: <code>A5B: r1[x]...r2[y]...w1[y]...w2[x]...(c1 and c2 occur)</code>.</li>
+</ul></li>
+<li>Clearly neither <code>A5A</code> nor <code>A5B</code> could arise in histories where <code>P2: r1[x]...w2[x]...((c1 or a1) and (c2 or a2) in any order)</code> is precluded, since both <code>A5A</code> and <code>A5B</code> have <code>T2</code> write a data item that has been previously read by an uncommitted <code>T1</code>. Thus, phenomena <code>A5A</code> and <code>A5B</code> are only useful for distinguishing isolation levels that are below REPEATABLE READ in strength.</li>
+</ul></li>
+<li>Snapshot Isolation cannot experience the <code>A3: r1[P]...w2[y in P]...c2...r1[P]...c1</code> anomaly. A transaction reading a predicate after an update by another will always see the same old set of data items. But the REPEATABLE READ isolation level can experience <code>A3</code> anomalies. Therefore REPEATABLE READ admits history anomalies that Snapshot Isolation does not.</li>
+</ul>
+<h4 id="remark-10-anomaly-serializable-snapshot-isolation">Remark 10: ANOMALY SERIALIZABLE &lt;&lt; SNAPSHOT ISOLATION</h4>
+<p>Snapshot Isolation histories preclude anomalies <code>A1</code>, <code>A2</code> and <code>A3</code>. Therefore, in the anomaly interpretation of ANOMALY SERIALIZABLE of Table 1: ANOMALY SERIALIZABLE &lt;&lt; SNAPSHOT ISOLATION.</p>
+<h3 id="snapshot-isolations-benefits">Snapshot Isolation's benefits</h3>
+<p>Snapshot Isolation's benefits for update transactions is still debated. It probably isn’t good for long-running update transactions competing with high-contention short transactions, since the long-running transactions are unlikely to be the first writer of everything they write, and so will probably be aborted. (e.g., Start-Timestamp-1, Start-Timestamp-2, Commit-Timestamp-2, Start-Timestamp-1).</p>
+<h3 id="table-4.2.-enhanced-ansi-sql-isolation-levels-defined-in-terms-of-the-eight-phenomena">Table 4.2. Enhanced ANSI SQL Isolation Levels Defined in terms of the eight phenomena</h3>
+<table>
+
+<thead>
+<tr class="header">
+<th>Isolation Level</th>
+<th><code>P0</code><br/>Dirty Write</th>
+<th><code>P1</code><br/>Dirty Read</th>
+<th><code>P4C</code><br/>Cursor Lost Update</th>
+<th><code>P4</code><br/>Lost Update</th>
+<th><code>P2</code><br/>Fuzzy Read</th>
+<th><code>P3</code><br/>Phantom</th>
+<th><code>A5A</code><br/>Read Skew</th>
+<th><code>A5B</code><br/>Write Skew</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>READ UNCOMMITTED<br/>== Degree 1</td>
+<td>Not Possible</td>
+<td>Possible</td>
+<td>Possible</td>
+<td>Possible</td>
+<td>Possible</td>
+<td>Possible</td>
+<td>Possible</td>
+<td>Possible</td>
+</tr>
+<tr class="even">
+<td>READ COMMITTED<br/>== Degree 2</td>
+<td>Not Possible</td>
+<td>Not Possible</td>
+<td>Possible</td>
+<td>Possible</td>
+<td>Possible</td>
+<td>Possible</td>
+<td>Possible</td>
+<td>Possible</td>
+</tr>
+<tr class="odd">
+<td>Cursor Stability</td>
+<td>Not Possible</td>
+<td>Not Possible</td>
+<td>Not Possible</td>
+<td>Sometimes Possible</td>
+<td>Sometimes Possible</td>
+<td>Possible</td>
+<td>Possible</td>
+<td>Sometimes Possible</td>
+</tr>
+<tr class="even">
+<td>REPEATABLE READ</td>
+<td>Not Possible</td>
+<td>Not Possible</td>
+<td>Not Possible</td>
+<td>Not Possible</td>
+<td>Not Possible</td>
+<td>Possible</td>
+<td>Not Possible</td>
+<td>Not Possible</td>
+</tr>
+<tr class="odd">
+<td>Snapshot</td>
+<td>Not Possible</td>
+<td>Not Possible</td>
+<td>Not Possible</td>
+<td>Not Possible</td>
+<td>Not Possible</td>
+<td>Sometimes Possible (Why? A3 is not possible, but P3 is possible?)</td>
+<td>Not Possible</td>
+<td>Possible</td>
+</tr>
+<tr class="even">
+<td>SERIALIZABLE<br/>== Degree 3</td>
+<td>Not Possible</td>
+<td>Not Possible</td>
+<td>Not Possible</td>
+<td>Not Possible</td>
+<td>Not Possible</td>
+<td>Not Possible</td>
+<td>Not Possible</td>
+<td>Not Possible</td>
+</tr>
+</tbody>
+</table>
+<p>Why use the term "<strong>Sometimes Possible</strong>" other than "<strong>Possible</strong>" to describe the relationship between <code>A5B</code> and Cursor Stability? My understanding is: Snapshot Isolation rejects history <code>rc1[x]...w2[x]...w1[y]...c1</code>, so users can avoid Write Skew by using Cursor and FETCH as follows:</p>
+<figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><code class="hljs sql"><span class="hljs-keyword">DECLARE</span> curX <span class="hljs-keyword">CURSOR</span> <span class="hljs-keyword">FOR</span> <span class="hljs-keyword">SELECT</span> <span class="hljs-keyword">value</span> <span class="hljs-keyword">FROM</span> <span class="hljs-operator">&lt;</span><span class="hljs-keyword">table</span><span class="hljs-operator">&gt;</span> <span class="hljs-keyword">WHERE</span> <span class="hljs-keyword">value</span> <span class="hljs-keyword">IS</span> x;<br><span class="hljs-keyword">OPEN</span> curX;<br><span class="hljs-keyword">FETCH</span> curX <span class="hljs-keyword">INTO</span> valueX;<br><span class="hljs-keyword">Update</span> <span class="hljs-operator">&lt;</span><span class="hljs-keyword">table</span><span class="hljs-operator">&gt;</span> <span class="hljs-keyword">SET</span> <span class="hljs-keyword">value</span> <span class="hljs-operator">=</span> y<span class="hljs-string">&#x27; WHERE value IS y;</span><br><span class="hljs-string">CLOSE curX;</span><br></code></pre></td></tr></table></figure>
+<p>But Write Skew can still happen if users don't use Cursor and FETCH correctly.</p>
+<h2 id="other-multi-version-systems">Other Multi-Version Systems</h2>
+<h1 id="reference">Reference</h1>
+<ul>
+<li><a target="_blank" rel="noopener" href="https://www.microsoft.com/en-us/research/wp-content/uploads/2016/02/tr-95-51.pdf">A Critique of ANSI SQL Isolation Levels, by Hal Berenson, Phil Bernstein, Jim Gray, Jim Melton, Elizabeth O'Neil and Patrick O'Neil</a></li>
+<li><a target="_blank" rel="noopener" href="https://web.stanford.edu/class/cs245/readings/granularity-of-locks.pdf">Granularity of Locks and Degrees of Consistency in a Shared Data Base, by J.N. Gray, R.A. Lorie, G.R. Putzolu and I.L. Traiger</a></li>
+<li><a target="_blank" rel="noopener" href="https://www.amazon.com/Concurrency-Control-Recovery-Database-Systems/dp/0201107155">Concurrency Control and Recovery in Database Systems, by Philip Bernstein, Vassos Hadzilacos and Nathan Goodman</a></li>
+<li><a target="_blank" rel="noopener" href="https://dl.acm.org/doi/10.5555/573304">Transaction Processing: Concepts and Technique, by Jim Gray and Andreas Reuter</a></li>
+<li><a target="_blank" rel="noopener" href="https://www.mysqltutorial.org/mysql-cursor/">MySQL Tutorial: MySQL Cursor</a></li>
+</ul>
+
+                
+              </div>
+            
+            <hr/>
+            <div>
+              <div class="post-metas my-3">
+  
+    <div class="post-meta mr-3 d-flex align-items-center">
+      <i class="iconfont icon-category"></i>
+      
+
+<span class="category-chains">
+  
+  
+    
+      <span class="category-chain">
+        
+  <a href="/categories/Computer-Science/" class="category-chain-item">Computer Science</a>
+  
+  
+    <span>></span>
+    
+  <a href="/categories/Computer-Science/Serializability/" class="category-chain-item">Serializability</a>
+  
+  
+
+  
+
+      </span>
+    
+  
+</span>
+
+    </div>
+  
+  
+</div>
+
+
+              
+  
+
+  <div class="license-box my-3">
+    <div class="license-title">
+      <div>Paper Interpretation - A Critique of ANSI SQL Isolation Levels</div>
+      <div>https://clcanny.github.io/2023/01/05/computer-science/serializability/paper-interpretation-a-critique-of-ansi-sql-solation-levels/</div>
+    </div>
+    <div class="license-meta">
+      
+        <div class="license-meta-item">
+          <div>作者</div>
+          <div>JunBin</div>
+        </div>
+      
+      
+        <div class="license-meta-item license-meta-date">
+          <div>发布于</div>
+          <div>2023年1月5日</div>
+        </div>
+      
+      
+      
+        <div class="license-meta-item">
+          <div>许可协议</div>
+          <div>
+            
+              
+              
+                <a target="_blank" href="https://creativecommons.org/licenses/by/4.0/">
+                  <span class="hint--top hint--rounded" aria-label="BY - 署名">
+                    <i class="iconfont icon-by"></i>
+                  </span>
+                </a>
+              
+            
+          </div>
+        </div>
+      
+    </div>
+    <div class="license-icon iconfont"></div>
+  </div>
+
+
+
+              
+                <div class="post-prevnext my-3">
+                  <article class="post-prev col-6">
+                    
+                    
+                      <a href="/2023/03/06/computer-science/serializability/paper-interpretation-weak-consistency-a-generalized-theory-and-optimistic-implementations-for-distributed-transactions/" title="Paper Interpretation - Weak Consistency: A Generalized Theory and Optimistic Implementations for Distributed Transactions">
+                        <i class="iconfont icon-arrowleft"></i>
+                        <span class="hidden-mobile">Paper Interpretation - Weak Consistency: A Generalized Theory and Optimistic Implementations for Distributed Transactions</span>
+                        <span class="visible-mobile">上一篇</span>
+                      </a>
+                    
+                  </article>
+                  <article class="post-next col-6">
+                    
+                    
+                      <a href="/2023/01/03/computer-science/programming-language/c++/callback-to-c-20-coroutine/" title="Callback To C++20 Coroutine">
+                        <span class="hidden-mobile">Callback To C++20 Coroutine</span>
+                        <span class="visible-mobile">下一篇</span>
+                        <i class="iconfont icon-arrowright"></i>
+                      </a>
+                    
+                  </article>
+                </div>
+              
+            </div>
+
+            
+          </article>
+        </div>
+      </div>
+    </div>
+
+    <div class="side-col d-none d-lg-block col-lg-2">
+      
+  <aside class="sidebar" style="margin-left: -1rem">
+    <div id="toc">
+  <p class="toc-header">
+    <i class="iconfont icon-list"></i>
+    <span>目录</span>
+  </p>
+  <div class="toc-body" id="toc-body"></div>
+</div>
+
+
+
+  </aside>
+
+
+    </div>
+  </div>
+</div>
+
+
+
+
+
+  
+
+
+
+  
+
+
+
+  
+
+
+
+  
+
+
+
+  
+
+
+
+  <script>
+  Fluid.utils.createScript('https://lib.baomitu.com/mermaid/8.14.0/mermaid.min.js', function() {
+    mermaid.initialize({"theme":"default"});
+
+    Fluid.events.registerRefreshCallback(function() {
+      if ('mermaid' in window) {
+        mermaid.init();
+      }
+    });
+  });
+</script>
+
+
+
+
+
+
+    
+
+    
+      <a id="scroll-top-button" aria-label="TOP" href="#" role="button">
+        <i class="iconfont icon-arrowup" aria-hidden="true"></i>
+      </a>
+    
+
+    
+      <div class="modal fade" id="modalSearch" tabindex="-1" role="dialog" aria-labelledby="ModalLabel"
+     aria-hidden="true">
+  <div class="modal-dialog modal-dialog-scrollable modal-lg" role="document">
+    <div class="modal-content">
+      <div class="modal-header text-center">
+        <h4 class="modal-title w-100 font-weight-bold">搜索</h4>
+        <button type="button" id="local-search-close" class="close" data-dismiss="modal" aria-label="Close">
+          <span aria-hidden="true">&times;</span>
+        </button>
+      </div>
+      <div class="modal-body mx-3">
+        <div class="md-form mb-5">
+          <input type="text" id="local-search-input" class="form-control validate">
+          <label data-error="x" data-success="v" for="local-search-input">关键词</label>
+        </div>
+        <div class="list-group" id="local-search-result"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+    
+
+    
+  </main>
+
+  <footer>
+    <div class="footer-inner">
+  
+    <div class="footer-content">
+       <a href="https://hexo.io" target="_blank" rel="nofollow noopener"><span>Hexo</span></a> <i class="iconfont icon-love"></i> <a href="https://github.com/fluid-dev/hexo-theme-fluid" target="_blank" rel="nofollow noopener"><span>Fluid</span></a> 
+    </div>
+  
+  
+  
+  
+</div>
+
+  </footer>
+
+  <!-- Scripts -->
+  
+  <script  src="https://lib.baomitu.com/nprogress/0.2.0/nprogress.min.js" ></script>
+  <link  rel="stylesheet" href="https://lib.baomitu.com/nprogress/0.2.0/nprogress.min.css" />
+
+  <script>
+    NProgress.configure({"showSpinner":false,"trickleSpeed":100})
+    NProgress.start()
+    window.addEventListener('load', function() {
+      NProgress.done();
+    })
+  </script>
+
+
+<script  src="https://lib.baomitu.com/jquery/3.6.0/jquery.min.js" ></script>
+<script  src="https://lib.baomitu.com/twitter-bootstrap/4.6.1/js/bootstrap.min.js" ></script>
+<script  src="/js/events.js" ></script>
+<script  src="/js/plugins.js" ></script>
+
+
+  <script  src="https://lib.baomitu.com/typed.js/2.0.12/typed.min.js" ></script>
+  <script>
+    (function (window, document) {
+      var typing = Fluid.plugins.typing;
+      var subtitle = document.getElementById('subtitle');
+      if (!subtitle || !typing) {
+        return;
+      }
+      var text = subtitle.getAttribute('data-typed-text');
+      
+        typing(text);
+      
+    })(window, document);
+  </script>
+
+
+
+
+  
+    <script  src="/js/img-lazyload.js" ></script>
+  
+
+
+
+
+  
+<script>
+  Fluid.utils.createScript('https://lib.baomitu.com/tocbot/4.18.2/tocbot.min.js', function() {
+    var toc = jQuery('#toc');
+    if (toc.length === 0 || !window.tocbot) { return; }
+    var boardCtn = jQuery('#board-ctn');
+    var boardTop = boardCtn.offset().top;
+
+    window.tocbot.init(Object.assign({
+      tocSelector     : '#toc-body',
+      contentSelector : '.markdown-body',
+      linkClass       : 'tocbot-link',
+      activeLinkClass : 'tocbot-active-link',
+      listClass       : 'tocbot-list',
+      isCollapsedClass: 'tocbot-is-collapsed',
+      collapsibleClass: 'tocbot-is-collapsible',
+      scrollSmooth    : true,
+      includeTitleTags: true,
+      headingsOffset  : -boardTop,
+    }, CONFIG.toc));
+    if (toc.find('.toc-list-item').length > 0) {
+      toc.css('visibility', 'visible');
+    }
+
+    Fluid.events.registerRefreshCallback(function() {
+      if ('tocbot' in window) {
+        tocbot.refresh();
+        var toc = jQuery('#toc');
+        if (toc.length === 0 || !tocbot) {
+          return;
+        }
+        if (toc.find('.toc-list-item').length > 0) {
+          toc.css('visibility', 'visible');
+        }
+      }
+    });
+  });
+</script>
+
+
+  <script src=https://lib.baomitu.com/clipboard.js/2.0.11/clipboard.min.js></script>
+
+  <script>Fluid.plugins.codeWidget();</script>
+
+
+  
+<script>
+  Fluid.utils.createScript('https://lib.baomitu.com/anchor-js/4.3.1/anchor.min.js', function() {
+    window.anchors.options = {
+      placement: CONFIG.anchorjs.placement,
+      visible  : CONFIG.anchorjs.visible
+    };
+    if (CONFIG.anchorjs.icon) {
+      window.anchors.options.icon = CONFIG.anchorjs.icon;
+    }
+    var el = (CONFIG.anchorjs.element || 'h1,h2,h3,h4,h5,h6').split(',');
+    var res = [];
+    for (var item of el) {
+      res.push('.markdown-body > ' + item.trim());
+    }
+    if (CONFIG.anchorjs.placement === 'left') {
+      window.anchors.options.class = 'anchorjs-link-left';
+    }
+    window.anchors.add(res.join(', '));
+
+    Fluid.events.registerRefreshCallback(function() {
+      if ('anchors' in window) {
+        anchors.removeAll();
+        var el = (CONFIG.anchorjs.element || 'h1,h2,h3,h4,h5,h6').split(',');
+        var res = [];
+        for (var item of el) {
+          res.push('.markdown-body > ' + item.trim());
+        }
+        if (CONFIG.anchorjs.placement === 'left') {
+          anchors.options.class = 'anchorjs-link-left';
+        }
+        anchors.add(res.join(', '));
+      }
+    });
+  });
+</script>
+
+
+  
+<script>
+  Fluid.utils.createScript('https://lib.baomitu.com/fancybox/3.5.7/jquery.fancybox.min.js', function() {
+    Fluid.plugins.fancyBox();
+  });
+</script>
+
+
+  <script>Fluid.plugins.imageCaption();</script>
+
+  <script  src="/js/local-search.js" ></script>
+
+
+
+
+
+<!-- 主题的启动项，将它保持在最底部 -->
+<!-- the boot of the theme, keep it at the bottom -->
+<script  src="/js/boot.js" ></script>
+
+
+  
+
+  <noscript>
+    <div class="noscript-warning">博客在允许 JavaScript 运行的环境下浏览效果更佳</div>
+  </noscript>
+</body>
+</html>

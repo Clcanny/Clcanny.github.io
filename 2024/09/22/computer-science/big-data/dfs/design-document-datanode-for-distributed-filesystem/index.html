@@ -1,0 +1,826 @@
+
+
+<!DOCTYPE html>
+<html lang="zh-CN" data-default-color-scheme=auto>
+
+
+
+<head>
+  <meta charset="UTF-8">
+  <link rel="apple-touch-icon" sizes="76x76" href="/img/fluid.png">
+  <link rel="icon" href="/img/fluid.png">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, shrink-to-fit=no">
+  <meta http-equiv="x-ua-compatible" content="ie=edge">
+  
+  <meta name="theme-color" content="#2f4154">
+  <meta name="author" content="JunBin">
+  <meta name="keywords" content="">
+  
+    <meta name="description" content="Introduction Hadoop Distributed File System, Ceph, The Google File System, Facebook&#39;s Tectonic, Alibaba&#39;s Pangu and Baidu&#39;s CFS are all successful distributed file systems (DFS) known for their perfor">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Design Document: DataNode for Distributed Filesystem">
+<meta property="og:url" content="https://clcanny.github.io/2024/09/22/computer-science/big-data/dfs/design-document-datanode-for-distributed-filesystem/index.html">
+<meta property="og:site_name" content="On The Road">
+<meta property="og:description" content="Introduction Hadoop Distributed File System, Ceph, The Google File System, Facebook&#39;s Tectonic, Alibaba&#39;s Pangu and Baidu&#39;s CFS are all successful distributed file systems (DFS) known for their perfor">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://junbin-hexo-img.oss-cn-beijing.aliyuncs.com/design-document-datanode-for-distributed-filesystem/hdfs-architecture.gif">
+<meta property="og:image" content="https://junbin-hexo-img.oss-cn-beijing.aliyuncs.com/design-document-datanode-for-distributed-filesystem/self-contained-chunk-layout-in-pangu.png">
+<meta property="og:image" content="https://junbin-hexo-img.oss-cn-beijing.aliyuncs.com/design-document-datanode-for-distributed-filesystem/disk-partition-layout.excalidraw.svg">
+<meta property="og:image" content="https://junbin-hexo-img.oss-cn-beijing.aliyuncs.com/design-document-datanode-for-distributed-filesystem/illustrated-chunk-data-layout-for-chunk-id-8859830.excalidraw.svg">
+<meta property="article:published_time" content="2024-09-22T08:52:32.000Z">
+<meta property="article:modified_time" content="2025-07-30T15:39:02.319Z">
+<meta property="article:author" content="JunBin">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="https://junbin-hexo-img.oss-cn-beijing.aliyuncs.com/design-document-datanode-for-distributed-filesystem/hdfs-architecture.gif">
+  
+  
+  
+  <title>Design Document: DataNode for Distributed Filesystem - On The Road</title>
+
+  <link  rel="stylesheet" href="https://lib.baomitu.com/twitter-bootstrap/4.6.1/css/bootstrap.min.css" />
+
+
+
+  <link  rel="stylesheet" href="https://lib.baomitu.com/github-markdown-css/4.0.0/github-markdown.min.css" />
+
+  <link  rel="stylesheet" href="https://lib.baomitu.com/hint.css/2.7.0/hint.min.css" />
+
+  <link  rel="stylesheet" href="https://lib.baomitu.com/fancybox/3.5.7/jquery.fancybox.min.css" />
+
+
+
+<!-- 主题依赖的图标库，不要自行修改 -->
+<!-- Do not modify the link that theme dependent icons -->
+
+<link rel="stylesheet" href="//at.alicdn.com/t/font_1749284_hj8rtnfg7um.css">
+
+
+
+<link rel="stylesheet" href="//at.alicdn.com/t/font_1736178_lbnruvf0jn.css">
+
+
+<link  rel="stylesheet" href="/css/main.css" />
+
+
+  <link id="highlight-css" rel="stylesheet" href="/css/highlight.css" />
+  
+    <link id="highlight-css-dark" rel="stylesheet" href="/css/highlight-dark.css" />
+  
+
+
+
+
+  <script id="fluid-configs">
+    var Fluid = window.Fluid || {};
+    Fluid.ctx = Object.assign({}, Fluid.ctx)
+    var CONFIG = {"hostname":"clcanny.github.io","root":"/","version":"1.9.4","typing":{"enable":true,"typeSpeed":70,"cursorChar":"_","loop":false,"scope":[]},"anchorjs":{"enable":true,"element":"h1,h2,h3,h4,h5,h6","placement":"left","visible":"hover","icon":""},"progressbar":{"enable":true,"height_px":3,"color":"#29d","options":{"showSpinner":false,"trickleSpeed":100}},"code_language":{"enable":true,"default":"TEXT"},"copy_btn":true,"image_caption":{"enable":true},"image_zoom":{"enable":true,"img_url_replace":["",""]},"toc":{"enable":true,"placement":"right","headingSelector":"h1,h2,h3,h4,h5,h6","collapseDepth":0},"lazyload":{"enable":true,"loading_img":"/img/loading.gif","onlypost":false,"offset_factor":2},"web_analytics":{"enable":false,"follow_dnt":true,"baidu":null,"google":null,"gtag":null,"tencent":{"sid":null,"cid":null},"woyaola":null,"cnzz":null,"leancloud":{"app_id":null,"app_key":null,"server_url":null,"path":"window.location.pathname","ignore_local":false}},"search_path":"/local-search.xml"};
+
+    if (CONFIG.web_analytics.follow_dnt) {
+      var dntVal = navigator.doNotTrack || window.doNotTrack || navigator.msDoNotTrack;
+      Fluid.ctx.dnt = dntVal && (dntVal.startsWith('1') || dntVal.startsWith('yes') || dntVal.startsWith('on'));
+    }
+  </script>
+  <script  src="/js/utils.js" ></script>
+  <script  src="/js/color-schema.js" ></script>
+  
+
+
+  
+<meta name="generator" content="Hexo 7.0.0-rc1"></head>
+
+
+<body>
+  
+
+  <header>
+    
+
+<div class="header-inner" style="height: 70vh;">
+  <nav id="navbar" class="navbar fixed-top  navbar-expand-lg navbar-dark scrolling-navbar">
+  <div class="container">
+    <a class="navbar-brand" href="/">
+      <strong>Fluid</strong>
+    </a>
+
+    <button id="navbar-toggler-btn" class="navbar-toggler" type="button" data-toggle="collapse"
+            data-target="#navbarSupportedContent"
+            aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
+      <div class="animated-icon"><span></span><span></span><span></span></div>
+    </button>
+
+    <!-- Collapsible content -->
+    <div class="collapse navbar-collapse" id="navbarSupportedContent">
+      <ul class="navbar-nav ml-auto text-center">
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/">
+                <i class="iconfont icon-home-fill"></i>
+                <span>首页</span>
+              </a>
+            </li>
+          
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/archives/">
+                <i class="iconfont icon-archive-fill"></i>
+                <span>归档</span>
+              </a>
+            </li>
+          
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/categories/">
+                <i class="iconfont icon-category-fill"></i>
+                <span>分类</span>
+              </a>
+            </li>
+          
+        
+        
+          <li class="nav-item" id="search-btn">
+            <a class="nav-link" target="_self" href="javascript:;" data-toggle="modal" data-target="#modalSearch" aria-label="Search">
+              <i class="iconfont icon-search"></i>
+            </a>
+          </li>
+          
+        
+        
+          <li class="nav-item" id="color-toggle-btn">
+            <a class="nav-link" target="_self" href="javascript:;" aria-label="Color Toggle">
+              <i class="iconfont icon-dark" id="color-toggle-icon"></i>
+            </a>
+          </li>
+        
+      </ul>
+    </div>
+  </div>
+</nav>
+
+  
+
+<div id="banner" class="banner" parallax=true
+     style="background: url('/img/default.png') no-repeat center center; background-size: cover;">
+  <div class="full-bg-img">
+    <div class="mask flex-center" style="background-color: rgba(0, 0, 0, 0.3)">
+      <div class="banner-text text-center fade-in-up">
+        <div class="h2">
+          
+            <span id="subtitle" data-typed-text="Design Document: DataNode for Distributed Filesystem"></span>
+          
+        </div>
+
+        
+          
+  <div class="mt-3">
+    
+    
+      <span class="post-meta">
+        <i class="iconfont icon-date-fill" aria-hidden="true"></i>
+        <time datetime="2024-09-22 16:52" pubdate>
+          2024年9月22日 下午
+        </time>
+      </span>
+    
+  </div>
+
+  <div class="mt-1">
+    
+      <span class="post-meta mr-2">
+        <i class="iconfont icon-chart"></i>
+        
+          11k 字
+        
+      </span>
+    
+
+    
+      <span class="post-meta mr-2">
+        <i class="iconfont icon-clock-fill"></i>
+        
+        
+        
+          92 分钟
+        
+      </span>
+    
+
+    
+    
+  </div>
+
+
+        
+      </div>
+
+      
+    </div>
+  </div>
+</div>
+
+</div>
+
+  </header>
+
+  <main>
+    
+      
+
+<div class="container-fluid nopadding-x">
+  <div class="row nomargin-x">
+    <div class="side-col d-none d-lg-block col-lg-2">
+      
+
+    </div>
+
+    <div class="col-lg-8 nopadding-x-md">
+      <div class="container nopadding-x-md" id="board-ctn">
+        <div id="board">
+          <article class="post-content mx-auto">
+            <!-- SEO header -->
+            <h1 style="display: none">Design Document: DataNode for Distributed Filesystem</h1>
+            
+            
+              <div class="markdown-body">
+                
+                <h2 id="introduction">Introduction</h2>
+<p><a target="_blank" rel="noopener" href="https://hadoop.apache.org/docs/r1.2.1/hdfs_design.html">Hadoop Distributed File System</a>, <a target="_blank" rel="noopener" href="https://www.usenix.org/legacy/event/osdi06/tech/full_papers/weil/weil.pdf">Ceph</a>, <a target="_blank" rel="noopener" href="https://storage.googleapis.com/gweb-research2023-media/pubtools/4446.pdf">The Google File System</a>, <a target="_blank" rel="noopener" href="https://www.usenix.org/system/files/fast21-pan.pdf">Facebook's Tectonic</a>, <a target="_blank" rel="noopener" href="https://www.usenix.org/system/files/fast23-li-qiang_more.pdf">Alibaba's Pangu</a> and <a target="_blank" rel="noopener" href="https://dl.acm.org/doi/pdf/10.1145/3552326.3587443">Baidu's CFS</a> are all successful distributed file systems (DFS) known for their performance, reliability, and scalability. These systems typically consist of <em>namenodes</em> for metadata management, <em>datanodes</em> for data storage, and <em>client</em> interfaces for user interaction.</p>
+<figure>
+<img src="https://junbin-hexo-img.oss-cn-beijing.aliyuncs.com/design-document-datanode-for-distributed-filesystem/hdfs-architecture.gif" srcset="/img/loading.gif" lazyload alt="" /><figcaption>Typical DFS Architecture (quoted from HDFS)</figcaption>
+</figure>
+<p>This document proposes a new datanode architecture to meet evolving demands. Traditional DFS tenants like data warehouses and blob storage are being joined by AI workloads, which introduce new requirements. Additionally, the growing adoption of NVMe in data centers calls for a fresh approach to datanode design.</p>
+<h2 id="terminologies">Terminologies</h2>
+<ul>
+<li>Segment: A segment is a logical unit of storage managed by the NameNode. A file is split into one or more segments, which are then distributed across DataNodes for storage.</li>
+<li>Chunk: The actual data for a segment is stored as chunks on DataNodes. Each segment usually has multiple chunks (commonly three) distributed across different DataNodes to ensure redundancy and reliability. The NameNode keeps track of which DataNodes store the chunks for each segment. When a segment is read or written, the client interacts with one or more chunks on the respective DataNodes.</li>
+<li>Sector: A sector is a small unit within a chunk, and each sector has its own checksum for data integrity.</li>
+<li>Block: Block is a reserved term used for block devices and SPDK.</li>
+</ul>
+<h2 id="design-goals">Design Goals</h2>
+<h3 id="scale-out-architecture">Scale-Out Architecture</h3>
+<ul>
+<li>The DFS Should Be Fully Scale-Out: A truly scalable distributed file system needs its components to scale independently. This includes not only the storage but also the computational responsibilities distributed across the system.</li>
+<li>DataNode Should Take On Certain Calculations: If the NameNode handles all operations, it becomes a bottleneck as the number of DataNodes increases. This would require scaling up the NameNode, making the overall system less scalable.
+<ul>
+<li>Chunk Allocation as an Example: When a client writes data, the system needs to determine the chunk locations, typically as a list like <code>[(ip=192.168.0.1, disk=nvme0n1, offset=8MiB, len=1MiB), ...]</code>. While the NameNode should calculate the IP and disk information, the offset should be calculated by each DataNode to distribute the load.</li>
+<li>Cache Eviction in Systems Like Alluxio: In caching file systems, DataNodes should handle cache eviction decisions. Offloading such tasks to DataNodes reduces the NameNode's workload and allows for more efficient scaling.</li>
+</ul></li>
+<li>Metadata Locality on DataNodes: When partial calculations are handled by DataNodes, the relevant metadata should also reside on the DataNodes. Keeping this metadata localized prevents unnecessary bandwidth usage between NameNodes and DataNodes and simplifies the programming model.</li>
+<li>Metadata Storage on DataNodes: A system is required to store the metadata locally on the DataNodes. This can be either a custom implementation or an existing solution like a key-value store. I prefer using a mature KV store such as RocksDB for this purpose, given its reliability and performance.</li>
+</ul>
+<p><strong>DataNode should take on certain calculations to ensure a truly scale-out architecture.</strong> As a result, we need a RocksDB-based metadata storage on each DataNode to support these operations.</p>
+<h3 id="write-fast-read-fast">Write Fast, Read Fast</h3>
+<ul>
+<li>The time taken to process a client's write request should be equivalent to <strong>the time of one disk write operation</strong> on the DataNode. If a client's write request results in <strong>two sequential disk writes</strong>, the total time will be longer, which we aim to avoid.
+<ul>
+<li>HDFS as a Counterexample: In HDFS, when a DataNode writes chunk data as an ext4 file, at least two sequential disk writes are required - one for the ext4 metadata journal and another for the actual data.</li>
+<li>Another Counterexample: In a simple implementation, the DataNode first writes chunk metadata (e.g., to RocksDB) and then performs a separate disk I/O operation for the actual data. This results in two sequential disk writes, which we aim to avoid.</li>
+</ul></li>
+<li>To optimize read performance, each client's read request should result in only one I/O read operation. To achieve this, we must cache chunk metadata (e.g., chunk location) in memory, so that there's no need to retrieve it from disk before serving the read request.</li>
+<li>Bypassing Kernel and CPU Overhead: The design should leverage advanced technologies that bypass kernel and CPU overheads, such as VFIO, SPDK, DMA, RDMA, and GPUDirect. These technologies minimize data copying and reduce latency, allowing for faster and more efficient data writes.</li>
+</ul>
+<p>The goal is to ensure that DataNodes perform the fewest possible disk operations - ideally just one. If two disk operations are necessary, they should be performed in parallel to minimize latency. And each operation should be as fast as possible.</p>
+<h3 id="read-efficiency-a-new-data-layout-for-big-data-and-ai-scenarios">Read Efficiency: A New Data Layout for Big Data and AI Scenarios</h3>
+<ul>
+<li>In Big Data Scenarios:
+<ul>
+<li>Compute engines often need to read only small portions of large chunks. For example, when reading statistics from a Parquet file, only a subset of the chunk is required, not the entire chunk.</li>
+<li>Instead of using a single checksum for an entire chunk, small units within the chunk should each have their own checksum. For instance, Alibaba's Pangu splits a chunk into multiple sector units, each with its own CRC checksum. This allows the system to read only the necessary sectors and their corresponding checksums, instead of the entire chunk, optimizing performance when serving client read requests.</li>
+</ul></li>
+<li>In AI scenarios, entire chunk are read using DMA/RDMA/GPUDirect, requiring a contiguous data layout for efficient data movement.</li>
+<li>Big Data workloads benefit from interrupted layouts with checksums for small units, while AI workloads prefer contiguous data for efficient sequential access. To effectively serve both scenarios, a new data layout is required:
+<ul>
+<li>The data is divided into sectors, and each sector has its own CRC for integrity verification. These CRC values are stored alongside the metadata (e.g., in RocksDB), rather than interleaved with the actual data. This ensure that the data remains contiguous on disk.</li>
+<li>To complement the new data layout, we need a new write process that can handle parallel writes for both metadata and data to minimize latency.</li>
+</ul></li>
+</ul>
+<figure>
+<img src="https://junbin-hexo-img.oss-cn-beijing.aliyuncs.com/design-document-datanode-for-distributed-filesystem/self-contained-chunk-layout-in-pangu.png" srcset="/img/loading.gif" lazyload alt="" /><figcaption>Self-contained Chunk Layout in Pangu</figcaption>
+</figure>
+<h3 id="self-contained-chunk-data-layout-for-recovery">Self-contained Chunk Data Layout for Recovery</h3>
+<p>The goal is to ensure that even if metadata stored in the NameNode (e.g., directory tree) and metadata stored in the DataNode (e.g., chunk locations) are both lost, the system can still recover most of the data. This is crucial for maximizing data recovery in the event of unexpected disasters such as software bugs or operational errors. A self-contained chunk layout allows the system to reconstruct data independently, without relying on external metadata.</p>
+<h2 id="disk-partition">Disk Partition</h2>
+<p>In this section, we discuss how the disk should be partitioned. The disk is divided into two primary sections:</p>
+<ul>
+<li>Metadata Partition: This partition is dedicated to storing metadata. The metadata partition is further subdivided into two distinct parts:
+<ul>
+<li>DBFS is a simple file system tailored to support RocksDB. It supports basic file operations such as creating append-only files, reading files, and deleting files.</li>
+<li>RocksDB on DBFS: The second subdivision is reserved for RocksDB, which is built on top of DBFS.</li>
+</ul></li>
+<li>Data Partition: This partition holds the actual chunk data.</li>
+</ul>
+<figure>
+<img src="https://junbin-hexo-img.oss-cn-beijing.aliyuncs.com/design-document-datanode-for-distributed-filesystem/disk-partition-layout.excalidraw.svg" srcset="/img/loading.gif" lazyload alt="" /><figcaption>Disk Partition Layout</figcaption>
+</figure>
+<h3 id="super-meta-edit-log-and-snapshot-format">Super Meta, Edit Log, and Snapshot Format</h3>
+<p>All critical metadata in the system - such as the super meta, edit log, and snapshot - follows the same structured format. This format is designed to be <strong>self-explanatory</strong> and <strong>self-contained</strong>, ensuring that the system can interpret these regions without relying on additional code logic. The format is as follows:</p>
+<ul>
+<li>Each region starts with a magic number - a unique identifier that signals the type of the region (e.g., super meta, edit log, or snapshot).</li>
+<li>After the magic number, a <code>uint32_t</code> specifies the length of the following protobuf message. This ensures that the system knows exactly how many bytes to read for the protobuf.</li>
+<li>The protobuf message itself contains a variety of metadata, including a <strong><code>length</code> field</strong> that describes the total size of the region. This length field is crucial because it makes the region self-explanatory - the system can determine the full length of the region from the protobuf alone, without needing to reference external code or metadata.</li>
+<li>Finally, the region is padded with zero bytes to reach the required alignment.</li>
+</ul>
+<h2 id="chunk-data-layout">Chunk Data Layout</h2>
+<p>In this section, we will examine the current data layouts used by various DFS implementations and then propose a new layout that optimizes for our design goals, particularly the goals of <strong>write fast</strong>, <strong>read fast</strong>, and <strong>read efficiency</strong>. The data layout is at the heart of the entire DataNode architecture and has a profound effect on how we achieve the above design goals.</p>
+<p>This section is divided into two main parts:</p>
+<ul>
+<li>Investigating Current Data Layouts: We will explore the existing data layouts used by popular DFS implementations, highlighting their strengths and weaknesses.</li>
+<li>Proposing a New Data Layout: We will introduce a new layout that addresses the shortcomings of current designs and aligns with our goals. This will be divided into:
+<ul>
+<li>Layout Specification: A detailed explanation of the new data layout, describing how data and metadata are organized on disk.</li>
+<li>Layout Explanation Through Read/Write Process: A brief walk-through of how the proposed layout optimizes the read and write processes, illustrating why this design is more efficient and scalable.</li>
+</ul></li>
+</ul>
+<h3 id="investigating-current-data-layouts">Investigating Current Data Layouts</h3>
+<p>We will now investigate the data layouts of various distributed file systems and clarify the sources of this information.</p>
+<table>
+<thead>
+<tr class="header">
+<th style="text-align: center;"></th>
+<th style="text-align: center;">HDFS</th>
+<th style="text-align: center;">Ceph</th>
+<th style="text-align: center;">GFS</th>
+<th style="text-align: center;">Pangu</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: center;">Metadata and Data Layout</td>
+<td style="text-align: center;">Split</td>
+<td style="text-align: center;">Split</td>
+<td style="text-align: center;">Split</td>
+<td style="text-align: center;">Colocate</td>
+</tr>
+<tr class="even">
+<td style="text-align: center;">Disk Write Operations per Client Write Request</td>
+<td style="text-align: center;">2</td>
+<td style="text-align: center;">2</td>
+<td style="text-align: center;">2</td>
+<td style="text-align: center;">1</td>
+</tr>
+<tr class="odd">
+<td style="text-align: center;">Disk Read Operations per Client Read Request</td>
+<td style="text-align: center;">1</td>
+<td style="text-align: center;">1</td>
+<td style="text-align: center;">1</td>
+<td style="text-align: center;">1</td>
+</tr>
+<tr class="even">
+<td style="text-align: center;">Read Efficiency for Small Portions of a Chunk</td>
+<td style="text-align: center;">High</td>
+<td style="text-align: center;">High</td>
+<td style="text-align: center;">High</td>
+<td style="text-align: center;">High</td>
+</tr>
+<tr class="odd">
+<td style="text-align: center;">Extra <code>memcpy</code> Required for Full Chunk Read</td>
+<td style="text-align: center;">No</td>
+<td style="text-align: center;">No</td>
+<td style="text-align: center;">No</td>
+<td style="text-align: center;">Yes</td>
+</tr>
+</tbody>
+</table>
+<p>The table highlights the tradeoff: if data and metadata are colocated, <strong>an extra <code>memcpy</code> is needed</strong> when reading the entire chunk due to interspersed checksums between data sectors. Conversely, if they are split, a client write request requires <strong>two disk write operations</strong>.</p>
+<p>The following sources were used to gather the information presented in the table above:</p>
+<ul>
+<li><p>Ceph Source: <a target="_blank" rel="noopener" href="https://pdl.cmu.edu/PDL-FTP/Storage/ceph-exp-sosp19.pdf">File Systems Unfit as Distributed Storage Backends: Lessons from 10 Years of Ceph Evolution</a></p>
+<ul>
+<li><p>Ceph performs two disk write operations, one for data and one for metadata:</p>
+<blockquote>
+<p>For incoming writes larger than a minimum allocation size (64 KiB for HDDs, 16 KiB for SSDs), the data is written to a newly allocated extent. Once the data is persisted, the corresponding metadata is inserted to RocksDB.</p>
+</blockquote></li>
+<li><p>Ceph also offers other valuable insights:</p>
+<blockquote>
+<p>BlueStore computes a checksum for every write and verifies the checksum on every read.</p>
+<p>While multiple checksum algorithms are supported, crc32c is used by default because it is well-optimized on both x86 and ARM architectures, and it is sufficient for detecting random bit errors.</p>
+<p>With full control of the I/O stack, BlueStore can choose the checksum block size based on the I/O hints. For example, if the hints indicate that writes are from the S3-compatible RGW service, then the objects are read-only and the checksum can be computed over 128 KiB blocks.</p>
+<p>BlueStore achieves its first goal, fast metadata operations, by storing metadata in RocksDB. BlueStore achieves its second goal of no consistency overhead with two changes. First, it writes data directly to raw disk, resulting in one cache flush for data write. Second, it changes RocksDB to reuse WAL files as a circular buffer, resulting in one cache flush for metadata write - a feature that was upstreamed to the mainline RocksDB.</p>
+</blockquote></li>
+</ul></li>
+<li><p>GFS Source: <a target="_blank" rel="noopener" href="https://storage.googleapis.com/gweb-research2023-media/pubtools/4446.pdf">The Google File System</a></p>
+<blockquote>
+<p>A chunkis broken up into 64 KB blocks. Each has a corresponding 32 bit checksum. Like other metadata, checksums are kept in memory and stored persistently with logging, separate from user data.</p>
+</blockquote></li>
+<li><p>Pangu Source: <a target="_blank" rel="noopener" href="https://www.usenix.org/system/files/fast23-li-qiang_more.pdf">More Than Capacity: Performance-oriented Evolution of Pangu in Alibaba</a></p>
+<blockquote>
+<p>A chunk includes multiple sector units, where each sector unit includes 3 elements: data, padding, and footer. The footer stores chunk metadata, such as chunk ID, chunk length, and the CRC checksum.</p>
+</blockquote></li>
+</ul>
+<h3 id="proposing-a-new-data-layout">Proposing a New Data Layout</h3>
+<figure>
+<img src="https://junbin-hexo-img.oss-cn-beijing.aliyuncs.com/design-document-datanode-for-distributed-filesystem/illustrated-chunk-data-layout-for-chunk-id-8859830.excalidraw.svg" srcset="/img/loading.gif" lazyload alt="" /><figcaption>Illustrated Chunk Data Layout for Chunk ID 8859830</figcaption>
+</figure>
+<p>The following key design elements are highlighted:</p>
+<ul>
+<li>Splitting Metadata and Data: The chunk metadata (such as checksums and other metadata) and the actual data are stored separately.</li>
+<li>Metadata Copy for Recovery: For recovery purposes, a copy of the metadata is appended at the end of the chunk data.</li>
+<li>Self-Contained Data Format:
+<ul>
+<li>The data ends with a magic number.</li>
+<li>After the magic number, there's a protobuf length.</li>
+<li>Next comes the protobuf message itself, which contains the serialized metadata or data structure.</li>
+<li>Finally, the data is zero-padded to align with the underlying storage requirements.</li>
+</ul></li>
+</ul>
+
+                
+              </div>
+            
+            <hr/>
+            <div>
+              <div class="post-metas my-3">
+  
+    <div class="post-meta mr-3 d-flex align-items-center">
+      <i class="iconfont icon-category"></i>
+      
+
+<span class="category-chains">
+  
+  
+    
+      <span class="category-chain">
+        
+  <a href="/categories/Computer-Science/" class="category-chain-item">Computer Science</a>
+  
+  
+    <span>></span>
+    
+  <a href="/categories/Computer-Science/Big-Data/" class="category-chain-item">Big Data</a>
+  
+  
+    <span>></span>
+    
+  <a href="/categories/Computer-Science/Big-Data/DFS/" class="category-chain-item">DFS</a>
+  
+  
+
+  
+
+  
+
+      </span>
+    
+  
+</span>
+
+    </div>
+  
+  
+</div>
+
+
+              
+  
+
+  <div class="license-box my-3">
+    <div class="license-title">
+      <div>Design Document: DataNode for Distributed Filesystem</div>
+      <div>https://clcanny.github.io/2024/09/22/computer-science/big-data/dfs/design-document-datanode-for-distributed-filesystem/</div>
+    </div>
+    <div class="license-meta">
+      
+        <div class="license-meta-item">
+          <div>作者</div>
+          <div>JunBin</div>
+        </div>
+      
+      
+        <div class="license-meta-item license-meta-date">
+          <div>发布于</div>
+          <div>2024年9月22日</div>
+        </div>
+      
+      
+      
+        <div class="license-meta-item">
+          <div>许可协议</div>
+          <div>
+            
+              
+              
+                <a target="_blank" href="https://creativecommons.org/licenses/by/4.0/">
+                  <span class="hint--top hint--rounded" aria-label="BY - 署名">
+                    <i class="iconfont icon-by"></i>
+                  </span>
+                </a>
+              
+            
+          </div>
+        </div>
+      
+    </div>
+    <div class="license-icon iconfont"></div>
+  </div>
+
+
+
+              
+                <div class="post-prevnext my-3">
+                  <article class="post-prev col-6">
+                    
+                    
+                      <a href="/2024/10/26/computer-science/serializability/mvocc-vs-svocc-a-comprehensive-guide-to-optimistic-concurrency-control/" title="MVOCC vs. SVOCC: A Comprehensive Guide to Optimistic Concurrency Control">
+                        <i class="iconfont icon-arrowleft"></i>
+                        <span class="hidden-mobile">MVOCC vs. SVOCC: A Comprehensive Guide to Optimistic Concurrency Control</span>
+                        <span class="visible-mobile">上一篇</span>
+                      </a>
+                    
+                  </article>
+                  <article class="post-next col-6">
+                    
+                    
+                      <a href="/2024/08/27/computer-science/big-data/dfs/design-document-enhancing-inode-attributes-and-storage-policies-in-hdfs/" title="Design Document: Enhancing Inode Attributes and Storage Policies in HDFS">
+                        <span class="hidden-mobile">Design Document: Enhancing Inode Attributes and Storage Policies in HDFS</span>
+                        <span class="visible-mobile">下一篇</span>
+                        <i class="iconfont icon-arrowright"></i>
+                      </a>
+                    
+                  </article>
+                </div>
+              
+            </div>
+
+            
+          </article>
+        </div>
+      </div>
+    </div>
+
+    <div class="side-col d-none d-lg-block col-lg-2">
+      
+  <aside class="sidebar" style="margin-left: -1rem">
+    <div id="toc">
+  <p class="toc-header">
+    <i class="iconfont icon-list"></i>
+    <span>目录</span>
+  </p>
+  <div class="toc-body" id="toc-body"></div>
+</div>
+
+
+
+  </aside>
+
+
+    </div>
+  </div>
+</div>
+
+
+
+
+
+  
+
+
+
+  
+
+
+
+  
+
+
+
+  
+
+
+
+  
+
+
+
+  <script>
+  Fluid.utils.createScript('https://lib.baomitu.com/mermaid/8.14.0/mermaid.min.js', function() {
+    mermaid.initialize({"theme":"default"});
+
+    Fluid.events.registerRefreshCallback(function() {
+      if ('mermaid' in window) {
+        mermaid.init();
+      }
+    });
+  });
+</script>
+
+
+
+
+
+
+    
+
+    
+      <a id="scroll-top-button" aria-label="TOP" href="#" role="button">
+        <i class="iconfont icon-arrowup" aria-hidden="true"></i>
+      </a>
+    
+
+    
+      <div class="modal fade" id="modalSearch" tabindex="-1" role="dialog" aria-labelledby="ModalLabel"
+     aria-hidden="true">
+  <div class="modal-dialog modal-dialog-scrollable modal-lg" role="document">
+    <div class="modal-content">
+      <div class="modal-header text-center">
+        <h4 class="modal-title w-100 font-weight-bold">搜索</h4>
+        <button type="button" id="local-search-close" class="close" data-dismiss="modal" aria-label="Close">
+          <span aria-hidden="true">&times;</span>
+        </button>
+      </div>
+      <div class="modal-body mx-3">
+        <div class="md-form mb-5">
+          <input type="text" id="local-search-input" class="form-control validate">
+          <label data-error="x" data-success="v" for="local-search-input">关键词</label>
+        </div>
+        <div class="list-group" id="local-search-result"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+    
+
+    
+  </main>
+
+  <footer>
+    <div class="footer-inner">
+  
+    <div class="footer-content">
+       <a href="https://hexo.io" target="_blank" rel="nofollow noopener"><span>Hexo</span></a> <i class="iconfont icon-love"></i> <a href="https://github.com/fluid-dev/hexo-theme-fluid" target="_blank" rel="nofollow noopener"><span>Fluid</span></a> 
+    </div>
+  
+  
+  
+  
+</div>
+
+  </footer>
+
+  <!-- Scripts -->
+  
+  <script  src="https://lib.baomitu.com/nprogress/0.2.0/nprogress.min.js" ></script>
+  <link  rel="stylesheet" href="https://lib.baomitu.com/nprogress/0.2.0/nprogress.min.css" />
+
+  <script>
+    NProgress.configure({"showSpinner":false,"trickleSpeed":100})
+    NProgress.start()
+    window.addEventListener('load', function() {
+      NProgress.done();
+    })
+  </script>
+
+
+<script  src="https://lib.baomitu.com/jquery/3.6.0/jquery.min.js" ></script>
+<script  src="https://lib.baomitu.com/twitter-bootstrap/4.6.1/js/bootstrap.min.js" ></script>
+<script  src="/js/events.js" ></script>
+<script  src="/js/plugins.js" ></script>
+
+
+  <script  src="https://lib.baomitu.com/typed.js/2.0.12/typed.min.js" ></script>
+  <script>
+    (function (window, document) {
+      var typing = Fluid.plugins.typing;
+      var subtitle = document.getElementById('subtitle');
+      if (!subtitle || !typing) {
+        return;
+      }
+      var text = subtitle.getAttribute('data-typed-text');
+      
+        typing(text);
+      
+    })(window, document);
+  </script>
+
+
+
+
+  
+    <script  src="/js/img-lazyload.js" ></script>
+  
+
+
+
+
+  
+<script>
+  Fluid.utils.createScript('https://lib.baomitu.com/tocbot/4.18.2/tocbot.min.js', function() {
+    var toc = jQuery('#toc');
+    if (toc.length === 0 || !window.tocbot) { return; }
+    var boardCtn = jQuery('#board-ctn');
+    var boardTop = boardCtn.offset().top;
+
+    window.tocbot.init(Object.assign({
+      tocSelector     : '#toc-body',
+      contentSelector : '.markdown-body',
+      linkClass       : 'tocbot-link',
+      activeLinkClass : 'tocbot-active-link',
+      listClass       : 'tocbot-list',
+      isCollapsedClass: 'tocbot-is-collapsed',
+      collapsibleClass: 'tocbot-is-collapsible',
+      scrollSmooth    : true,
+      includeTitleTags: true,
+      headingsOffset  : -boardTop,
+    }, CONFIG.toc));
+    if (toc.find('.toc-list-item').length > 0) {
+      toc.css('visibility', 'visible');
+    }
+
+    Fluid.events.registerRefreshCallback(function() {
+      if ('tocbot' in window) {
+        tocbot.refresh();
+        var toc = jQuery('#toc');
+        if (toc.length === 0 || !tocbot) {
+          return;
+        }
+        if (toc.find('.toc-list-item').length > 0) {
+          toc.css('visibility', 'visible');
+        }
+      }
+    });
+  });
+</script>
+
+
+  <script src=https://lib.baomitu.com/clipboard.js/2.0.11/clipboard.min.js></script>
+
+  <script>Fluid.plugins.codeWidget();</script>
+
+
+  
+<script>
+  Fluid.utils.createScript('https://lib.baomitu.com/anchor-js/4.3.1/anchor.min.js', function() {
+    window.anchors.options = {
+      placement: CONFIG.anchorjs.placement,
+      visible  : CONFIG.anchorjs.visible
+    };
+    if (CONFIG.anchorjs.icon) {
+      window.anchors.options.icon = CONFIG.anchorjs.icon;
+    }
+    var el = (CONFIG.anchorjs.element || 'h1,h2,h3,h4,h5,h6').split(',');
+    var res = [];
+    for (var item of el) {
+      res.push('.markdown-body > ' + item.trim());
+    }
+    if (CONFIG.anchorjs.placement === 'left') {
+      window.anchors.options.class = 'anchorjs-link-left';
+    }
+    window.anchors.add(res.join(', '));
+
+    Fluid.events.registerRefreshCallback(function() {
+      if ('anchors' in window) {
+        anchors.removeAll();
+        var el = (CONFIG.anchorjs.element || 'h1,h2,h3,h4,h5,h6').split(',');
+        var res = [];
+        for (var item of el) {
+          res.push('.markdown-body > ' + item.trim());
+        }
+        if (CONFIG.anchorjs.placement === 'left') {
+          anchors.options.class = 'anchorjs-link-left';
+        }
+        anchors.add(res.join(', '));
+      }
+    });
+  });
+</script>
+
+
+  
+<script>
+  Fluid.utils.createScript('https://lib.baomitu.com/fancybox/3.5.7/jquery.fancybox.min.js', function() {
+    Fluid.plugins.fancyBox();
+  });
+</script>
+
+
+  <script>Fluid.plugins.imageCaption();</script>
+
+  <script  src="/js/local-search.js" ></script>
+
+
+
+
+
+<!-- 主题的启动项，将它保持在最底部 -->
+<!-- the boot of the theme, keep it at the bottom -->
+<script  src="/js/boot.js" ></script>
+
+
+  
+
+  <noscript>
+    <div class="noscript-warning">博客在允许 JavaScript 运行的环境下浏览效果更佳</div>
+  </noscript>
+</body>
+</html>

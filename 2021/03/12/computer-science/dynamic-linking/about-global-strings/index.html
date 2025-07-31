@@ -1,0 +1,678 @@
+
+
+<!DOCTYPE html>
+<html lang="zh-CN" data-default-color-scheme=auto>
+
+
+
+<head>
+  <meta charset="UTF-8">
+  <link rel="apple-touch-icon" sizes="76x76" href="/img/fluid.png">
+  <link rel="icon" href="/img/fluid.png">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, shrink-to-fit=no">
+  <meta http-equiv="x-ua-compatible" content="ie=edge">
+  
+  <meta name="theme-color" content="#2f4154">
+  <meta name="author" content="JunBin">
+  <meta name="keywords" content="">
+  
+    <meta name="description" content="环境 本文使用的环境与 Dynamic Linking: Introduction To Elf File 使用的环境一致。 1234# cat &#x2F;etc&#x2F;os-release | head -n 1PRETTY_NAME&#x3D;&quot;Debian GNU&#x2F;Linux bullseye&#x2F;sid&quot;# g++ --version | head -n 1g++ (Debian 10.2.1-6">
+<meta property="og:type" content="article">
+<meta property="og:title" content="About Global Strings">
+<meta property="og:url" content="https://clcanny.github.io/2021/03/12/computer-science/dynamic-linking/about-global-strings/index.html">
+<meta property="og:site_name" content="On The Road">
+<meta property="og:description" content="环境 本文使用的环境与 Dynamic Linking: Introduction To Elf File 使用的环境一致。 1234# cat &#x2F;etc&#x2F;os-release | head -n 1PRETTY_NAME&#x3D;&quot;Debian GNU&#x2F;Linux bullseye&#x2F;sid&quot;# g++ --version | head -n 1g++ (Debian 10.2.1-6">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="http://junbin-hexo-img.oss-cn-beijing.aliyuncs.com/dynamic-linking-about-global-strings/global-raw-string.png">
+<meta property="og:image" content="http://junbin-hexo-img.oss-cn-beijing.aliyuncs.com/dynamic-linking-about-global-strings/global-string.png">
+<meta property="og:image" content="http://junbin-hexo-img.oss-cn-beijing.aliyuncs.com/dynamic-linking-about-global-strings/thread-local-raw-string.png">
+<meta property="og:image" content="http://junbin-hexo-img.oss-cn-beijing.aliyuncs.com/dynamic-linking-about-global-strings/thread-local-string.png">
+<meta property="article:published_time" content="2021-03-12T09:16:31.000Z">
+<meta property="article:modified_time" content="2024-10-30T15:47:28.511Z">
+<meta property="article:author" content="JunBin">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="http://junbin-hexo-img.oss-cn-beijing.aliyuncs.com/dynamic-linking-about-global-strings/global-raw-string.png">
+  
+  
+  
+  <title>About Global Strings - On The Road</title>
+
+  <link  rel="stylesheet" href="https://lib.baomitu.com/twitter-bootstrap/4.6.1/css/bootstrap.min.css" />
+
+
+
+  <link  rel="stylesheet" href="https://lib.baomitu.com/github-markdown-css/4.0.0/github-markdown.min.css" />
+
+  <link  rel="stylesheet" href="https://lib.baomitu.com/hint.css/2.7.0/hint.min.css" />
+
+  <link  rel="stylesheet" href="https://lib.baomitu.com/fancybox/3.5.7/jquery.fancybox.min.css" />
+
+
+
+<!-- 主题依赖的图标库，不要自行修改 -->
+<!-- Do not modify the link that theme dependent icons -->
+
+<link rel="stylesheet" href="//at.alicdn.com/t/font_1749284_hj8rtnfg7um.css">
+
+
+
+<link rel="stylesheet" href="//at.alicdn.com/t/font_1736178_lbnruvf0jn.css">
+
+
+<link  rel="stylesheet" href="/css/main.css" />
+
+
+  <link id="highlight-css" rel="stylesheet" href="/css/highlight.css" />
+  
+    <link id="highlight-css-dark" rel="stylesheet" href="/css/highlight-dark.css" />
+  
+
+
+
+
+  <script id="fluid-configs">
+    var Fluid = window.Fluid || {};
+    Fluid.ctx = Object.assign({}, Fluid.ctx)
+    var CONFIG = {"hostname":"clcanny.github.io","root":"/","version":"1.9.4","typing":{"enable":true,"typeSpeed":70,"cursorChar":"_","loop":false,"scope":[]},"anchorjs":{"enable":true,"element":"h1,h2,h3,h4,h5,h6","placement":"left","visible":"hover","icon":""},"progressbar":{"enable":true,"height_px":3,"color":"#29d","options":{"showSpinner":false,"trickleSpeed":100}},"code_language":{"enable":true,"default":"TEXT"},"copy_btn":true,"image_caption":{"enable":true},"image_zoom":{"enable":true,"img_url_replace":["",""]},"toc":{"enable":true,"placement":"right","headingSelector":"h1,h2,h3,h4,h5,h6","collapseDepth":0},"lazyload":{"enable":true,"loading_img":"/img/loading.gif","onlypost":false,"offset_factor":2},"web_analytics":{"enable":false,"follow_dnt":true,"baidu":null,"google":null,"gtag":null,"tencent":{"sid":null,"cid":null},"woyaola":null,"cnzz":null,"leancloud":{"app_id":null,"app_key":null,"server_url":null,"path":"window.location.pathname","ignore_local":false}},"search_path":"/local-search.xml"};
+
+    if (CONFIG.web_analytics.follow_dnt) {
+      var dntVal = navigator.doNotTrack || window.doNotTrack || navigator.msDoNotTrack;
+      Fluid.ctx.dnt = dntVal && (dntVal.startsWith('1') || dntVal.startsWith('yes') || dntVal.startsWith('on'));
+    }
+  </script>
+  <script  src="/js/utils.js" ></script>
+  <script  src="/js/color-schema.js" ></script>
+  
+
+
+  
+<meta name="generator" content="Hexo 7.0.0-rc1"></head>
+
+
+<body>
+  
+
+  <header>
+    
+
+<div class="header-inner" style="height: 70vh;">
+  <nav id="navbar" class="navbar fixed-top  navbar-expand-lg navbar-dark scrolling-navbar">
+  <div class="container">
+    <a class="navbar-brand" href="/">
+      <strong>Fluid</strong>
+    </a>
+
+    <button id="navbar-toggler-btn" class="navbar-toggler" type="button" data-toggle="collapse"
+            data-target="#navbarSupportedContent"
+            aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
+      <div class="animated-icon"><span></span><span></span><span></span></div>
+    </button>
+
+    <!-- Collapsible content -->
+    <div class="collapse navbar-collapse" id="navbarSupportedContent">
+      <ul class="navbar-nav ml-auto text-center">
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/">
+                <i class="iconfont icon-home-fill"></i>
+                <span>首页</span>
+              </a>
+            </li>
+          
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/archives/">
+                <i class="iconfont icon-archive-fill"></i>
+                <span>归档</span>
+              </a>
+            </li>
+          
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/categories/">
+                <i class="iconfont icon-category-fill"></i>
+                <span>分类</span>
+              </a>
+            </li>
+          
+        
+        
+          <li class="nav-item" id="search-btn">
+            <a class="nav-link" target="_self" href="javascript:;" data-toggle="modal" data-target="#modalSearch" aria-label="Search">
+              <i class="iconfont icon-search"></i>
+            </a>
+          </li>
+          
+        
+        
+          <li class="nav-item" id="color-toggle-btn">
+            <a class="nav-link" target="_self" href="javascript:;" aria-label="Color Toggle">
+              <i class="iconfont icon-dark" id="color-toggle-icon"></i>
+            </a>
+          </li>
+        
+      </ul>
+    </div>
+  </div>
+</nav>
+
+  
+
+<div id="banner" class="banner" parallax=true
+     style="background: url('/img/default.png') no-repeat center center; background-size: cover;">
+  <div class="full-bg-img">
+    <div class="mask flex-center" style="background-color: rgba(0, 0, 0, 0.3)">
+      <div class="banner-text text-center fade-in-up">
+        <div class="h2">
+          
+            <span id="subtitle" data-typed-text="About Global Strings"></span>
+          
+        </div>
+
+        
+          
+  <div class="mt-3">
+    
+    
+      <span class="post-meta">
+        <i class="iconfont icon-date-fill" aria-hidden="true"></i>
+        <time datetime="2021-03-12 17:16" pubdate>
+          2021年3月12日 下午
+        </time>
+      </span>
+    
+  </div>
+
+  <div class="mt-1">
+    
+      <span class="post-meta mr-2">
+        <i class="iconfont icon-chart"></i>
+        
+          5.1k 字
+        
+      </span>
+    
+
+    
+      <span class="post-meta mr-2">
+        <i class="iconfont icon-clock-fill"></i>
+        
+        
+        
+          43 分钟
+        
+      </span>
+    
+
+    
+    
+  </div>
+
+
+        
+      </div>
+
+      
+    </div>
+  </div>
+</div>
+
+</div>
+
+  </header>
+
+  <main>
+    
+      
+
+<div class="container-fluid nopadding-x">
+  <div class="row nomargin-x">
+    <div class="side-col d-none d-lg-block col-lg-2">
+      
+
+    </div>
+
+    <div class="col-lg-8 nopadding-x-md">
+      <div class="container nopadding-x-md" id="board-ctn">
+        <div id="board">
+          <article class="post-content mx-auto">
+            <!-- SEO header -->
+            <h1 style="display: none">About Global Strings</h1>
+            
+            
+              <div class="markdown-body">
+                
+                <h1 id="环境">环境</h1>
+<p>本文使用的环境与 <a href="https://clcanny.github.io/2020/11/24/dynamic-linking-introduction-to-elf-file/">Dynamic Linking: Introduction To Elf File</a> 使用的环境一致。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><code class="hljs bash"><span class="hljs-comment"># cat /etc/os-release | head -n 1</span><br>PRETTY_NAME=<span class="hljs-string">&quot;Debian GNU/Linux bullseye/sid&quot;</span><br><span class="hljs-comment"># g++ --version | head -n 1</span><br>g++ (Debian 10.2.1-6) 10.2.1 20210110<br></code></pre></td></tr></table></figure>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><code class="hljs bash">g++ -fPIC -ggdb -O0 -shared                                                 \<br>    -Wl,--dynamic-linker=/root/glibc/build/install/lib/ld-linux-x86-64.so.2 \<br>    foo.cpp -o libfoo.so<br>g++ main.cpp                                                                \<br>    -L<span class="hljs-variable">$PWD</span> -Wl,-rpath=<span class="hljs-variable">$PWD</span>                                                  \<br>    -Wl,--dynamic-linker=/root/glibc/build/install/lib/ld-linux-x86-64.so.2 \<br>    -lfoo -o main<br><span class="hljs-built_in">export</span> LD_LIBRARY_PATH=/usr/lib/x86_64-linux-gnu:/lib/x86_64-linux-gnu<br></code></pre></td></tr></table></figure>
+<h1 id="global-raw-string">Global Raw String</h1>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><code class="hljs cpp"><span class="hljs-meta">#<span class="hljs-keyword">include</span> <span class="hljs-string">&lt;iostream&gt;</span></span><br><span class="hljs-type">const</span> <span class="hljs-type">char</span>* var = <span class="hljs-string">&quot;var&quot;</span>;<br><span class="hljs-function"><span class="hljs-type">void</span> <span class="hljs-title">foo</span><span class="hljs-params">()</span> </span>&#123;<br>    std::cout &lt;&lt; var &lt;&lt; std::endl;<br>&#125;<br></code></pre></td></tr></table></figure>
+<p><img src="http://junbin-hexo-img.oss-cn-beijing.aliyuncs.com/dynamic-linking-about-global-strings/global-raw-string.png" srcset="/img/loading.gif" lazyload /></p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><code class="hljs bash"><span class="hljs-comment"># readelf --section-headers libfoo.so | grep -E -w &quot;Nr|.got|.data|.rodata&quot; -A1 | grep -v &quot;\-\-&quot;</span><br>  [Nr] Name              Type             Address           Offset<br>       Size              EntSize          Flags  Link  Info  Align<br>  [14] .rodata           PROGBITS         0000000000002000  00002000<br>       0000000000000005  0000000000000000   A       0     0     1<br>  [20] .got              PROGBITS         0000000000003fc0  00002fc0<br>       0000000000000040  0000000000000008  WA       0     0     8<br>  [22] .data             PROGBITS         0000000000004038  00003038<br>       0000000000000010  0000000000000000  WA       0     0     8<br></code></pre></td></tr></table></figure>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br></pre></td><td class="code"><pre><code class="hljs bash"><span class="hljs-comment"># objdump -d -j .text libfoo.so | grep &quot;&lt;_Z3foov&gt;:&quot; -A16</span><br>0000000000001135 &lt;_Z3foov&gt;:<br>    1135:       55                      push   %rbp<br>    1136:       48 89 e5                mov    %rsp,%rbp<br>    1139:       48 8b 05 b0 2e 00 00    mov    0x2eb0(%rip),%rax        <span class="hljs-comment"># 3ff0 &lt;var@@Base-0x50&gt;</span><br>    1140:       48 8b 00                mov    (%rax),%rax<br>    1143:       48 89 c6                mov    %rax,%rsi<br>    1146:       48 8b 05 9b 2e 00 00    mov    0x2e9b(%rip),%rax        <span class="hljs-comment"># 3fe8 &lt;_ZSt4cout@GLIBCXX_3.4&gt;</span><br>    114d:       48 89 c7                mov    %rax,%rdi<br>    1150:       e8 fb fe ff ff          callq  1050 &lt;_ZStlsISt11char_traitsIcEERSt13basic_ostreamIcT_ES5_PKc@plt&gt;<br>    1155:       48 89 c2                mov    %rax,%rdx<br>    1158:       48 8b 05 99 2e 00 00    mov    0x2e99(%rip),%rax        <span class="hljs-comment"># 3ff8 &lt;_ZSt4endlIcSt11char_traitsIcEERSt13basic_ostreamIT_T0_ES6_@GLIBCXX_3.4&gt;</span><br>    115f:       48 89 c6                mov    %rax,%rsi<br>    1162:       48 89 d7                mov    %rdx,%rdi<br>    1165:       e8 f6 fe ff ff          callq  1060 &lt;_ZNSolsEPFRSoS_E@plt&gt;<br>    116a:       90                      nop<br>    116b:       5d                      pop    %rbp<br>    116c:       c3                      retq<br><span class="hljs-comment"># od --skip-bytes=$((0x4040 - 0x4038 + 0x3038)) --read-bytes=8 --format=xL libfoo.so</span><br>0030100 0000000000002001<br><span class="hljs-comment"># od --skip-bytes=$((0x2001 - 0x2000 + 0x2000)) --read-bytes=4 --format=xC -c libfoo.so</span><br>0020001  76  61  72  00<br>          v   a   r  \0<br></code></pre></td></tr></table></figure>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><code class="hljs bash"><span class="hljs-comment"># readelf --wide --relocs libfoo.so</span><br>Relocation section <span class="hljs-string">&#x27;.rela.dyn&#x27;</span> at offset 0x598 contains 13 entries:<br>    Offset             Info             Type               Symbol<span class="hljs-string">&#x27;s Value  Symbol&#x27;</span>s Name + Addend<br>0000000000004040  0000000000000008 R_X86_64_RELATIVE                         2001<br>0000000000003ff0  0000000c00000006 R_X86_64_GLOB_DAT      0000000000004040 var + 0<br></code></pre></td></tr></table></figure>
+<h1 id="global-string">Global String</h1>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><code class="hljs bash"><span class="hljs-comment">#include &lt;iostream&gt;</span><br>const std::string var = <span class="hljs-string">&quot;var&quot;</span>;<br>void <span class="hljs-function"><span class="hljs-title">foo</span></span>() &#123;<br>    std::cout &lt;&lt; <span class="hljs-string">var &lt;&lt; std::endl;</span><br><span class="hljs-string">&#125;</span><br></code></pre></td></tr></table></figure>
+<p><img src="http://junbin-hexo-img.oss-cn-beijing.aliyuncs.com/dynamic-linking-about-global-strings/global-string.png" srcset="/img/loading.gif" lazyload /></p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><code class="hljs bash">(gdb) bt<br><span class="hljs-comment">#0  0x00007ffff7f3304b in std::__cxx11::basic_string&lt;char, std::char_traits&lt;char&gt;, std::allocator&lt;char&gt; &gt;::basic_string(char const*, std::allocator&lt;char&gt; const&amp;) ()</span><br>   from /usr/lib/x86_64-linux-gnu/libstdc++.so.6<br><span class="hljs-comment">#1  0x00007ffff7fcb21c in __static_initialization_and_destruction_0 (__initialize_p=1, __priority=65535) at foo.cpp:2</span><br><span class="hljs-comment">#2  0x00007ffff7fcb27a in _GLOBAL__sub_I_foo.cpp(void) () at foo.cpp:5</span><br><span class="hljs-comment">#3  0x00007ffff7fe3d4c in call_init (l=&lt;optimized out&gt;, argc=argc@entry=1, argv=argv@entry=0x7fffffffece8, env=env@entry=0x7fffffffecf8) at dl-init.c:72</span><br><span class="hljs-comment">#4  0x00007ffff7fe3e32 in _dl_init (main_map=0x7ffff7ffe1a0, argc=1, argv=0x7fffffffece8, env=0x7fffffffecf8) at dl-init.c:119</span><br><span class="hljs-comment">#5  0x00007ffff7fd60ca in _dl_start_user () from /root/glibc/build/install/lib/ld-linux-x86-64.so.2</span><br></code></pre></td></tr></table></figure>
+<ol type="1">
+<li>glibc 会负责调用 .init 函数和 .init_array 指定的函数；</li>
+<li>gcc 使用 .init_array 指定初始化函数，.init 函数只是一个空壳。</li>
+</ol>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br></pre></td><td class="code"><pre><code class="hljs cpp"><span class="hljs-function"><span class="hljs-type">void</span> <span class="hljs-title">call_init</span><span class="hljs-params">(<span class="hljs-keyword">struct</span> link_map* l, <span class="hljs-type">int</span> argc, <span class="hljs-type">char</span>** argv, <span class="hljs-type">char</span>** env)</span> </span>&#123;<br>    <span class="hljs-comment">// Now run the local constructors.  There are two forms of them:</span><br>    <span class="hljs-comment">// - the one named by DT_INIT</span><br>    <span class="hljs-comment">// - the others in the DT_INIT_ARRAY.</span><br>    <span class="hljs-keyword">if</span> (l-&gt;l_info[DT_INIT] != <span class="hljs-literal">nullptr</span>) &#123;<br>        <span class="hljs-built_in">DL_CALL_DT_INIT</span>(<br>            l, l-&gt;l_addr + l-&gt;l_info[DT_INIT]-&gt;d_un.d_ptr, argc, argv, env);<br>    &#125;<br><br>    <span class="hljs-comment">// Next see whether there is an array with initialization functions.</span><br>    <span class="hljs-built_in">ElfW</span>(Dyn)* init_array = l-&gt;l_info[DT_INIT_ARRAY];<br>    <span class="hljs-keyword">if</span> (init_array != <span class="hljs-literal">nullptr</span>) &#123;<br>        <span class="hljs-type">unsigned</span> <span class="hljs-type">int</span> jm =<br>            l-&gt;l_info[DT_INIT_ARRAYSZ]-&gt;d_un.d_val / <span class="hljs-built_in">sizeof</span>(<span class="hljs-built_in">ElfW</span>(Addr));<br>        <span class="hljs-built_in">ElfW</span>(Addr)* addrs = (<span class="hljs-built_in">ElfW</span>(Addr)*)(init_array-&gt;d_un.d_ptr + l-&gt;l_addr);<br>        <span class="hljs-keyword">for</span> (<span class="hljs-type">unsigned</span> <span class="hljs-type">int</span> j = <span class="hljs-number">0</span>; j &lt; jm; ++j) &#123;<br>            ((<span class="hljs-type">init_t</span>)addrs[j])(argc, argv, env);<br>        &#125;<br>    &#125;<br>&#125;<br></code></pre></td></tr></table></figure>
+<h1 id="thread-local-raw-string">Thread Local Raw String</h1>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><code class="hljs cpp"><span class="hljs-meta">#<span class="hljs-keyword">include</span> <span class="hljs-string">&lt;iostream&gt;</span></span><br><span class="hljs-keyword">thread_local</span> <span class="hljs-type">const</span> <span class="hljs-type">char</span>* tbss_var = <span class="hljs-literal">nullptr</span>;<br><span class="hljs-keyword">thread_local</span> <span class="hljs-type">const</span> <span class="hljs-type">char</span>* tdata_var = <span class="hljs-string">&quot;tdata_var&quot;</span>;<br><span class="hljs-function"><span class="hljs-type">void</span> <span class="hljs-title">foo</span><span class="hljs-params">()</span> </span>&#123;<br>    tbss_var = <span class="hljs-string">&quot;tbss_var&quot;</span>;<br>    std::cout &lt;&lt; tbss_var &lt;&lt; std::endl;<br>    std::cout &lt;&lt; tdata_var &lt;&lt; std::endl;<br>&#125;<br></code></pre></td></tr></table></figure>
+<p><img src="http://junbin-hexo-img.oss-cn-beijing.aliyuncs.com/dynamic-linking-about-global-strings/thread-local-raw-string.png" srcset="/img/loading.gif" lazyload /></p>
+<ol type="1">
+<li>为了保证 thread local 语义，ld 会将 .tbss section 和 .tdata section 中的数据拷贝到线程私有区域，详细信息请参考 <a target="_blank" rel="noopener" href="https://chao-tic.github.io/blog/2018/12/25/tls">Chao-tic: A Deep dive into (implicit) Thread Local Storage</a> ；</li>
+<li><code>__tls_get_addr</code> 是访问线程私有变量的两种方式之一，访问方式可以通过编译选项（<code>-ftls-model=initial-exec</code>）控制，详细信息请参考 <a target="_blank" rel="noopener" href="https://stackoverflow.com/questions/13106049/what-is-the-performance-penalty-of-c11-thread-local-variables-in-gcc-4-8">Stack Overflow: What is the performance penalty of C++11 thread_local variables in GCC 4.8?</a> ；</li>
+<li>使用选项 <code>-ftls-model=initial-exec</code> 编译的库带有 <code>STATIC_TLS</code> flag ，可以通过命令 <code>readelf --dynamic &lt;lib&gt; | grep FLAGS</code> 识别。</li>
+</ol>
+<h1 id="thread-local-string">Thread Local String</h1>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><code class="hljs cpp"><span class="hljs-meta">#<span class="hljs-keyword">include</span> <span class="hljs-string">&lt;iostream&gt;</span></span><br><span class="hljs-meta">#<span class="hljs-keyword">include</span> <span class="hljs-string">&lt;string&gt;</span></span><br><span class="hljs-keyword">thread_local</span> std::string var = <span class="hljs-string">&quot;var&quot;</span>;<br><span class="hljs-function"><span class="hljs-type">void</span> <span class="hljs-title">foo</span><span class="hljs-params">()</span> </span>&#123;<br>    std::cout &lt;&lt; var &lt;&lt; std::endl;<br>&#125;<br></code></pre></td></tr></table></figure>
+<p><img src="http://junbin-hexo-img.oss-cn-beijing.aliyuncs.com/dynamic-linking-about-global-strings/thread-local-string.png" srcset="/img/loading.gif" lazyload /></p>
+<p>TLS init funtion 负责调用 thread local string 的构造函数，它使用一个 thread local bool 变量来记录构造函数是否已经被调用过，避免重复调用。</p>
+<h1 id="参考资料">参考资料</h1>
+<ul>
+<li><a target="_blank" rel="noopener" href="https://chao-tic.github.io/blog/2018/12/25/tls">Chao-tic: A Deep dive into (implicit) Thread Local Storage</a></li>
+<li><a target="_blank" rel="noopener" href="https://uclibc.org/docs/tls.pdf">ELF Handling For Thread-Local Storage</a></li>
+<li><a target="_blank" rel="noopener" href="https://docs.oracle.com/cd/E19683-01/817-3677/chapter8-1/index.html">Oracle: Thread-Local Storage</a></li>
+<li><a target="_blank" rel="noopener" href="https://stackoverflow.com/questions/13106049/what-is-the-performance-penalty-of-c11-thread-local-variables-in-gcc-4-8">Stack Overflow: What is the performance penalty of C++11 thread_local variables in GCC 4.8?</a></li>
+<li><a target="_blank" rel="noopener" href="https://maskray.me/blog/2021-02-14-all-about-thread-local-storage">MaskRay: All about thread-local storage</a></li>
+</ul>
+
+                
+              </div>
+            
+            <hr/>
+            <div>
+              <div class="post-metas my-3">
+  
+    <div class="post-meta mr-3 d-flex align-items-center">
+      <i class="iconfont icon-category"></i>
+      
+
+<span class="category-chains">
+  
+  
+    
+      <span class="category-chain">
+        
+  <a href="/categories/Computer-Science/" class="category-chain-item">Computer Science</a>
+  
+  
+    <span>></span>
+    
+  <a href="/categories/Computer-Science/Dynamic-Linking/" class="category-chain-item">Dynamic Linking</a>
+  
+  
+
+  
+
+      </span>
+    
+  
+</span>
+
+    </div>
+  
+  
+</div>
+
+
+              
+  
+
+  <div class="license-box my-3">
+    <div class="license-title">
+      <div>About Global Strings</div>
+      <div>https://clcanny.github.io/2021/03/12/computer-science/dynamic-linking/about-global-strings/</div>
+    </div>
+    <div class="license-meta">
+      
+        <div class="license-meta-item">
+          <div>作者</div>
+          <div>JunBin</div>
+        </div>
+      
+      
+        <div class="license-meta-item license-meta-date">
+          <div>发布于</div>
+          <div>2021年3月12日</div>
+        </div>
+      
+      
+      
+        <div class="license-meta-item">
+          <div>许可协议</div>
+          <div>
+            
+              
+              
+                <a target="_blank" href="https://creativecommons.org/licenses/by/4.0/">
+                  <span class="hint--top hint--rounded" aria-label="BY - 署名">
+                    <i class="iconfont icon-by"></i>
+                  </span>
+                </a>
+              
+            
+          </div>
+        </div>
+      
+    </div>
+    <div class="license-icon iconfont"></div>
+  </div>
+
+
+
+              
+                <div class="post-prevnext my-3">
+                  <article class="post-prev col-6">
+                    
+                    
+                      <a href="/2021/03/29/computer-science/columnar-storage/dremel/" title="Dremel">
+                        <i class="iconfont icon-arrowleft"></i>
+                        <span class="hidden-mobile">Dremel</span>
+                        <span class="visible-mobile">上一篇</span>
+                      </a>
+                    
+                  </article>
+                  <article class="post-next col-6">
+                    
+                    
+                      <a href="/2021/01/30/computer-science/dynamic-linking/the-first-three-items-of-got/" title="The First Three Items Of GOT">
+                        <span class="hidden-mobile">The First Three Items Of GOT</span>
+                        <span class="visible-mobile">下一篇</span>
+                        <i class="iconfont icon-arrowright"></i>
+                      </a>
+                    
+                  </article>
+                </div>
+              
+            </div>
+
+            
+          </article>
+        </div>
+      </div>
+    </div>
+
+    <div class="side-col d-none d-lg-block col-lg-2">
+      
+  <aside class="sidebar" style="margin-left: -1rem">
+    <div id="toc">
+  <p class="toc-header">
+    <i class="iconfont icon-list"></i>
+    <span>目录</span>
+  </p>
+  <div class="toc-body" id="toc-body"></div>
+</div>
+
+
+
+  </aside>
+
+
+    </div>
+  </div>
+</div>
+
+
+
+
+
+  
+
+
+
+  
+
+
+
+  
+
+
+
+  
+
+
+
+  
+
+
+
+  <script>
+  Fluid.utils.createScript('https://lib.baomitu.com/mermaid/8.14.0/mermaid.min.js', function() {
+    mermaid.initialize({"theme":"default"});
+
+    Fluid.events.registerRefreshCallback(function() {
+      if ('mermaid' in window) {
+        mermaid.init();
+      }
+    });
+  });
+</script>
+
+
+
+
+
+
+    
+
+    
+      <a id="scroll-top-button" aria-label="TOP" href="#" role="button">
+        <i class="iconfont icon-arrowup" aria-hidden="true"></i>
+      </a>
+    
+
+    
+      <div class="modal fade" id="modalSearch" tabindex="-1" role="dialog" aria-labelledby="ModalLabel"
+     aria-hidden="true">
+  <div class="modal-dialog modal-dialog-scrollable modal-lg" role="document">
+    <div class="modal-content">
+      <div class="modal-header text-center">
+        <h4 class="modal-title w-100 font-weight-bold">搜索</h4>
+        <button type="button" id="local-search-close" class="close" data-dismiss="modal" aria-label="Close">
+          <span aria-hidden="true">&times;</span>
+        </button>
+      </div>
+      <div class="modal-body mx-3">
+        <div class="md-form mb-5">
+          <input type="text" id="local-search-input" class="form-control validate">
+          <label data-error="x" data-success="v" for="local-search-input">关键词</label>
+        </div>
+        <div class="list-group" id="local-search-result"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+    
+
+    
+  </main>
+
+  <footer>
+    <div class="footer-inner">
+  
+    <div class="footer-content">
+       <a href="https://hexo.io" target="_blank" rel="nofollow noopener"><span>Hexo</span></a> <i class="iconfont icon-love"></i> <a href="https://github.com/fluid-dev/hexo-theme-fluid" target="_blank" rel="nofollow noopener"><span>Fluid</span></a> 
+    </div>
+  
+  
+  
+  
+</div>
+
+  </footer>
+
+  <!-- Scripts -->
+  
+  <script  src="https://lib.baomitu.com/nprogress/0.2.0/nprogress.min.js" ></script>
+  <link  rel="stylesheet" href="https://lib.baomitu.com/nprogress/0.2.0/nprogress.min.css" />
+
+  <script>
+    NProgress.configure({"showSpinner":false,"trickleSpeed":100})
+    NProgress.start()
+    window.addEventListener('load', function() {
+      NProgress.done();
+    })
+  </script>
+
+
+<script  src="https://lib.baomitu.com/jquery/3.6.0/jquery.min.js" ></script>
+<script  src="https://lib.baomitu.com/twitter-bootstrap/4.6.1/js/bootstrap.min.js" ></script>
+<script  src="/js/events.js" ></script>
+<script  src="/js/plugins.js" ></script>
+
+
+  <script  src="https://lib.baomitu.com/typed.js/2.0.12/typed.min.js" ></script>
+  <script>
+    (function (window, document) {
+      var typing = Fluid.plugins.typing;
+      var subtitle = document.getElementById('subtitle');
+      if (!subtitle || !typing) {
+        return;
+      }
+      var text = subtitle.getAttribute('data-typed-text');
+      
+        typing(text);
+      
+    })(window, document);
+  </script>
+
+
+
+
+  
+    <script  src="/js/img-lazyload.js" ></script>
+  
+
+
+
+
+  
+<script>
+  Fluid.utils.createScript('https://lib.baomitu.com/tocbot/4.18.2/tocbot.min.js', function() {
+    var toc = jQuery('#toc');
+    if (toc.length === 0 || !window.tocbot) { return; }
+    var boardCtn = jQuery('#board-ctn');
+    var boardTop = boardCtn.offset().top;
+
+    window.tocbot.init(Object.assign({
+      tocSelector     : '#toc-body',
+      contentSelector : '.markdown-body',
+      linkClass       : 'tocbot-link',
+      activeLinkClass : 'tocbot-active-link',
+      listClass       : 'tocbot-list',
+      isCollapsedClass: 'tocbot-is-collapsed',
+      collapsibleClass: 'tocbot-is-collapsible',
+      scrollSmooth    : true,
+      includeTitleTags: true,
+      headingsOffset  : -boardTop,
+    }, CONFIG.toc));
+    if (toc.find('.toc-list-item').length > 0) {
+      toc.css('visibility', 'visible');
+    }
+
+    Fluid.events.registerRefreshCallback(function() {
+      if ('tocbot' in window) {
+        tocbot.refresh();
+        var toc = jQuery('#toc');
+        if (toc.length === 0 || !tocbot) {
+          return;
+        }
+        if (toc.find('.toc-list-item').length > 0) {
+          toc.css('visibility', 'visible');
+        }
+      }
+    });
+  });
+</script>
+
+
+  <script src=https://lib.baomitu.com/clipboard.js/2.0.11/clipboard.min.js></script>
+
+  <script>Fluid.plugins.codeWidget();</script>
+
+
+  
+<script>
+  Fluid.utils.createScript('https://lib.baomitu.com/anchor-js/4.3.1/anchor.min.js', function() {
+    window.anchors.options = {
+      placement: CONFIG.anchorjs.placement,
+      visible  : CONFIG.anchorjs.visible
+    };
+    if (CONFIG.anchorjs.icon) {
+      window.anchors.options.icon = CONFIG.anchorjs.icon;
+    }
+    var el = (CONFIG.anchorjs.element || 'h1,h2,h3,h4,h5,h6').split(',');
+    var res = [];
+    for (var item of el) {
+      res.push('.markdown-body > ' + item.trim());
+    }
+    if (CONFIG.anchorjs.placement === 'left') {
+      window.anchors.options.class = 'anchorjs-link-left';
+    }
+    window.anchors.add(res.join(', '));
+
+    Fluid.events.registerRefreshCallback(function() {
+      if ('anchors' in window) {
+        anchors.removeAll();
+        var el = (CONFIG.anchorjs.element || 'h1,h2,h3,h4,h5,h6').split(',');
+        var res = [];
+        for (var item of el) {
+          res.push('.markdown-body > ' + item.trim());
+        }
+        if (CONFIG.anchorjs.placement === 'left') {
+          anchors.options.class = 'anchorjs-link-left';
+        }
+        anchors.add(res.join(', '));
+      }
+    });
+  });
+</script>
+
+
+  
+<script>
+  Fluid.utils.createScript('https://lib.baomitu.com/fancybox/3.5.7/jquery.fancybox.min.js', function() {
+    Fluid.plugins.fancyBox();
+  });
+</script>
+
+
+  <script>Fluid.plugins.imageCaption();</script>
+
+  <script  src="/js/local-search.js" ></script>
+
+
+
+
+
+<!-- 主题的启动项，将它保持在最底部 -->
+<!-- the boot of the theme, keep it at the bottom -->
+<script  src="/js/boot.js" ></script>
+
+
+  
+
+  <noscript>
+    <div class="noscript-warning">博客在允许 JavaScript 运行的环境下浏览效果更佳</div>
+  </noscript>
+</body>
+</html>

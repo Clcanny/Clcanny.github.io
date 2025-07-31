@@ -1,0 +1,885 @@
+
+
+<!DOCTYPE html>
+<html lang="zh-CN" data-default-color-scheme=auto>
+
+
+
+<head>
+  <meta charset="UTF-8">
+  <link rel="apple-touch-icon" sizes="76x76" href="/img/fluid.png">
+  <link rel="icon" href="/img/fluid.png">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, shrink-to-fit=no">
+  <meta http-equiv="x-ua-compatible" content="ie=edge">
+  
+  <meta name="theme-color" content="#2f4154">
+  <meta name="author" content="JunBin">
+  <meta name="keywords" content="">
+  
+    <meta name="description" content="This post is the first in a series on EPaxos, focusing specifically on Simplified Egalitarian Paxos. In subsequent posts, I&#39;ll delve into Optimized Egalitarian Paxos along with its safety and liveness">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Paper Interpretation - There Is More Consensus In Egalitarian Parliaments">
+<meta property="og:url" content="https://clcanny.github.io/2023/08/11/computer-science/consensus/paper-interpretation-there-is-more-consensus-in-egalitarian-parliaments/index.html">
+<meta property="og:site_name" content="On The Road">
+<meta property="og:description" content="This post is the first in a series on EPaxos, focusing specifically on Simplified Egalitarian Paxos. In subsequent posts, I&#39;ll delve into Optimized Egalitarian Paxos along with its safety and liveness">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="http://junbin-hexo-img.oss-cn-beijing.aliyuncs.com/paper-interpretation-there-is-more-consensus-in-egalitarian-parliaments/the-epaxos-simplified-recovery-procedure.png">
+<meta property="og:image" content="http://junbin-hexo-img.oss-cn-beijing.aliyuncs.com/paper-interpretation-fast-paxos/figure-1-the-coordinator-s-rule-for-picking-value-v-in-phase-2a-of-round-i.png">
+<meta property="og:image" content="http://junbin-hexo-img.oss-cn-beijing.aliyuncs.com/paper-interpretation-there-is-more-consensus-in-egalitarian-parliaments/the-basic-egalitarian-paxos-protocol-for-choosing-commands.png">
+<meta property="article:published_time" content="2023-08-11T15:05:34.000Z">
+<meta property="article:modified_time" content="2024-10-30T15:47:28.511Z">
+<meta property="article:author" content="JunBin">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="http://junbin-hexo-img.oss-cn-beijing.aliyuncs.com/paper-interpretation-there-is-more-consensus-in-egalitarian-parliaments/the-epaxos-simplified-recovery-procedure.png">
+  
+  
+  
+  <title>Paper Interpretation - There Is More Consensus In Egalitarian Parliaments - On The Road</title>
+
+  <link  rel="stylesheet" href="https://lib.baomitu.com/twitter-bootstrap/4.6.1/css/bootstrap.min.css" />
+
+
+
+  <link  rel="stylesheet" href="https://lib.baomitu.com/github-markdown-css/4.0.0/github-markdown.min.css" />
+
+  <link  rel="stylesheet" href="https://lib.baomitu.com/hint.css/2.7.0/hint.min.css" />
+
+  <link  rel="stylesheet" href="https://lib.baomitu.com/fancybox/3.5.7/jquery.fancybox.min.css" />
+
+
+
+<!-- 主题依赖的图标库，不要自行修改 -->
+<!-- Do not modify the link that theme dependent icons -->
+
+<link rel="stylesheet" href="//at.alicdn.com/t/font_1749284_hj8rtnfg7um.css">
+
+
+
+<link rel="stylesheet" href="//at.alicdn.com/t/font_1736178_lbnruvf0jn.css">
+
+
+<link  rel="stylesheet" href="/css/main.css" />
+
+
+  <link id="highlight-css" rel="stylesheet" href="/css/highlight.css" />
+  
+    <link id="highlight-css-dark" rel="stylesheet" href="/css/highlight-dark.css" />
+  
+
+
+
+
+  <script id="fluid-configs">
+    var Fluid = window.Fluid || {};
+    Fluid.ctx = Object.assign({}, Fluid.ctx)
+    var CONFIG = {"hostname":"clcanny.github.io","root":"/","version":"1.9.4","typing":{"enable":true,"typeSpeed":70,"cursorChar":"_","loop":false,"scope":[]},"anchorjs":{"enable":true,"element":"h1,h2,h3,h4,h5,h6","placement":"left","visible":"hover","icon":""},"progressbar":{"enable":true,"height_px":3,"color":"#29d","options":{"showSpinner":false,"trickleSpeed":100}},"code_language":{"enable":true,"default":"TEXT"},"copy_btn":true,"image_caption":{"enable":true},"image_zoom":{"enable":true,"img_url_replace":["",""]},"toc":{"enable":true,"placement":"right","headingSelector":"h1,h2,h3,h4,h5,h6","collapseDepth":0},"lazyload":{"enable":true,"loading_img":"/img/loading.gif","onlypost":false,"offset_factor":2},"web_analytics":{"enable":false,"follow_dnt":true,"baidu":null,"google":null,"gtag":null,"tencent":{"sid":null,"cid":null},"woyaola":null,"cnzz":null,"leancloud":{"app_id":null,"app_key":null,"server_url":null,"path":"window.location.pathname","ignore_local":false}},"search_path":"/local-search.xml"};
+
+    if (CONFIG.web_analytics.follow_dnt) {
+      var dntVal = navigator.doNotTrack || window.doNotTrack || navigator.msDoNotTrack;
+      Fluid.ctx.dnt = dntVal && (dntVal.startsWith('1') || dntVal.startsWith('yes') || dntVal.startsWith('on'));
+    }
+  </script>
+  <script  src="/js/utils.js" ></script>
+  <script  src="/js/color-schema.js" ></script>
+  
+
+
+  
+<meta name="generator" content="Hexo 7.0.0-rc1"></head>
+
+
+<body>
+  
+
+  <header>
+    
+
+<div class="header-inner" style="height: 70vh;">
+  <nav id="navbar" class="navbar fixed-top  navbar-expand-lg navbar-dark scrolling-navbar">
+  <div class="container">
+    <a class="navbar-brand" href="/">
+      <strong>Fluid</strong>
+    </a>
+
+    <button id="navbar-toggler-btn" class="navbar-toggler" type="button" data-toggle="collapse"
+            data-target="#navbarSupportedContent"
+            aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
+      <div class="animated-icon"><span></span><span></span><span></span></div>
+    </button>
+
+    <!-- Collapsible content -->
+    <div class="collapse navbar-collapse" id="navbarSupportedContent">
+      <ul class="navbar-nav ml-auto text-center">
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/">
+                <i class="iconfont icon-home-fill"></i>
+                <span>首页</span>
+              </a>
+            </li>
+          
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/archives/">
+                <i class="iconfont icon-archive-fill"></i>
+                <span>归档</span>
+              </a>
+            </li>
+          
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/categories/">
+                <i class="iconfont icon-category-fill"></i>
+                <span>分类</span>
+              </a>
+            </li>
+          
+        
+        
+          <li class="nav-item" id="search-btn">
+            <a class="nav-link" target="_self" href="javascript:;" data-toggle="modal" data-target="#modalSearch" aria-label="Search">
+              <i class="iconfont icon-search"></i>
+            </a>
+          </li>
+          
+        
+        
+          <li class="nav-item" id="color-toggle-btn">
+            <a class="nav-link" target="_self" href="javascript:;" aria-label="Color Toggle">
+              <i class="iconfont icon-dark" id="color-toggle-icon"></i>
+            </a>
+          </li>
+        
+      </ul>
+    </div>
+  </div>
+</nav>
+
+  
+
+<div id="banner" class="banner" parallax=true
+     style="background: url('/img/default.png') no-repeat center center; background-size: cover;">
+  <div class="full-bg-img">
+    <div class="mask flex-center" style="background-color: rgba(0, 0, 0, 0.3)">
+      <div class="banner-text text-center fade-in-up">
+        <div class="h2">
+          
+            <span id="subtitle" data-typed-text="Paper Interpretation - There Is More Consensus In Egalitarian Parliaments"></span>
+          
+        </div>
+
+        
+          
+  <div class="mt-3">
+    
+    
+      <span class="post-meta">
+        <i class="iconfont icon-date-fill" aria-hidden="true"></i>
+        <time datetime="2023-08-11 23:05" pubdate>
+          2023年8月11日 晚上
+        </time>
+      </span>
+    
+  </div>
+
+  <div class="mt-1">
+    
+      <span class="post-meta mr-2">
+        <i class="iconfont icon-chart"></i>
+        
+          21k 字
+        
+      </span>
+    
+
+    
+      <span class="post-meta mr-2">
+        <i class="iconfont icon-clock-fill"></i>
+        
+        
+        
+          173 分钟
+        
+      </span>
+    
+
+    
+    
+  </div>
+
+
+        
+      </div>
+
+      
+    </div>
+  </div>
+</div>
+
+</div>
+
+  </header>
+
+  <main>
+    
+      
+
+<div class="container-fluid nopadding-x">
+  <div class="row nomargin-x">
+    <div class="side-col d-none d-lg-block col-lg-2">
+      
+
+    </div>
+
+    <div class="col-lg-8 nopadding-x-md">
+      <div class="container nopadding-x-md" id="board-ctn">
+        <div id="board">
+          <article class="post-content mx-auto">
+            <!-- SEO header -->
+            <h1 style="display: none">Paper Interpretation - There Is More Consensus In Egalitarian Parliaments</h1>
+            
+            
+              <div class="markdown-body">
+                
+                <p>This post is the first in a series on EPaxos, focusing specifically on Simplified Egalitarian Paxos. In subsequent posts, I'll delve into Optimized Egalitarian Paxos along with its safety and liveness properties, and explore how Linearizability and Serializability are achieved in Egalitarian Paxos. Additionally, I plan to demonstrate how to transition from Fast Paxos to EPaxos using TLA+ in future posts.</p>
+<h2 id="the-commit-protocol-transitioning-from-fast-paxos-to-egalitarian-paxos">The Commit Protocol: Transitioning from Fast Paxos to Egalitarian Paxos</h2>
+<p>The commentary by <a target="_blank" rel="noopener" href="http://drmingdrmer.github.io/">drdr.xp</a> on <a target="_blank" rel="noopener" href="https://www.zhihu.com/people/xiangguangyan">xiangguangyan</a>'s article <a target="_blank" rel="noopener" href="https://zhuanlan.zhihu.com/p/387468959">EPaxos Trilogy II: EPaxos Core Protocol Process</a> provides valuable insight into the transition from Fast Paxos to Egalitarian Paxos:</p>
+<blockquote>
+<p>The distinction between a fast quorum (or perhaps "fast path" is a more precise term?) and Fast Paxos is essentially non-existent.</p>
+</blockquote>
+<p>We should do the following minor changes to Fast Paxos:</p>
+<ul>
+<li>In fast round, the acceptors will do some minor changes to value, make it <span class="math inline">\(w\)</span>.</li>
+<li>Unify all states to cmds.</li>
+<li>Change message path.</li>
+</ul>
+<p>I have gained a comprehensive understanding of the classic Paxos algorithm through <a target="_blank" rel="noopener" href="https://www.microsoft.com/en-us/research/uploads/prod/2016/12/The-Part-Time-Parliament.pdf">The Part-Time Parliament</a>, and of the Fast Paxos algorithm through <a target="_blank" rel="noopener" href="https://www.microsoft.com/en-us/research/wp-content/uploads/2016/02/tr-2005-112.pdf">Fast Paxos</a>. However, I've noticed that the terminology used in these papers differs from that used in this paper. To ease the transition and ensure clarity, I've compiled a table aligning the terminologies from all these sources. Notably, in this section, I will use the terms "coordinators" and "replicas" interchangeably when they act as designated leaders, and similarly, "acceptors" and "replicas" will also be used interchangeably.</p>
+<table>
+
+<thead>
+<tr class="header">
+<th style="text-align: left;">The Part-Time Parliament</th>
+<th style="text-align: left;">Fast Paxos</th>
+<th style="text-align: left;">EPaxos</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">priests</td>
+<td style="text-align: left;">coordinators</td>
+<td style="text-align: left;">replicas, designated leaders</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">priests</td>
+<td style="text-align: left;">acceptors</td>
+<td style="text-align: left;">replicas</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">priests</td>
+<td style="text-align: left;">proposers</td>
+<td style="text-align: left;">replicas, designated leaders</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">priests</td>
+<td style="text-align: left;">learners</td>
+<td style="text-align: left;">replicas, designated leaders</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">ballot</td>
+<td style="text-align: left;">round</td>
+<td style="text-align: left;">ballot</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><span class="math inline">\(\operatorname{nextBal}(p)\)</span></td>
+<td style="text-align: left;"><span class="math inline">\(\operatorname{rnd}(a)\)</span></td>
+<td style="text-align: left;"><span class="math inline">\(\operatorname{cmds}_L[L][i_L]\)</span></td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><span class="math inline">\({\operatorname{prevVote}(p)}_{bal}\)</span></td>
+<td style="text-align: left;"><span class="math inline">\(\operatorname{vrnd}(a)\)</span></td>
+<td style="text-align: left;"><span class="math inline">\(\operatorname{cmds}_Q[L][i_L]\)</span></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><span class="math inline">\({\operatorname{prevVote}(p)}_{dec}\)</span></td>
+<td style="text-align: left;"><span class="math inline">\(\operatorname{vval}(a)\)</span></td>
+<td style="text-align: left;"><span class="math inline">\(\operatorname{cmds}_Q[L][i_L]\)</span></td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><span class="math inline">\(\operatorname{lastTried}(p)\)</span></td>
+<td style="text-align: left;"><span class="math inline">\(\operatorname{crnd}(c)\)</span></td>
+<td style="text-align: left;"><span class="math inline">\(\operatorname{cmds}_L[L][i_L]\)</span></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"></td>
+<td style="text-align: left;"><span class="math inline">\(\operatorname{cval}(c)\)</span></td>
+<td style="text-align: left;"><span class="math inline">\(\operatorname{cmds}_L[L][i_L]\)</span></td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Step 1 of the Basic Protocol</td>
+<td style="text-align: left;">phase 1a</td>
+<td style="text-align: left;">Explicit Prepare</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><span class="math inline">\(\operatorname{NextBallot}(b)\)</span></td>
+<td style="text-align: left;">phase 1a message</td>
+<td style="text-align: left;"><span class="math inline">\(\operatorname{Prepare}(epoch.(b+1).Q, L.i)\)</span></td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Step 2 of the Basic Protocol</td>
+<td style="text-align: left;">phase 1b</td>
+<td style="text-align: left;">Explicit Prepare</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><span class="math inline">\(\operatorname{LastVote}(b, v)\)</span></td>
+<td style="text-align: left;">phase 1b message</td>
+<td style="text-align: left;"><span class="math inline">\(\operatorname{PrepareOK}(\operatorname{cmds}_R[L][i], epoch.x.Y, L.i)\)</span></td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Step 3 of the Basic Protocol</td>
+<td style="text-align: left;">phase 2a</td>
+<td style="text-align: left;">Paxos-Accept</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><span class="math inline">\(\operatorname{BeginBallot}(b, d)\)</span></td>
+<td style="text-align: left;">phase 2a message</td>
+<td style="text-align: left;"><span class="math inline">\(\operatorname{Accept}(\gamma, \text{seq}_\gamma, \text{deps}_\gamma, L.i)\)</span></td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Step 4 of the Basic Protocol</td>
+<td style="text-align: left;">phase 2b</td>
+<td style="text-align: left;">Paxos-Accept</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><span class="math inline">\(\operatorname{Voted}(b, q)\)</span></td>
+<td style="text-align: left;">phase 2b message</td>
+<td style="text-align: left;"><span class="math inline">\(\operatorname{AcceptOK}(\gamma, L.i)\)</span></td>
+</tr>
+</tbody>
+</table>
+<h3 id="bypass-any-messages-in-fast-rounds">Bypass "Any" Messages in Fast Rounds</h3>
+<p>In Fast Paxos, during a fast round <span class="math inline">\(i\)</span>, if the coordinator can pick any proposed value in phase 2a, then instead of picking a single value, it may instead send a special phase 2a message called an any message to the acceptors. When an acceptor receives a phase 2a any message, it may treat <strong>any proposer's message</strong> proposing a value as if it were an ordinary round <span class="math inline">\(i\)</span> phase 2a message with that value.</p>
+<p>Moving on to Egalitarian Paxos, each instance is associated with a predefined instance sub-space. Only specific instances can propose the minimum ballot of each instance. With this knowledge, the coordinator understands that it can select any proposed value in the minimum ballot, even if it <strong>bypasses phase1a and phase1b</strong>. Similarly, the acceptors realize they can treat any proposer's message proposing a value as if it were a ordinary phase 2a message, <strong>without the explicit requirement of receiving an "any" message</strong>.</p>
+<h3 id="unoptimized-coordinated-collision-recovery">Unoptimized Coordinated Collision Recovery</h3>
+<p>In Fast Paxos, the obvious way to recover from a collision is for <span class="math inline">\(c\)</span> to begin a new round, sending phase 1a messages to all acceptors, if it learns that round <span class="math inline">\(i\)</span> may not have chosen a value. Suppose the coordinator <span class="math inline">\(c\)</span> of round <span class="math inline">\(i\)</span> is also coordinator of round <span class="math inline">\(i + 1\)</span>, and that round <span class="math inline">\(i + 1\)</span> is the new one it starts. The phase 1b message that an acceptor a sends in response to <span class="math inline">\(c\)</span>'s round <span class="math inline">\(i + 1\)</span> phase 1a message does two things: it reports the current values of <span class="math inline">\(\operatorname{vrnd}(a)\)</span> and <span class="math inline">\(\operatorname{vval}(a)\)</span>, and it <strong>transmits <span class="math inline">\(a\)</span>'s promise not to cast any further vote in any round numbered less than <span class="math inline">\(i + 1\)</span></strong>. (This promise is implicit in <span class="math inline">\(a\)</span>'s setting <span class="math inline">\(\operatorname{rnd}(a)\)</span> to <span class="math inline">\(i + 1\)</span>.)</p>
+<p>Fast Paxos introduces an optimized approach for collision recovery. However, the Explicit Prepare phase in Egalitarian Paxos starkly resembles an unrefined, straightforward method for handling collisions, which lacks optimization:</p>
+<figure>
+<img src="http://junbin-hexo-img.oss-cn-beijing.aliyuncs.com/paper-interpretation-there-is-more-consensus-in-egalitarian-parliaments/the-epaxos-simplified-recovery-procedure.png" srcset="/img/loading.gif" lazyload alt="" /><figcaption>Figure 3: The EPaxos simplified recovery procedure.</figcaption>
+</figure>
+<h4 id="does-the-acceptor-promise-to-avoid-voting-for-ballots-with-lower-ids-when-responding-to-prepare-messages">Does the Acceptor Promise to Avoid Voting for Ballots with Lower IDs When Responding to "Prepare" Messages?</h4>
+<p><strong>Yes</strong>, the Acceptor promises not to vote for ballots with lower IDs when responding to <span class="math inline">\(Prepare\)</span> messages.</p>
+<p>The above recovery procedure is a simplified version, and it omits a critical detail. For a more thorough and precise understanding, let's reference the TLA+ specification from <a target="_blank" rel="noopener" href="https://www.pdl.cmu.edu/PDL-FTP/associated/CMU-PDL-13-111.pdf">A Proof of Correctness for Egalitarian Paxos</a>:</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br></pre></td><td class="code"><pre><code class="hljs tla">ReplyPrepare(replica) ==<br>  \E msg \in sentMsg :<br>    /\ msg.type = &quot;prepare&quot;<br>    /\ msg.dst = replica<br>    /\<br>      \/ \E rec \in cmdLog[replica] :<br>        /\ rec.inst = msg.inst<br>          \* Message ==<br>          \*       ...<br>          \*  \cup [type: &#123;&quot;prepare&quot;&#125;, src: Replicas, dst: Replicas,<br>          \*        inst: Instances, ballot: Nat \X Replicas]<br>          \*  \cup ...<br>          \* When you access ballot[1], you&#x27;re referring to the first element<br>          \* of the tuple, which is a natural number as specified by Nat.<br>          \* Similarly, ballot[2] would refer to the second element of the tuple,<br>          \* which belongs to the set Replicas.<br>          \*<br>          \* The condition ensures that an acceptor will only respond to<br>          \* a prepare message if the ballot ID of the prepare message<br>          \* is greater than that of the preceding message.<br>          \* This response mechanism mirrors the phase 1b of Fast Paxos:<br>          \* If an acceptor $a$ receives a request to participate in round $i$<br>          \* and $i &gt; \operatorname&#123;rnd&#125;(a)$,<br>          \* then $a$ sets $\operatorname&#123;rnd&#125;(a)$ to $i$<br>          \* and sends coordinator $c$ a message containing the round number $i$<br>          \* and the current values of $\operatorname&#123;vrnd&#125;(a)$ and $\operatorname&#123;vval&#125;(a)$.<br>          \* If $i \le \operatorname&#123;rnd&#125;(a)$<br>          \* (so $a$ has begun round $i$ or a higher-numbered round),<br>          \* then $a$ ignores the request.<br>          /\ msg.ballot[1] &gt; rec.ballot[1]<br>          /\ sentMsg&#x27; = (sentMsg \ &#123;msg&#125;) \cup<br>              &#123;[type        |-&gt; &quot;prepare-reply&quot;,<br>                src         |-&gt; replica,<br>                dst         |-&gt; msg.src,<br>                inst        |-&gt; rec.inst,<br>                ballot      |-&gt; msg.ballot,<br>                prev_ballot |-&gt; rec.ballot,<br>                status      |-&gt; rec.status,<br>                cmd         |-&gt; rec.cmd,<br>                deps        |-&gt; rec.deps,<br>                seq         |-&gt; rec.seq]&#125;<br>          /\ cmdLog&#x27; = [cmdLog EXCEPT ![replica] = (@ \ &#123;rec&#125;) \cup<br>              &#123;[inst   |-&gt; rec.inst,<br>                status |-&gt; rec.status,<br>                ballot |-&gt; msg.ballot,<br>                cmd    |-&gt; rec.cmd,<br>                deps   |-&gt; rec.deps,<br>                seq    |-&gt; rec.seq]&#125;]<br>          /\ ...<br>      \/<br>        /\ ~(\E rec \in cmdLog[replica] : rec.inst = msg.inst)<br>        /\ sentMsg&#x27; = (sentMsg \ &#123;msg&#125;) \cup<br>            &#123;[type        |-&gt; &quot;prepare-reply&quot;,<br>              src         |-&gt; replica,<br>              dst         |-&gt; msg.src,<br>              inst        |-&gt; msg.inst,<br>              ballot      |-&gt; msg.ballot,<br>              prev_ballot |-&gt; &lt;&lt; 0, replica &gt;&gt;,<br>              status      |-&gt; &quot;not-seen&quot;,<br>              cmd         |-&gt; none,<br>              deps        |-&gt; &#123;&#125;,<br>              seq         |-&gt; 0]&#125;<br>        /\ cmdLog&#x27; = [cmdLog EXCEPT ![replica] = @ \cup<br>            &#123;[inst   |-&gt; msg.inst,<br>              status |-&gt; &quot;not-seen&quot;,<br>              ballot |-&gt; msg.ballot,<br>              cmd    |-&gt; none,<br>              deps   |-&gt; &#123;&#125;,<br>              seq    |-&gt; 0]&#125;]<br>        /\ ...<br></code></pre></td></tr></table></figure>
+<p>The condition <code>msg.ballot[1] &gt; rec.ballot[1]</code> ensures that an acceptor will only respond to a prepare message if the ballot ID of the prepare message is greater than that of the preceding message. This response mechanism mirrors the phase 1b of Fast Paxos: If an acceptor <span class="math inline">\(a\)</span> receives a request to participate in round <span class="math inline">\(i\)</span> and <span class="math inline">\(i &gt; \operatorname{rnd}(a)\)</span>, then <span class="math inline">\(a\)</span> sets <span class="math inline">\(\operatorname{rnd}(a)\)</span> to <span class="math inline">\(i\)</span> and sends coordinator <span class="math inline">\(c\)</span> a message containing the round number <span class="math inline">\(i\)</span> and the current values of <span class="math inline">\(\operatorname{vrnd}(a)\)</span> and <span class="math inline">\(\operatorname{vval}(a)\)</span>. If <span class="math inline">\(i \le \operatorname{rnd}(a)\)</span> (so <span class="math inline">\(a\)</span> has begun round <span class="math inline">\(i\)</span> or a higher-numbered round), then <span class="math inline">\(a\)</span> ignores the request.</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br></pre></td><td class="code"><pre><code class="hljs tla">Phase1Reply(replica) ==<br>  \E msg \in sentMsg:<br>    /\ msg.type = &quot;pre-accept&quot;<br>    /\ msg.dst = replica<br>    /\ LET oldRec == &#123;rec \in cmdLog[replica]: rec.inst = msg.inst&#125; IN<br>      \* The condition guarantees that an acceptor will refrain from<br>      \* pre-accepting ballots if it has already prepared, pre-accepted,<br>      \* or accepted other ballots possessing a larger ID.<br>      /\ (\A rec \in oldRec :<br>          (rec.ballot = msg.ballot \/ rec.ballot[1] &lt; msg.ballot[1]))<br>      /\ LET newDeps == ...<br>             newSeq == ...<br>             instCom == ... IN<br>        /\ cmdLog&#x27; = [cmdLog EXCEPT ![replica] = (@ \ oldRec) \cup<br>            &#123;[inst   |-&gt; msg.inst,<br>              status |-&gt; &quot;pre-accepted&quot;,<br>              ballot |-&gt; msg.ballot,<br>              cmd    |-&gt; msg.cmd,<br>              deps   |-&gt; newDeps,<br>              seq    |-&gt; newSeq]&#125;]<br>        /\ sentMsg&#x27; = (sentMsg \ &#123;msg&#125;) \cup<br>            &#123;[type      |-&gt; &quot;pre-accept-reply&quot;,<br>              src       |-&gt; replica,<br>              dst       |-&gt; msg.src,<br>              inst      |-&gt; msg.inst,<br>              ballot    |-&gt; msg.ballot,<br>              deps      |-&gt; newDeps,<br>              seq       |-&gt; newSeq,<br>              committed |-&gt; instCom]&#125;<br>        /\ ...<br><br>Phase2Reply(replica) ==<br>  \E msg \in sentMsg:<br>    /\ msg.type = &quot;accept&quot;<br>    /\ msg.dst = replica<br>    /\ LET oldRec == &#123;rec \in cmdLog[replica]: rec.inst = msg.inst&#125; IN<br>      \* The condition guarantees that an acceptor will refrain from<br>      \* accepting ballots if it has already prepared, pre-accepted,<br>      \* or accepted other ballots possessing a larger ID.<br>      /\ (\A rec \in oldRec :<br>          (rec.ballot = msg.ballot \/ rec.ballot[1] &lt; msg.ballot[1]))<br>      /\ cmdLog&#x27; = [cmdLog EXCEPT ![replica] = (@ \ oldRec) \cup<br>          &#123;[inst  |-&gt; msg.inst,<br>           status |-&gt; &quot;accepted&quot;,<br>           ballot |-&gt; msg.ballot,<br>           cmd    |-&gt; msg.cmd,<br>           deps   |-&gt; msg.deps,<br>           seq    |-&gt; msg.seq]&#125;]<br>      /\ sentMsg&#x27; = (sentMsg \ &#123;msg&#125;) \cup<br>          &#123;[type   |-&gt; &quot;accept-reply&quot;,<br>            src    |-&gt; replica,<br>            dst    |-&gt; msg.src,<br>            inst   |-&gt; msg.inst,<br>            ballot |-&gt; msg.ballot]&#125;<br>      /\ ...<br></code></pre></td></tr></table></figure>
+<p>An acceptor should abstain from initially accepting a value and then subsequently pre-accepting a different value with the same ballot ID. This behavior deviates from the Fast Paxos protocol and could potentially jeopardize the accuracy of the recovery process. EPaxos addresses this issue in a subtle manner: after receiving and processing a pre-accept message, the acceptor removes it from <code>sentMsg</code> to avoid processing it repeatedly. Furthermore, the coordinator is designed to not send pre-accept and accept messages with the same ballot ID in an unexpected order. This mechanism ensures that an acceptor will not initially accept a value and then subsequently pre-accept a different value with an identical ballot ID.</p>
+<p>While the strategy of removing processed messages from sentMsg serves its purpose, it might be deemed as excessively complex or counter-intuitive. A more straightforward and potentially intuitive approach to achieving the same result might involve ensuring that the acceptor's status is not set to "accepted".</p>
+<h4 id="selecting-values-based-on-observation-4">Selecting Values Based on Observation 4</h4>
+<p>In EPaxos, it is assumed that every fast quorum includes <span class="math inline">\(2F = N - 1\)</span> replicas and every slow quorum contains <span class="math inline">\(F + 1 = \lfloor N / 2\rfloor + 1\)</span> replicas. This quorum configuration satisfies <strong>the Quorum Requirement</strong>: If <span class="math inline">\(j\)</span> is a fast round number, then any <span class="math inline">\(i\)</span>-quorum intersects with any two <span class="math inline">\(j\)</span>-quorums, as evidenced by the equation <span class="math inline">\((2F + 2F - (2F + 1)) + (F + 1) - (2F + 1) = F - 1\)</span>.</p>
+<p>Assuming a fast quorum with <span class="math inline">\(2F\)</span> acceptors and a slow quorum with <span class="math inline">\(F + 1 = \lfloor N / 2\rfloor + 1\)</span> acceptors, the fast quorum is required to intersect with the slow quorum, containing at least <span class="math inline">\(2F + (F + 1) - (2F + 1) = F = \lfloor N / 2\rfloor\)</span> acceptors. This can also be expressed as: if there are <span class="math inline">\(2F + (F + 1) - (2F + 1) = F = \lfloor N / 2\rfloor\)</span> acceptors' replies, each containing identical values in response to <span class="math inline">\(Prepare\)</span> messages and accepted by the coordinator, then there must be at least one fast quorum and one slow quorum, the intersection of which exactly comprises these acceptors. The statements on Lines 32 and 33 of Figure 3, which describes the EPaxos simplified recovery procedure, mirrors a basic and unoptimized approach for Coordinated Collision Recovery in Fast Paxos.</p>
+<p>The statement in Line 32, which involves value selection, mirrors Observation 4 in Fast Paxos: With <span class="math inline">\(Q\)</span>, <span class="math inline">\(vr\)</span>, <span class="math inline">\(vv\)</span>, and <span class="math inline">\(k\)</span> as in Figure 1, a value <span class="math inline">\(v\)</span> has been or might yet be chosen in round <span class="math inline">\(k\)</span> iff there <strong>exists</strong> a <span class="math inline">\(k\)</span>-quorum <span class="math inline">\(R\)</span> such that <span class="math inline">\(\operatorname{vr}(a) = k\)</span> and <span class="math inline">\(\operatorname{vv}(a) = v\)</span> for all acceptors <span class="math inline">\(a\)</span> in <span class="math inline">\(R \cap Q\)</span>.</p>
+<figure>
+<img src="http://junbin-hexo-img.oss-cn-beijing.aliyuncs.com/paper-interpretation-fast-paxos/figure-1-the-coordinator-s-rule-for-picking-value-v-in-phase-2a-of-round-i.png" srcset="/img/loading.gif" lazyload alt="" /><figcaption>Figure 1: The coordinator's rule for picking value in phase 2a of round <span class="math inline">\(i\)</span>.</figcaption>
+</figure>
+<p>The statement in Line 33, which initiates the Paxos-Accept phase, closely reflects Phase 2 in Fast Paxos. Consider a new ballot ID that includes the phase name, such as <span class="math inline">\(epoch.b.Q.prepare\)</span> and <span class="math inline">\(epoch.b.Q.accept\)</span>, with <span class="math inline">\(epoch.b.Q.accept &gt; epoch.b.Q.prepare\)</span>. Under this consideration, the EPaxos simplified recovery procedure can be viewed as corresponding to Phase 1 and Phase 2 of Fast Paxos.</p>
+<h5 id="why-does-line-32-specifically-emphasize-the-condition-concerning-replies-for-the-default-ballot">Why does Line 32 specifically emphasize the condition concerning "replies for the default ballot"?</h5>
+<p>Let <span class="math inline">\(\mathcal{R}\)</span> represent the set of replies associated with the highest ballot number <span class="math inline">\(i\)</span>. Firstly, I believe the authors highlight Lines 32 and 33 to address situations where the prior round <span class="math inline">\(i\)</span> is a fast round. If the previous round <span class="math inline">\(i\)</span> is a slow round, Lines 28, 30, or 34 are intended to handle it. Secondly, if Lines 35 and 37 were to send a different type of messages (such as <span class="math inline">\(TryPreaccept\)</span> messages), and reserve <span class="math inline">\(PreAccept\)</span> messages and their replies exclusively for the fast round, it appears that removing this condition would not jeopardize the correctness of EPaxos.</p>
+<h5 id="why-does-line-32-specifically-emphasize-the-condition-concerning-none-of-those-replies-is-from-l">Why does Line 32 specifically emphasize the condition concerning "none of those replies is from <span class="math inline">\(L\)</span>"?</h5>
+<p><a target="_blank" rel="noopener" href="https://www.pdl.cmu.edu/PDL-FTP/associated/CMU-PDL-13-111.pdf">A Proof of Correctness for Egalitarian Paxos</a> provides an answer:</p>
+<blockquote>
+<p>Since <span class="math inline">\(b_1\)</span> is successful after Phase 1 , then a fast quorum (<span class="math inline">\(N - 1\)</span> replicas) have recorded the same tuple <span class="math inline">\(\left(\gamma, \text{seq}_\gamma, \text{deps}_\gamma\right)\)</span> for instance <span class="math inline">\(Q.i\)</span>. For <span class="math inline">\(b_2\)</span> to start, its leader must receive replies to Prepare messages from at least <span class="math inline">\(\lfloor N / 2\rfloor + 1\)</span> replicas. Therefore, at least <span class="math inline">\(\lfloor N / 2\rfloor\)</span> replicas will see a Prepare for <span class="math inline">\(b_2\)</span> after they have recorded <span class="math inline">\(\left(\gamma, \text{seq}_\gamma, \text{deps}_\gamma\right)\)</span> for ballot <span class="math inline">\(b_1\)</span> (if they had seen the larger ballot <span class="math inline">\(b_2\)</span> first, they would not have acknowledged any message for ballot <span class="math inline">\(b_1\)</span>). <span class="math inline">\(b_2\)</span>'s leader will therefore receive at least <span class="math inline">\(\lfloor N / 2\rfloor\)</span> <span class="math inline">\(PrepareReply\)</span>'s with tuple <span class="math inline">\(\left(\gamma, \text{seq}_\gamma, \text{deps}_\gamma\right)\)</span> marked as pre-accepted.</p>
+<p>If the leader of <span class="math inline">\(b_1\)</span> is among the replicas that reply to the Prepare of ballot <span class="math inline">\(b_2\)</span>, then it <strong>must</strong> have replied after the end of Phase 1 (otherwise it couldn't have completed the smaller ballot <span class="math inline">\(b_1\)</span>), so it will have committed tuple <span class="math inline">\(\left(\gamma, \text{seq}_\gamma, \text{deps}_\gamma\right)\)</span> by then. The leader of <span class="math inline">\(b_2\)</span> will then know it is safe to commit the same tuple.</p>
+<p>Below, we assume that the leader of <span class="math inline">\(b_1\)</span> is not among the replicas that reply to the Prepare of ballot <span class="math inline">\(b_2\)</span>.</p>
+</blockquote>
+<p>Pay attention to the use of <strong>must</strong>. The author clarifies that under EPaxos protocol, the leader <strong>should refrain from</strong> replying to <span class="math inline">\(Prepare\)</span> messages <strong>until</strong> the commitment in the fast round is finalized. Thus, if the leader in <span class="math inline">\(b_2\)</span> receives a response to the <span class="math inline">\(Prepare\)</span> message, the response must contain the committed state. This situation will be addressed by lines 28 and 29. Therefore, eliminating the condition related to "none of those replies is from <span class="math inline">\(L\)</span>" will not jeopardize the correctness of the EPaxos protocol.</p>
+<h4 id="selecting-values-based-on-the-presence-of-an-accepted-reply-message">Selecting Values Based on the Presence of an "Accepted" Reply Message</h4>
+<p>Let <span class="math inline">\(\mathcal{R}\)</span> represent the set of replies associated with the highest ballot number <span class="math inline">\(i\)</span>. Suppose <span class="math inline">\(\mathcal{R}\)</span> contains a reply from an acceptor indicating that it has accepted the value <span class="math inline">\(v\)</span> during Phase 2 (Paxos-Accept). Given that the ballot with the highest number <span class="math inline">\(i\)</span> corresponds to a slow round (analogous to the slow path in EPaxos), we can infer that the coordinator proposed the specific value <span class="math inline">\(v\)</span> by sending phase2a messages. Consequently, the acceptors selected <span class="math inline">\(v\)</span> in response to these phase2a messages during the slow round <span class="math inline">\(i\)</span>. We can then conclude that all acceptors either accepted nothing or accepted <span class="math inline">\(v\)</span> only. Therefore, either no value was committed during that slow round, or the specific value <span class="math inline">\(v\)</span> was committed. As a result, <span class="math inline">\(v\)</span> can be selected as the value for a new round with a ballot ID higher than <span class="math inline">\(i\)</span>.</p>
+<p>In fact, I believe that enabling the coordinator to propose the value <span class="math inline">\(v\)</span> directly, upon learning that it has been accepted in a slow round with a lower ballot ID, could be a viable optimization for Fast Paxos. I plan to modify the TLA+ specification of Fast Paxos to incorporate this change and then verify it.</p>
+<p>The key part of this optimization is enabling the acceptor to distinguish whether it has accepted the value <span class="math inline">\(v\)</span> in a fast round or a slow round. EPaxos effectively illustrates this approach by differentiating these cases using a "status" field (pre-accepted", "accepted").</p>
+<h4 id="selecting-values-based-on-the-presence-of-an-committed-reply-message">Selecting Values Based on the Presence of an "Committed" Reply Message</h4>
+<p>In <a target="_blank" rel="noopener" href="https://www.microsoft.com/en-us/research/uploads/prod/2016/12/The-Part-Time-Parliament.pdf">The Part-Time Parliament</a>, Theorem 1 establishes that any two successful ballots are for the same decree. Upon encountering a "Committed" reply message, we can deduce that the value <span class="math inline">\(v\)</span> is committed. Given the assurance of Theorem 1, no other value has been, or will be, committed. Thus, it's safe to commit the value <span class="math inline">\(v\)</span> once more.</p>
+<h3 id="optimized-coordinated-collision-recovery">Optimized Coordinated Collision Recovery</h3>
+<figure>
+<img src="http://junbin-hexo-img.oss-cn-beijing.aliyuncs.com/paper-interpretation-there-is-more-consensus-in-egalitarian-parliaments/the-basic-egalitarian-paxos-protocol-for-choosing-commands.png" srcset="/img/loading.gif" lazyload alt="" /><figcaption>Figure 2: The basic Egalitarian Paxos protocol for choosing commands.</figcaption>
+</figure>
+<p>In Fast Paxos, the author introduces an observation: In other words, <span class="math inline">\(a\)</span>'s round <span class="math inline">\(i\)</span> phase 2b message <strong>carries exactly the same information as</strong> its round <span class="math inline">\(i + 1\)</span> phase 1b message. Specifically, both messages accomplish two key tasks: they report the current values of <span class="math inline">\(\operatorname{vrnd}(a)\)</span> and <span class="math inline">\(\operatorname{vval}(a)\)</span>, and they <strong>transmit <span class="math inline">\(a\)</span>'s promise not to cast any further vote in any round numbered less than <span class="math inline">\(i + 1\)</span></strong>. This observation leads to the optimized coordinated collision recovery. EPaxos also employs the same optimized coordinated collision recovery approach, which corresponds to the segment between the two yellow-highlighted sections in the above figure, labeled as "Figure 2: The Basic Egalitarian Paxos Protocol for Choosing Commands".</p>
+<p>It's important to note that in the Paxos-Accept phase, the command leader <span class="math inline">\(L\)</span> always sends an <span class="math inline">\(\operatorname{AcceptOK}(\gamma, L.i)\)</span> "reply" to itself, as demonstrated in line 16. Consequently, the command leader <span class="math inline">\(L\)</span> can proceed to the commit phase after receiving only <span class="math inline">\(\lfloor N / 2\rfloor\)</span> <span class="math inline">\(\operatorname{AcceptOK}\)</span> messages, rather than needing to wait for <span class="math inline">\(\lfloor N / 2\rfloor + 1\)</span>.</p>
+<h3 id="overlooked-details">Overlooked Details</h3>
+<h4 id="a-closer-look-at-ballot-numbers-and-instance-numbers">A Closer Look at Ballot Numbers and Instance Numbers</h4>
+<p>For correctness, ballot numbers used by different replicas must be distinct, so they include a replica ID. Actually, the uniqueness of ballot numbers originates from the <span class="math inline">\(\operatorname{B1}(\mathcal{B})\)</span> condition in <a target="_blank" rel="noopener" href="https://www.microsoft.com/en-us/research/uploads/prod/2016/12/The-Part-Time-Parliament.pdf">The Part-Time Parliament</a>. Furthermore, a newer configuration of the replica set must have strict precedence over an older one, so we also prepend an epoch number. The resulting ballot number format is <span class="math inline">\(epoch.b.R\)</span>, where a replica <span class="math inline">\(R\)</span> increments only the natural number <span class="math inline">\(b\)</span> when trying to initiate a new ballot in Explicit Prepare. Each replica is the default (i.e., initial) leader of its own instances, so the ballot <span class="math inline">\(epoch.0.R\)</span> is implicit at the beginning of every instance <span class="math inline">\(R.i\)</span>.</p>
+<p>For every replica <span class="math inline">\(R\)</span> there is an unbounded sequence of numbered instances <span class="math inline">\(R.1\)</span>, <span class="math inline">\(R.2\)</span>, <span class="math inline">\(R.3\)</span>, ... that that replica is said to <strong>own</strong>.</p>
+<h4 id="understanding-the-lack-of-transitivity-in-interference-relations">Understanding the Lack of Transitivity in Interference Relations</h4>
+<p>Two commands <span class="math inline">\(\gamma\)</span> and <span class="math inline">\(\delta\)</span> interfere if there exists a sequence of commands <span class="math inline">\(\Sigma\)</span> such that the serial execution <span class="math inline">\(\Sigma, \gamma, \delta\)</span> is not compatible (i.e., it produces different results than) the serial execution <span class="math inline">\(\Sigma, \delta, \gamma\)</span>.</p>
+<p>EPaxos guarantees that any two interfering commands will be executed in the same order with respect to each other on every replica. This is enough to guarantee that the executions on all replicas are compatible: the serial ordering of commands on a replica can be obtained from that on any other replica by commuting <strong>commutative</strong> commands.</p>
+<p>Note that the interference relation is symmetric, but <strong>not necessarily transitive</strong>.</p>
+<p>While the authors of EPaxos propose that the interference relation need not be transitive, I argue that this assumption lacks practical utility in real-world systems and is, in fact, counter-intuitive. It appears the authors intended to simplify the process of demonstrating execution consistency, defined as the principle where two interfering commands, <span class="math inline">\(\gamma\)</span> and <span class="math inline">\(\delta\)</span>, when successfully committed (not necessarily by the same replica), are executed in the same order by every replica. The partial proof for execution consistency, specifically within the realm of the commit protocol, is laid out as follows:</p>
+<ul>
+<li>The attributes with which a command <span class="math inline">\(c\)</span> is committed are the union of at least <span class="math inline">\(\lfloor N / 2\rfloor + 1\)</span> sets of attributes computed by as many replicas. This ensures that there is at least one replica <span class="math inline">\(R\)</span> that contributes to both the final attributes of <span class="math inline">\(\gamma\)</span> and <span class="math inline">\(\delta\)</span>.</li>
+<li>Because <span class="math inline">\(R\)</span> records every command that it sees in its command log, and because <span class="math inline">\(\gamma \sim \delta\)</span>, <span class="math inline">\(R\)</span> will include the command it sees first in the dependency list of the command it sees second. In other words, if <span class="math inline">\(\gamma\)</span> and <span class="math inline">\(\delta\)</span> are successfully committed and <span class="math inline">\(\gamma \sim \delta\)</span>, then either <span class="math inline">\(\gamma\)</span> has <span class="math inline">\(\delta\)</span> in its dependency list when <span class="math inline">\(\gamma\)</span> is committed, or <span class="math inline">\(\delta\)</span> has <span class="math inline">\(\gamma\)</span> in its dependency list when <span class="math inline">\(\delta\)</span> is committed.</li>
+</ul>
+<h4 id="calculation-of-fast-quorum-and-slow-quorum-sizes">Calculation of Fast Quorum and Slow Quorum Sizes</h4>
+<p>Let's denote the fast quorum size as <span class="math inline">\(F\)</span>, the slow quorum size as <span class="math inline">\(S\)</span>, and the replicas size as <span class="math inline">\(N\)</span>. In accordance with the Quorum Requirement, we must ensure that <span class="math inline">\(((F + F) - N) + S - N \ge 1\)</span>. Additionally, the <span class="math inline">\(\operatorname{B2}(\mathcal{B})\)</span> condition dictates that <span class="math inline">\(S + S - N \ge 1\)</span>. From these conditions, we can easily compute the minimum value for <span class="math inline">\(S\)</span> as <span class="math inline">\(S = \lfloor N / 2\rfloor + 1\)</span>. Similarly, the minimum value for <span class="math inline">\(F\)</span> can be determined as <span class="math inline">\(F = \lceil 3 N / 4\rceil\)</span>.</p>
+<h2 id="the-execution-algorithm">The Execution Algorithm</h2>
+<p>To execute command <span class="math inline">\(\gamma\)</span> committed in instance <span class="math inline">\(R.i\)</span>, a replica will follow these steps:</p>
+<ul>
+<li>Wait for <span class="math inline">\(R.i\)</span> to be committed (or run Explicit Prepare to force it);</li>
+<li>Build <span class="math inline">\(\gamma\)</span>'s dependency graph by adding <span class="math inline">\(\gamma\)</span> and all commands in instances from <span class="math inline">\(\gamma\)</span>'s dependency list as nodes, with directed edges from <span class="math inline">\(\gamma\)</span> to these nodes, repeating this process recursively for all of <span class="math inline">\(\gamma\)</span>'s dependencies (starting with step 1);</li>
+<li>Find the strongly connected components, sort them topologically;</li>
+<li>In inverse topological order, for each strongly connected component, do:
+<ul>
+<li>Sort all commands in the strongly connected component by their sequence number;</li>
+<li>Execute every un-executed command in increasing sequence number order, marking them executed.</li>
+</ul></li>
+</ul>
+<h2 id="reference">Reference</h2>
+<ul>
+<li><a target="_blank" rel="noopener" href="https://www.cs.cmu.edu/~dga/papers/epaxos-sosp2013.pdf">There Is More Consensus in Egalitarian Parliaments</a></li>
+<li><a target="_blank" rel="noopener" href="https://www.pdl.cmu.edu/PDL-FTP/associated/CMU-PDL-13-111.pdf">A Proof of Correctness for Egalitarian Paxos</a></li>
+<li><a target="_blank" rel="noopener" href="https://www.microsoft.com/en-us/research/uploads/prod/2016/12/The-Part-Time-Parliament.pdf">The Part-Time Parliament</a></li>
+<li><a target="_blank" rel="noopener" href="http://drmingdrmer.github.io/">drdr.xp</a></li>
+<li><a target="_blank" rel="noopener" href="https://zhuanlan.zhihu.com/p/387468959">EPaxos Trilogy II: EPaxos Core Protocol Process</a></li>
+<li><a target="_blank" rel="noopener" href="https://github.com/alexis51151/epaxos-fix/tree/master">GitHub: alexis51151/epaxos-fix</a></li>
+</ul>
+
+                
+              </div>
+            
+            <hr/>
+            <div>
+              <div class="post-metas my-3">
+  
+    <div class="post-meta mr-3 d-flex align-items-center">
+      <i class="iconfont icon-category"></i>
+      
+
+<span class="category-chains">
+  
+  
+    
+      <span class="category-chain">
+        
+  <a href="/categories/Computer-Science/" class="category-chain-item">Computer Science</a>
+  
+  
+    <span>></span>
+    
+  <a href="/categories/Computer-Science/Consensus/" class="category-chain-item">Consensus</a>
+  
+  
+
+  
+
+      </span>
+    
+  
+</span>
+
+    </div>
+  
+  
+</div>
+
+
+              
+  
+
+  <div class="license-box my-3">
+    <div class="license-title">
+      <div>Paper Interpretation - There Is More Consensus In Egalitarian Parliaments</div>
+      <div>https://clcanny.github.io/2023/08/11/computer-science/consensus/paper-interpretation-there-is-more-consensus-in-egalitarian-parliaments/</div>
+    </div>
+    <div class="license-meta">
+      
+        <div class="license-meta-item">
+          <div>作者</div>
+          <div>JunBin</div>
+        </div>
+      
+      
+        <div class="license-meta-item license-meta-date">
+          <div>发布于</div>
+          <div>2023年8月11日</div>
+        </div>
+      
+      
+      
+        <div class="license-meta-item">
+          <div>许可协议</div>
+          <div>
+            
+              
+              
+                <a target="_blank" href="https://creativecommons.org/licenses/by/4.0/">
+                  <span class="hint--top hint--rounded" aria-label="BY - 署名">
+                    <i class="iconfont icon-by"></i>
+                  </span>
+                </a>
+              
+            
+          </div>
+        </div>
+      
+    </div>
+    <div class="license-icon iconfont"></div>
+  </div>
+
+
+
+              
+                <div class="post-prevnext my-3">
+                  <article class="post-prev col-6">
+                    
+                    
+                      <a href="/2023/11/04/computer-science/consensus/paper-interpretation-a-generalised-solution-to-distributed-consensus/" title="Paper Interpretation - A Generalised Solution to Distributed Consensus">
+                        <i class="iconfont icon-arrowleft"></i>
+                        <span class="hidden-mobile">Paper Interpretation - A Generalised Solution to Distributed Consensus</span>
+                        <span class="visible-mobile">上一篇</span>
+                      </a>
+                    
+                  </article>
+                  <article class="post-next col-6">
+                    
+                    
+                      <a href="/2023/07/30/computer-science/consensus/paper-interpretation-fast-paxos/" title="Paper Interpretation - Fast Paxos">
+                        <span class="hidden-mobile">Paper Interpretation - Fast Paxos</span>
+                        <span class="visible-mobile">下一篇</span>
+                        <i class="iconfont icon-arrowright"></i>
+                      </a>
+                    
+                  </article>
+                </div>
+              
+            </div>
+
+            
+          </article>
+        </div>
+      </div>
+    </div>
+
+    <div class="side-col d-none d-lg-block col-lg-2">
+      
+  <aside class="sidebar" style="margin-left: -1rem">
+    <div id="toc">
+  <p class="toc-header">
+    <i class="iconfont icon-list"></i>
+    <span>目录</span>
+  </p>
+  <div class="toc-body" id="toc-body"></div>
+</div>
+
+
+
+  </aside>
+
+
+    </div>
+  </div>
+</div>
+
+
+
+
+
+  
+
+
+
+  
+
+
+
+  
+
+
+
+  
+
+
+
+  
+
+
+  
+  
+
+
+
+
+
+  <script>
+  Fluid.utils.createScript('https://lib.baomitu.com/mermaid/8.14.0/mermaid.min.js', function() {
+    mermaid.initialize({"theme":"default"});
+
+    Fluid.events.registerRefreshCallback(function() {
+      if ('mermaid' in window) {
+        mermaid.init();
+      }
+    });
+  });
+</script>
+
+
+
+
+
+
+    
+
+    
+      <a id="scroll-top-button" aria-label="TOP" href="#" role="button">
+        <i class="iconfont icon-arrowup" aria-hidden="true"></i>
+      </a>
+    
+
+    
+      <div class="modal fade" id="modalSearch" tabindex="-1" role="dialog" aria-labelledby="ModalLabel"
+     aria-hidden="true">
+  <div class="modal-dialog modal-dialog-scrollable modal-lg" role="document">
+    <div class="modal-content">
+      <div class="modal-header text-center">
+        <h4 class="modal-title w-100 font-weight-bold">搜索</h4>
+        <button type="button" id="local-search-close" class="close" data-dismiss="modal" aria-label="Close">
+          <span aria-hidden="true">&times;</span>
+        </button>
+      </div>
+      <div class="modal-body mx-3">
+        <div class="md-form mb-5">
+          <input type="text" id="local-search-input" class="form-control validate">
+          <label data-error="x" data-success="v" for="local-search-input">关键词</label>
+        </div>
+        <div class="list-group" id="local-search-result"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+    
+
+    
+  </main>
+
+  <footer>
+    <div class="footer-inner">
+  
+    <div class="footer-content">
+       <a href="https://hexo.io" target="_blank" rel="nofollow noopener"><span>Hexo</span></a> <i class="iconfont icon-love"></i> <a href="https://github.com/fluid-dev/hexo-theme-fluid" target="_blank" rel="nofollow noopener"><span>Fluid</span></a> 
+    </div>
+  
+  
+  
+  
+</div>
+
+  </footer>
+
+  <!-- Scripts -->
+  
+  <script  src="https://lib.baomitu.com/nprogress/0.2.0/nprogress.min.js" ></script>
+  <link  rel="stylesheet" href="https://lib.baomitu.com/nprogress/0.2.0/nprogress.min.css" />
+
+  <script>
+    NProgress.configure({"showSpinner":false,"trickleSpeed":100})
+    NProgress.start()
+    window.addEventListener('load', function() {
+      NProgress.done();
+    })
+  </script>
+
+
+<script  src="https://lib.baomitu.com/jquery/3.6.0/jquery.min.js" ></script>
+<script  src="https://lib.baomitu.com/twitter-bootstrap/4.6.1/js/bootstrap.min.js" ></script>
+<script  src="/js/events.js" ></script>
+<script  src="/js/plugins.js" ></script>
+
+
+  <script  src="https://lib.baomitu.com/typed.js/2.0.12/typed.min.js" ></script>
+  <script>
+    (function (window, document) {
+      var typing = Fluid.plugins.typing;
+      var subtitle = document.getElementById('subtitle');
+      if (!subtitle || !typing) {
+        return;
+      }
+      var text = subtitle.getAttribute('data-typed-text');
+      
+        typing(text);
+      
+    })(window, document);
+  </script>
+
+
+
+
+  
+    <script  src="/js/img-lazyload.js" ></script>
+  
+
+
+
+
+  
+<script>
+  Fluid.utils.createScript('https://lib.baomitu.com/tocbot/4.18.2/tocbot.min.js', function() {
+    var toc = jQuery('#toc');
+    if (toc.length === 0 || !window.tocbot) { return; }
+    var boardCtn = jQuery('#board-ctn');
+    var boardTop = boardCtn.offset().top;
+
+    window.tocbot.init(Object.assign({
+      tocSelector     : '#toc-body',
+      contentSelector : '.markdown-body',
+      linkClass       : 'tocbot-link',
+      activeLinkClass : 'tocbot-active-link',
+      listClass       : 'tocbot-list',
+      isCollapsedClass: 'tocbot-is-collapsed',
+      collapsibleClass: 'tocbot-is-collapsible',
+      scrollSmooth    : true,
+      includeTitleTags: true,
+      headingsOffset  : -boardTop,
+    }, CONFIG.toc));
+    if (toc.find('.toc-list-item').length > 0) {
+      toc.css('visibility', 'visible');
+    }
+
+    Fluid.events.registerRefreshCallback(function() {
+      if ('tocbot' in window) {
+        tocbot.refresh();
+        var toc = jQuery('#toc');
+        if (toc.length === 0 || !tocbot) {
+          return;
+        }
+        if (toc.find('.toc-list-item').length > 0) {
+          toc.css('visibility', 'visible');
+        }
+      }
+    });
+  });
+</script>
+
+
+  <script src=https://lib.baomitu.com/clipboard.js/2.0.11/clipboard.min.js></script>
+
+  <script>Fluid.plugins.codeWidget();</script>
+
+
+  
+<script>
+  Fluid.utils.createScript('https://lib.baomitu.com/anchor-js/4.3.1/anchor.min.js', function() {
+    window.anchors.options = {
+      placement: CONFIG.anchorjs.placement,
+      visible  : CONFIG.anchorjs.visible
+    };
+    if (CONFIG.anchorjs.icon) {
+      window.anchors.options.icon = CONFIG.anchorjs.icon;
+    }
+    var el = (CONFIG.anchorjs.element || 'h1,h2,h3,h4,h5,h6').split(',');
+    var res = [];
+    for (var item of el) {
+      res.push('.markdown-body > ' + item.trim());
+    }
+    if (CONFIG.anchorjs.placement === 'left') {
+      window.anchors.options.class = 'anchorjs-link-left';
+    }
+    window.anchors.add(res.join(', '));
+
+    Fluid.events.registerRefreshCallback(function() {
+      if ('anchors' in window) {
+        anchors.removeAll();
+        var el = (CONFIG.anchorjs.element || 'h1,h2,h3,h4,h5,h6').split(',');
+        var res = [];
+        for (var item of el) {
+          res.push('.markdown-body > ' + item.trim());
+        }
+        if (CONFIG.anchorjs.placement === 'left') {
+          anchors.options.class = 'anchorjs-link-left';
+        }
+        anchors.add(res.join(', '));
+      }
+    });
+  });
+</script>
+
+
+  
+<script>
+  Fluid.utils.createScript('https://lib.baomitu.com/fancybox/3.5.7/jquery.fancybox.min.js', function() {
+    Fluid.plugins.fancyBox();
+  });
+</script>
+
+
+  <script>Fluid.plugins.imageCaption();</script>
+
+  
+      <script>
+        if (!window.MathJax) {
+          window.MathJax = {
+            tex    : {
+              inlineMath: { '[+]': [['$', '$']] }
+            },
+            loader : {
+              load: ['ui/lazy']
+            },
+            options: {
+              renderActions: {
+                insertedScript: [200, () => {
+                  document.querySelectorAll('mjx-container').forEach(node => {
+                    let target = node.parentNode;
+                    if (target.nodeName.toLowerCase() === 'li') {
+                      target.parentNode.classList.add('has-jax');
+                    }
+                  });
+                }, '', false]
+              }
+            }
+          };
+        } else {
+          MathJax.startup.document.state(0);
+          MathJax.texReset();
+          MathJax.typeset();
+          MathJax.typesetPromise();
+        }
+
+        Fluid.events.registerRefreshCallback(function() {
+          if ('MathJax' in window && MathJax.startup.document && typeof MathJax.startup.document.state === 'function') {
+            MathJax.startup.document.state(0);
+            MathJax.texReset();
+            MathJax.typeset();
+            MathJax.typesetPromise();
+          }
+        });
+      </script>
+    
+
+  <script  src="https://lib.baomitu.com/mathjax/3.2.2/es5/tex-mml-chtml.js" ></script>
+
+  <script  src="/js/local-search.js" ></script>
+
+
+
+
+
+<!-- 主题的启动项，将它保持在最底部 -->
+<!-- the boot of the theme, keep it at the bottom -->
+<script  src="/js/boot.js" ></script>
+
+
+  
+
+  <noscript>
+    <div class="noscript-warning">博客在允许 JavaScript 运行的环境下浏览效果更佳</div>
+  </noscript>
+</body>
+</html>

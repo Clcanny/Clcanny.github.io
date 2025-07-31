@@ -1,0 +1,696 @@
+
+
+<!DOCTYPE html>
+<html lang="zh-CN" data-default-color-scheme=auto>
+
+
+
+<head>
+  <meta charset="UTF-8">
+  <link rel="apple-touch-icon" sizes="76x76" href="/img/fluid.png">
+  <link rel="icon" href="/img/fluid.png">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, shrink-to-fit=no">
+  <meta http-equiv="x-ua-compatible" content="ie=edge">
+  
+  <meta name="theme-color" content="#2f4154">
+  <meta name="author" content="JunBin">
+  <meta name="keywords" content="">
+  
+    <meta name="description" content="导读 这篇文章探讨了目前链接器在各个文件之间查找符号的顺序，对于大多数链接过程：  可执行文件及其加载的动态链接库都会被加载到 id 为 LM_ID_BASE &#x3D; 0 的 namespace 下； 符号都能在 l_scope[0] 指向的已加载文件列表（即 global scope ）中找到； 查找符号的顺序是 main_map-&gt;l_searchlist 的顺序，也即广度优先遍历依赖树的顺">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Symbol Search Order">
+<meta property="og:url" content="https://clcanny.github.io/2020/11/18/computer-science/dynamic-linking/symbol-search-order/index.html">
+<meta property="og:site_name" content="On The Road">
+<meta property="og:description" content="导读 这篇文章探讨了目前链接器在各个文件之间查找符号的顺序，对于大多数链接过程：  可执行文件及其加载的动态链接库都会被加载到 id 为 LM_ID_BASE &#x3D; 0 的 namespace 下； 符号都能在 l_scope[0] 指向的已加载文件列表（即 global scope ）中找到； 查找符号的顺序是 main_map-&gt;l_searchlist 的顺序，也即广度优先遍历依赖树的顺">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="http://junbin-hexo-img.oss-cn-beijing.aliyuncs.com/dynamic-linking-symbol-search-order/l-scope-point-to-l-searchlist.png">
+<meta property="og:image" content="http://junbin-hexo-img.oss-cn-beijing.aliyuncs.com/dynamic-linking-symbol-search-order/order.png">
+<meta property="og:image" content="http://junbin-hexo-img.oss-cn-beijing.aliyuncs.com/dynamic-linking-symbol-search-order/coredump.png">
+<meta property="article:published_time" content="2020-11-18T05:50:23.000Z">
+<meta property="article:modified_time" content="2024-10-30T15:47:28.515Z">
+<meta property="article:author" content="JunBin">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="http://junbin-hexo-img.oss-cn-beijing.aliyuncs.com/dynamic-linking-symbol-search-order/l-scope-point-to-l-searchlist.png">
+  
+  
+  
+  <title>Symbol Search Order - On The Road</title>
+
+  <link  rel="stylesheet" href="https://lib.baomitu.com/twitter-bootstrap/4.6.1/css/bootstrap.min.css" />
+
+
+
+  <link  rel="stylesheet" href="https://lib.baomitu.com/github-markdown-css/4.0.0/github-markdown.min.css" />
+
+  <link  rel="stylesheet" href="https://lib.baomitu.com/hint.css/2.7.0/hint.min.css" />
+
+  <link  rel="stylesheet" href="https://lib.baomitu.com/fancybox/3.5.7/jquery.fancybox.min.css" />
+
+
+
+<!-- 主题依赖的图标库，不要自行修改 -->
+<!-- Do not modify the link that theme dependent icons -->
+
+<link rel="stylesheet" href="//at.alicdn.com/t/font_1749284_hj8rtnfg7um.css">
+
+
+
+<link rel="stylesheet" href="//at.alicdn.com/t/font_1736178_lbnruvf0jn.css">
+
+
+<link  rel="stylesheet" href="/css/main.css" />
+
+
+  <link id="highlight-css" rel="stylesheet" href="/css/highlight.css" />
+  
+    <link id="highlight-css-dark" rel="stylesheet" href="/css/highlight-dark.css" />
+  
+
+
+
+
+  <script id="fluid-configs">
+    var Fluid = window.Fluid || {};
+    Fluid.ctx = Object.assign({}, Fluid.ctx)
+    var CONFIG = {"hostname":"clcanny.github.io","root":"/","version":"1.9.4","typing":{"enable":true,"typeSpeed":70,"cursorChar":"_","loop":false,"scope":[]},"anchorjs":{"enable":true,"element":"h1,h2,h3,h4,h5,h6","placement":"left","visible":"hover","icon":""},"progressbar":{"enable":true,"height_px":3,"color":"#29d","options":{"showSpinner":false,"trickleSpeed":100}},"code_language":{"enable":true,"default":"TEXT"},"copy_btn":true,"image_caption":{"enable":true},"image_zoom":{"enable":true,"img_url_replace":["",""]},"toc":{"enable":true,"placement":"right","headingSelector":"h1,h2,h3,h4,h5,h6","collapseDepth":0},"lazyload":{"enable":true,"loading_img":"/img/loading.gif","onlypost":false,"offset_factor":2},"web_analytics":{"enable":false,"follow_dnt":true,"baidu":null,"google":null,"gtag":null,"tencent":{"sid":null,"cid":null},"woyaola":null,"cnzz":null,"leancloud":{"app_id":null,"app_key":null,"server_url":null,"path":"window.location.pathname","ignore_local":false}},"search_path":"/local-search.xml"};
+
+    if (CONFIG.web_analytics.follow_dnt) {
+      var dntVal = navigator.doNotTrack || window.doNotTrack || navigator.msDoNotTrack;
+      Fluid.ctx.dnt = dntVal && (dntVal.startsWith('1') || dntVal.startsWith('yes') || dntVal.startsWith('on'));
+    }
+  </script>
+  <script  src="/js/utils.js" ></script>
+  <script  src="/js/color-schema.js" ></script>
+  
+
+
+  
+<meta name="generator" content="Hexo 7.0.0-rc1"></head>
+
+
+<body>
+  
+
+  <header>
+    
+
+<div class="header-inner" style="height: 70vh;">
+  <nav id="navbar" class="navbar fixed-top  navbar-expand-lg navbar-dark scrolling-navbar">
+  <div class="container">
+    <a class="navbar-brand" href="/">
+      <strong>Fluid</strong>
+    </a>
+
+    <button id="navbar-toggler-btn" class="navbar-toggler" type="button" data-toggle="collapse"
+            data-target="#navbarSupportedContent"
+            aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
+      <div class="animated-icon"><span></span><span></span><span></span></div>
+    </button>
+
+    <!-- Collapsible content -->
+    <div class="collapse navbar-collapse" id="navbarSupportedContent">
+      <ul class="navbar-nav ml-auto text-center">
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/">
+                <i class="iconfont icon-home-fill"></i>
+                <span>首页</span>
+              </a>
+            </li>
+          
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/archives/">
+                <i class="iconfont icon-archive-fill"></i>
+                <span>归档</span>
+              </a>
+            </li>
+          
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/categories/">
+                <i class="iconfont icon-category-fill"></i>
+                <span>分类</span>
+              </a>
+            </li>
+          
+        
+        
+          <li class="nav-item" id="search-btn">
+            <a class="nav-link" target="_self" href="javascript:;" data-toggle="modal" data-target="#modalSearch" aria-label="Search">
+              <i class="iconfont icon-search"></i>
+            </a>
+          </li>
+          
+        
+        
+          <li class="nav-item" id="color-toggle-btn">
+            <a class="nav-link" target="_self" href="javascript:;" aria-label="Color Toggle">
+              <i class="iconfont icon-dark" id="color-toggle-icon"></i>
+            </a>
+          </li>
+        
+      </ul>
+    </div>
+  </div>
+</nav>
+
+  
+
+<div id="banner" class="banner" parallax=true
+     style="background: url('/img/default.png') no-repeat center center; background-size: cover;">
+  <div class="full-bg-img">
+    <div class="mask flex-center" style="background-color: rgba(0, 0, 0, 0.3)">
+      <div class="banner-text text-center fade-in-up">
+        <div class="h2">
+          
+            <span id="subtitle" data-typed-text="Symbol Search Order"></span>
+          
+        </div>
+
+        
+          
+  <div class="mt-3">
+    
+    
+      <span class="post-meta">
+        <i class="iconfont icon-date-fill" aria-hidden="true"></i>
+        <time datetime="2020-11-18 13:50" pubdate>
+          2020年11月18日 下午
+        </time>
+      </span>
+    
+  </div>
+
+  <div class="mt-1">
+    
+      <span class="post-meta mr-2">
+        <i class="iconfont icon-chart"></i>
+        
+          8.4k 字
+        
+      </span>
+    
+
+    
+      <span class="post-meta mr-2">
+        <i class="iconfont icon-clock-fill"></i>
+        
+        
+        
+          70 分钟
+        
+      </span>
+    
+
+    
+    
+  </div>
+
+
+        
+      </div>
+
+      
+    </div>
+  </div>
+</div>
+
+</div>
+
+  </header>
+
+  <main>
+    
+      
+
+<div class="container-fluid nopadding-x">
+  <div class="row nomargin-x">
+    <div class="side-col d-none d-lg-block col-lg-2">
+      
+
+    </div>
+
+    <div class="col-lg-8 nopadding-x-md">
+      <div class="container nopadding-x-md" id="board-ctn">
+        <div id="board">
+          <article class="post-content mx-auto">
+            <!-- SEO header -->
+            <h1 style="display: none">Symbol Search Order</h1>
+            
+            
+              <div class="markdown-body">
+                
+                <h1 id="导读">导读</h1>
+<p>这篇文章探讨了<strong>目前</strong>链接器在各个文件之间查找符号的顺序，对于大多数链接过程：</p>
+<ol type="1">
+<li>可执行文件及其加载的动态链接库都会被加载到 id 为 <code>LM_ID_BASE</code> = 0 的 namespace 下；</li>
+<li>符号都能在 <code>l_scope[0]</code> 指向的已加载文件列表（即 global scope ）中找到；</li>
+<li>查找符号的顺序是 <code>main_map-&gt;l_searchlist</code> 的顺序，也即广度优先遍历依赖树的顺序：
+<ol type="1">
+<li><code>link_map-&gt;l_scope[0]</code> 指向 <code>GL(dl_ns)[nsid]._ns_loaded-&gt;l_searchlist</code> ，又因为 <code>GL(dl_ns)[nsid]._ns_loaded</code> 是 <code>main_map</code> ，所以 <code>link_map-&gt;l_scope[0]</code> 指向 <code>main_map-&gt;l_searchlist</code> ；</li>
+<li>根据 <a href="https://clcanny.github.io/2020/11/15/dynamic-linking-init-order/">Dynamic Linking: Init Order</a> 的说法，<code>main_map-&gt;l_searchlist</code> 指向 <code>main_map-&gt;l_initfini</code> 的后半段，这部分未经 <code>_dl_sort_maps</code> 函数排序，仍然保持着广度优先遍历依赖树的顺序。</li>
+</ol></li>
+</ol>
+<h1 id="code">Code</h1>
+<h2 id="l_scope">l_scope</h2>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br></pre></td><td class="code"><pre><code class="hljs cpp"><span class="hljs-comment">/* Structure to describe a single list of scope elements.  The lookup</span><br><span class="hljs-comment">   functions get passed an array of pointers to such structures.  */</span><br><span class="hljs-keyword">struct</span> <span class="hljs-title class_">r_scope_elem</span><br>&#123;<br>  <span class="hljs-comment">/* Array of maps for the scope.  */</span><br>  <span class="hljs-keyword">struct</span> <span class="hljs-title class_">link_map</span> **r_list;<br>  <span class="hljs-comment">/* Number of entries in the scope.  */</span><br>  <span class="hljs-type">unsigned</span> <span class="hljs-type">int</span> r_nlist;<br>&#125;;<br><br><span class="hljs-keyword">struct</span> <span class="hljs-title class_">link_map</span><br>  &#123;<br>    <span class="hljs-comment">// ...</span><br>    <span class="hljs-comment">/* Size of array allocated for &#x27;l_scope&#x27;.  */</span><br>    <span class="hljs-type">size_t</span> l_scope_max;<br>    <span class="hljs-comment">/* This is an array defining the lookup scope for this link map.</span><br><span class="hljs-comment">       There are initially at most three different scope lists.  */</span><br>    <span class="hljs-keyword">struct</span> <span class="hljs-title class_">r_scope_elem</span> **l_scope;<br>    <span class="hljs-comment">// ...</span><br>  &#125;;<br></code></pre></td></tr></table></figure>
+<h2 id="赋值-l_scope">赋值 l_scope</h2>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br></pre></td><td class="code"><pre><code class="hljs c"><span class="hljs-comment">/* Storage management for the chain of loaded shared objects.</span><br><span class="hljs-comment">   Copyright (C) 1995-2018 Free Software Foundation, Inc.</span><br><span class="hljs-comment">   This file is part of the GNU C Library.</span><br><span class="hljs-comment"></span><br><span class="hljs-comment">   The GNU C Library is free software; you can redistribute it and/or</span><br><span class="hljs-comment">   modify it under the terms of the GNU Lesser General Public</span><br><span class="hljs-comment">   License as published by the Free Software Foundation; either</span><br><span class="hljs-comment">   version 2.1 of the License, or (at your option) any later version.</span><br><span class="hljs-comment"></span><br><span class="hljs-comment">   The GNU C Library is distributed in the hope that it will be useful,</span><br><span class="hljs-comment">   but WITHOUT ANY WARRANTY; without even the implied warranty of</span><br><span class="hljs-comment">   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU</span><br><span class="hljs-comment">   Lesser General Public License for more details.</span><br><span class="hljs-comment"></span><br><span class="hljs-comment">   You should have received a copy of the GNU Lesser General Public</span><br><span class="hljs-comment">   License along with the GNU C Library; if not, see</span><br><span class="hljs-comment">   &lt;http://www.gnu.org/licenses/&gt;.  */</span><br><br><span class="hljs-comment">// Add the new link_map `new` to the end of the namespace list.</span><br><span class="hljs-type">void</span> _dl_add_to_namespace_list(<span class="hljs-keyword">struct</span> link_map* new, Lmid_t nsid) &#123;<br>  _dl_debug_printf(<br>      <span class="hljs-string">&quot;\nadding object %s to 0x%x as global scope with namespace id %u\n\n&quot;</span>,<br>      <span class="hljs-built_in">strlen</span>(new-&gt;l_name) == <span class="hljs-number">0</span> ? <span class="hljs-string">&quot;&lt;empty libname&gt;&quot;</span> : new-&gt;l_name,<br>      GL(dl_ns)[nsid]._ns_loaded,<br>      nsid);<br><br>  <span class="hljs-keyword">if</span> (GL(dl_ns)[nsid]._ns_loaded != <span class="hljs-literal">NULL</span>) &#123;<br>    <span class="hljs-class"><span class="hljs-keyword">struct</span> <span class="hljs-title">link_map</span>* <span class="hljs-title">l</span> =</span> GL(dl_ns)[nsid]._ns_loaded;<br>    <span class="hljs-keyword">while</span> (l-&gt;l_next != <span class="hljs-literal">NULL</span>)<br>      l = l-&gt;l_next;<br>    new-&gt;l_prev = l;<br>    new-&gt;l_next = <span class="hljs-literal">NULL</span>;<br>    l-&gt;l_next = new;<br>  &#125; <span class="hljs-keyword">else</span> &#123;<br>    GL(dl_ns)[nsid]._ns_loaded = new;<br>  &#125;<br>  ++GL(dl_ns)[nsid]._ns_nloaded;<br>  new-&gt;l_serial = GL(dl_load_adds);<br>  ++GL(dl_load_adds);<br>&#125;<br><br><span class="hljs-class"><span class="hljs-keyword">struct</span> <span class="hljs-title">link_map</span>* _<span class="hljs-title">dl_new_object</span>(<span class="hljs-title">char</span>* <span class="hljs-title">realname</span>,</span><br><span class="hljs-class">                                <span class="hljs-title">const</span> <span class="hljs-title">char</span>* <span class="hljs-title">libname</span>,</span><br><span class="hljs-class">                                <span class="hljs-title">int</span> <span class="hljs-title">type</span>,</span><br><span class="hljs-class">                                <span class="hljs-keyword">struct</span> <span class="hljs-title">link_map</span>* <span class="hljs-title">loader</span>,</span><br><span class="hljs-class">                                <span class="hljs-title">int</span> <span class="hljs-title">mode</span>,</span><br><span class="hljs-class">                                <span class="hljs-title">Lmid_t</span> <span class="hljs-title">nsid</span>) &#123;</span><br>  _dl_debug_printf(<span class="hljs-string">&quot;\ncreating object of %s with namespace id %u\n\n&quot;</span>,<br>                   <span class="hljs-built_in">strlen</span>(libname) == <span class="hljs-number">0</span> ? <span class="hljs-string">&quot;&lt;empty libname&gt;&quot;</span> : libname,<br>                   nsid);<br>  <span class="hljs-class"><span class="hljs-keyword">struct</span> <span class="hljs-title">link_map</span>* <span class="hljs-title">new</span> =</span> (<span class="hljs-keyword">struct</span> link_map*)<span class="hljs-built_in">calloc</span>(<br>      <span class="hljs-keyword">sizeof</span>(*new) + audit_space + <span class="hljs-keyword">sizeof</span>(<span class="hljs-keyword">struct</span> link_map*) + <span class="hljs-keyword">sizeof</span>(*newname) +<br>          libname_len,<br>      <span class="hljs-number">1</span>);<br><br>  <span class="hljs-comment">// Counter for the scopes we have to handle.</span><br>  <span class="hljs-type">int</span> idx = <span class="hljs-number">0</span>;<br>  <span class="hljs-keyword">if</span> (GL(dl_ns)[nsid]._ns_loaded != <span class="hljs-literal">NULL</span>) &#123;<br>    <span class="hljs-comment">// Add the global scope.</span><br>    new-&gt;l_scope[idx++] = &amp;GL(dl_ns)[nsid]._ns_loaded-&gt;l_searchlist;<br>    _dl_debug_printf(<span class="hljs-string">&quot;\nassigning l_searchlist (0x%x) of 0x%x as global scope &quot;</span><br>                     <span class="hljs-string">&quot;to l_scope[%u] of object %s\n\n&quot;</span>,<br>                     &amp;GL(dl_ns)[nsid]._ns_loaded-&gt;l_searchlist,<br>                     GL(dl_ns)[nsid]._ns_loaded,<br>                     idx - <span class="hljs-number">1</span>,<br>                     <span class="hljs-built_in">strlen</span>(libname) == <span class="hljs-number">0</span> ? <span class="hljs-string">&quot;&lt;empty libname&gt;&quot;</span> : libname);<br>  &#125;<br><br>  new-&gt;l_local_scope[<span class="hljs-number">0</span>] = &amp;new-&gt;l_searchlist;<br>  <span class="hljs-keyword">return</span> new;<br>&#125;<br></code></pre></td></tr></table></figure>
+<p><img src="http://junbin-hexo-img.oss-cn-beijing.aliyuncs.com/dynamic-linking-symbol-search-order/l-scope-point-to-l-searchlist.png" srcset="/img/loading.gif" lazyload /></p>
+<h1 id="证明">证明</h1>
+<h2 id="namespace">Namespace</h2>
+<p>namespace 是链接器提供的隔离机制，根据 <a target="_blank" rel="noopener" href="https://sourceware.org/glibc/wiki/LinkerNamespaces">glic wiki: Linker Namespaces</a> 的说法，namespace 一开始用于隔离：</p>
+<ol type="1">
+<li>可执行文件及其加载的动态链接库</li>
+<li>LD_AUDIT 及其加载的动态链接库</li>
+</ol>
+<p>正常情况下，可执行文件及其加载的动态链接库都会被加载到 id 为 <code>LM_ID_BASE</code> = 0 的 namespace 下，它们之间不存在隔离。</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><code class="hljs cpp"><span class="hljs-comment">// main.cpp</span><br><span class="hljs-function"><span class="hljs-type">int</span> <span class="hljs-title">main</span><span class="hljs-params">()</span> </span>&#123;<br>&#125;<br></code></pre></td></tr></table></figure>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><code class="hljs cpp"><span class="hljs-comment">// lib.cpp</span><br></code></pre></td></tr></table></figure>
+<figure class="highlight makefile"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><code class="hljs makefile"><span class="hljs-comment"># Makefile</span><br>all :<br>    gcc lib.cpp -shared -fPIC -o liba.so<br>    gcc lib.cpp -shared -fPIC -L<span class="hljs-variable">$(PWD)</span> -Wl,-rpath=<span class="hljs-variable">$(PWD)</span> -la -o libb.so<br>    gcc lib.cpp -shared -fPIC -L<span class="hljs-variable">$(PWD)</span> -Wl,-rpath=<span class="hljs-variable">$(PWD)</span> -lb -o libe.so<br>    gcc main.cpp                                                                        \<br>            -Wl,--dynamic-linker=<span class="hljs-variable">$(PWD)</span>/../glibc/build/install/lib/ld-linux-x86-64.so.2 \<br>            -L<span class="hljs-variable">$(PWD)</span> -Wl,-rpath=<span class="hljs-variable">$(PWD)</span> -le                                              \<br>            -o main<br>    LD_DEBUG=all ./main 2&gt;&amp;1 | grep <span class="hljs-string">&quot;creating object&quot;</span><br></code></pre></td></tr></table></figure>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><code class="hljs bash"><span class="hljs-comment"># make</span><br>LD_DEBUG=all ./main 2&gt;&amp;1 | grep <span class="hljs-string">&quot;creating object&quot;</span><br>      2313:     creating object of &lt;empty libname&gt; with namespace <span class="hljs-built_in">id</span> 0<br>      2313:     creating object of &lt;empty libname&gt; with namespace <span class="hljs-built_in">id</span> 0<br>      2313:     creating object of libe.so with namespace <span class="hljs-built_in">id</span> 0<br>      2313:     creating object of libc.so.6 with namespace <span class="hljs-built_in">id</span> 0<br>      2313:     creating object of libb.so with namespace <span class="hljs-built_in">id</span> 0<br>      2313:     creating object of liba.so with namespace <span class="hljs-built_in">id</span> 0<br></code></pre></td></tr></table></figure>
+<p>各个动态链接库都使用了 id 为 0 的 namespace 。</p>
+<h2 id="scope">Scope</h2>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><code class="hljs bash"><span class="hljs-comment"># LD_DEBUG=all ./main 2&gt;&amp;1 | grep -E &quot;creating main map |assigning&quot;</span><br>      2390:     creating main map at: 0x57cde190<br>      2390:     assigning l_searchlist (0x57cde450) of 0x57cde190 as global scope to l_scope[0] of object &lt;empty libname&gt;<br>      2390:     assigning l_searchlist (0x57cde450) of 0x57cde190 as global scope to l_scope[0] of object libe.so<br>      2390:     assigning l_searchlist (0x57cde450) of 0x57cde190 as global scope to l_scope[0] of object libc.so.6<br>      2390:     assigning l_searchlist (0x57cde450) of 0x57cde190 as global scope to l_scope[0] of object libb.so<br>      2390:     assigning l_searchlist (0x57cde450) of 0x57cde190 as global scope to l_scope[0] of object liba.so<br></code></pre></td></tr></table></figure>
+<p>各个动态链接库都使用了可执行文件的 <code>l_searchlist</code> 作为 <code>l_scope[0]</code> 。</p>
+<h2 id="order">Order</h2>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><code class="hljs cpp"><span class="hljs-comment">// main.cpp</span><br><span class="hljs-function"><span class="hljs-type">void</span> <span class="hljs-title">sayHello</span><span class="hljs-params">()</span></span>;<br><span class="hljs-function"><span class="hljs-type">int</span> <span class="hljs-title">main</span><span class="hljs-params">()</span> </span>&#123;<br>  <span class="hljs-built_in">sayHello</span>();<br>&#125;<br></code></pre></td></tr></table></figure>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><code class="hljs cpp"><span class="hljs-comment">// b.cpp</span><br><span class="hljs-meta">#<span class="hljs-keyword">include</span> <span class="hljs-string">&lt;iostream&gt;</span></span><br><span class="hljs-keyword">extern</span> <span class="hljs-type">const</span> <span class="hljs-type">char</span>* var;<br><span class="hljs-function"><span class="hljs-type">void</span> <span class="hljs-title">sayHello</span><span class="hljs-params">()</span> </span>&#123;<br>  std::cout &lt;&lt; var &lt;&lt; std::endl;<br>&#125;<br></code></pre></td></tr></table></figure>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><code class="hljs cpp"><span class="hljs-comment">// f.cpp</span><br><span class="hljs-type">const</span> <span class="hljs-type">char</span>* var = <span class="hljs-string">&quot;I&#x27;m in f.&quot;</span>;<br></code></pre></td></tr></table></figure>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><code class="hljs cpp"><span class="hljs-comment">// g.cpp</span><br><span class="hljs-type">const</span> <span class="hljs-type">char</span>* var = <span class="hljs-string">&quot;I&#x27;m in g.&quot;</span>;<br></code></pre></td></tr></table></figure>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><code class="hljs cpp"><span class="hljs-comment">// empty.cpp</span><br></code></pre></td></tr></table></figure>
+<figure class="highlight makefile"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><code class="hljs makefile"><span class="hljs-comment"># Makefile</span><br>all :<br>    g++ -std=c++11 empty.cpp -shared -fPIC -o libe.so<br>    g++ -std=c++11 f.cpp -shared -fPIC -o libf.so<br>    g++ -std=c++11 g.cpp -shared -fPIC -o libg.so<br>    g++ -std=c++11 empty.cpp -shared -fPIC -o libh.so<br>    g++ -std=c++11 empty.cpp -shared -fPIC -L<span class="hljs-variable">$(PWD)</span> -Wl,-rpath=<span class="hljs-variable">$(PWD)</span> -le -lf -o liba.so<br>    g++ -std=c++11 b.cpp -shared -fPIC -L<span class="hljs-variable">$(PWD)</span> -Wl,-rpath=<span class="hljs-variable">$(PWD)</span> -lg -lh -o libb.so<br>    g++ -std=c++11 -L<span class="hljs-variable">$(PWD)</span> -Wl,-rpath=<span class="hljs-variable">$(PWD)</span> -la -lb main.cpp -o main<br>    LD_DEBUG=all ./main 2&gt;&amp;1 | grep -E <span class="hljs-string">&quot;var|I&#x27;m in&quot;</span><br></code></pre></td></tr></table></figure>
+<p><img src="http://junbin-hexo-img.oss-cn-beijing.aliyuncs.com/dynamic-linking-symbol-search-order/order.png" srcset="/img/loading.gif" lazyload /></p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><code class="hljs bash"><span class="hljs-comment"># make</span><br>LD_DEBUG=all ./main 2&gt;&amp;1 | grep -E <span class="hljs-string">&quot;var|I&#x27;m in&quot;</span><br>      6382:     symbol=var;  lookup <span class="hljs-keyword">in</span> file=./main [0]<br>      6382:     symbol=var;  lookup <span class="hljs-keyword">in</span> file=/home/demons/_dl_map_objects_validate/search_symbol_order/liba.so [0]<br>      6382:     symbol=var;  lookup <span class="hljs-keyword">in</span> file=/home/demons/_dl_map_objects_validate/search_symbol_order/libb.so [0]<br>      6382:     symbol=var;  lookup <span class="hljs-keyword">in</span> file=/usr/lib/x86_64-linux-gnu/libstdc++.so.6 [0]<br>      6382:     symbol=var;  lookup <span class="hljs-keyword">in</span> file=/lib/x86_64-linux-gnu/libm.so.6 [0]<br>      6382:     symbol=var;  lookup <span class="hljs-keyword">in</span> file=/lib/x86_64-linux-gnu/libgcc_s.so.1 [0]<br>      6382:     symbol=var;  lookup <span class="hljs-keyword">in</span> file=/lib/x86_64-linux-gnu/libc.so.6 [0]<br>      6382:     symbol=var;  lookup <span class="hljs-keyword">in</span> file=/home/demons/_dl_map_objects_validate/search_symbol_order/libe.so [0]<br>      6382:     symbol=var;  lookup <span class="hljs-keyword">in</span> file=/home/demons/_dl_map_objects_validate/search_symbol_order/libf.so [0]<br>      6382:     binding file /home/demons/_dl_map_objects_validate/search_symbol_order/libb.so [0] to /home/demons/_dl_map_objects_validate/search_symbol_order/libf.so [0]: normal symbol `var<span class="hljs-string">&#x27;</span><br><span class="hljs-string">I&#x27;</span>m <span class="hljs-keyword">in</span> f.<br></code></pre></td></tr></table></figure>
+<h1 id="a-coredump">A coredump</h1>
+<p><img src="http://junbin-hexo-img.oss-cn-beijing.aliyuncs.com/dynamic-linking-symbol-search-order/coredump.png" srcset="/img/loading.gif" lazyload /></p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><code class="hljs cpp"><span class="hljs-comment">// main.cpp</span><br><span class="hljs-function"><span class="hljs-type">int</span> <span class="hljs-title">main</span><span class="hljs-params">()</span> </span>&#123;<br>&#125;<br></code></pre></td></tr></table></figure>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><code class="hljs cpp"><span class="hljs-comment">// a.cpp</span><br><span class="hljs-meta">#<span class="hljs-keyword">include</span> <span class="hljs-string">&lt;iostream&gt;</span></span><br><span class="hljs-meta">#<span class="hljs-keyword">include</span> <span class="hljs-string">&lt;string&gt;</span></span><br><br><span class="hljs-keyword">namespace</span> &#123;<br><span class="hljs-type">const</span> std::string var = <span class="hljs-string">&quot;I&#x27;m in a.&quot;</span>;<br>&#125;<br><br><span class="hljs-function"><span class="hljs-type">void</span> <span class="hljs-title">accessVar</span><span class="hljs-params">()</span> </span>&#123;<br>  std::cout &lt;&lt; var[<span class="hljs-number">0</span>] &lt;&lt; std::endl;<br>&#125;<br></code></pre></td></tr></table></figure>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><code class="hljs cpp"><span class="hljs-comment">// b.cpp</span><br><span class="hljs-function"><span class="hljs-type">void</span> <span class="hljs-title">accessVar</span><span class="hljs-params">()</span></span>;<br><br><span class="hljs-keyword">struct</span> <span class="hljs-title class_">AccessVar</span> &#123;<br>  <span class="hljs-built_in">AccessVar</span>() &#123;<br>    <span class="hljs-built_in">accessVar</span>();<br>  &#125;<br>&#125; _;<br></code></pre></td></tr></table></figure>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><code class="hljs cpp"><span class="hljs-comment">// e.cpp</span><br><span class="hljs-meta">#<span class="hljs-keyword">include</span> <span class="hljs-string">&lt;iostream&gt;</span></span><br><span class="hljs-meta">#<span class="hljs-keyword">include</span> <span class="hljs-string">&lt;string&gt;</span></span><br><br><span class="hljs-keyword">namespace</span> &#123;<br><span class="hljs-type">const</span> std::string var = <span class="hljs-string">&quot;I&#x27;m in e.&quot;</span>;<br>&#125;<br><br><span class="hljs-function"><span class="hljs-type">void</span> <span class="hljs-title">accessVar</span><span class="hljs-params">()</span> </span>&#123;<br>  std::cout &lt;&lt; var[<span class="hljs-number">0</span>] &lt;&lt; std::endl;<br>&#125;<br></code></pre></td></tr></table></figure>
+<figure class="highlight makefile"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><code class="hljs makefile"><span class="hljs-comment"># Makefile</span><br>all :<br>    g++ e.cpp -shared -fPIC -O3 -o libe.so<br>    g++ a.cpp -shared -fPIC -O3 -o liba.so<br>    g++ b.cpp -shared -fPIC -L<span class="hljs-variable">$(PWD)</span> -Wl,-rpath=<span class="hljs-variable">$(PWD)</span> -le -O3 -o libb.so<br>    g++ main.cpp -L<span class="hljs-variable">$(PWD)</span> -Wl,-rpath=<span class="hljs-variable">$(PWD)</span> -la -lb -O3 -o main<br>    LD_DEBUG=all ./main 2&gt;&amp;1 | grep -E <span class="hljs-string">&quot;calling init|accessVar&quot;</span><br></code></pre></td></tr></table></figure>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><code class="hljs bash">Segmentation fault<br>     14934:     calling init: /lib/x86_64-linux-gnu/libc.so.6<br>     14934:     calling init: /lib/x86_64-linux-gnu/libm.so.6<br>     14934:     calling init: /lib/x86_64-linux-gnu/libgcc_s.so.1<br>     14934:     calling init: /usr/lib/x86_64-linux-gnu/libstdc++.so.6<br>     14934:     calling init: /home/demons/_dl_map_objects_validate/search_symbol_order/libe.so<br>     14934:     calling init: /home/demons/_dl_map_objects_validate/search_symbol_order/libb.so<br>     14934:     symbol=_Z9accessVarv;  lookup <span class="hljs-keyword">in</span> file=./main [0]<br>     14934:     symbol=_Z9accessVarv;  lookup <span class="hljs-keyword">in</span> file=/home/demons/_dl_map_objects_validate/search_symbol_order/liba.so [0]<br>     14934:     binding file /home/demons/_dl_map_objects_validate/search_symbol_order/libb.so [0] to /home/demons/_dl_map_objects_validate/search_symbol_order/liba.so [0]: normal symbol `_Z9accessVarv<span class="hljs-string">&#x27;</span><br></code></pre></td></tr></table></figure>
+<p>初始化的顺序是 eba ，查找符号的顺序是 abe ，因此初始化 libb.so 的时候用到了来自 liba.so 的、尚未初始化的 <code>var</code> 变量，导致 coredump 。</p>
+<h1 id="more">More</h1>
+<p>关于 Namespace 和 Scope 的 corner case ，后续会另写一篇文章来探讨。</p>
+<h1 id="参考资料">参考资料</h1>
+<ul>
+<li><a target="_blank" rel="noopener" href="https://sourceware.org/glibc/wiki/LinkerNamespaces">glic wiki: Linker Namespaces</a></li>
+<li><a target="_blank" rel="noopener" href="https://docs.oracle.com/cd/E19120-01/open.solaris/819-0690/chapter6-1243/index.html">Oracle: Establishing a Namespace</a></li>
+</ul>
+
+                
+              </div>
+            
+            <hr/>
+            <div>
+              <div class="post-metas my-3">
+  
+    <div class="post-meta mr-3 d-flex align-items-center">
+      <i class="iconfont icon-category"></i>
+      
+
+<span class="category-chains">
+  
+  
+    
+      <span class="category-chain">
+        
+  <a href="/categories/Computer-Science/" class="category-chain-item">Computer Science</a>
+  
+  
+    <span>></span>
+    
+  <a href="/categories/Computer-Science/Dynamic-Linking/" class="category-chain-item">Dynamic Linking</a>
+  
+  
+
+  
+
+      </span>
+    
+  
+</span>
+
+    </div>
+  
+  
+</div>
+
+
+              
+  
+
+  <div class="license-box my-3">
+    <div class="license-title">
+      <div>Symbol Search Order</div>
+      <div>https://clcanny.github.io/2020/11/18/computer-science/dynamic-linking/symbol-search-order/</div>
+    </div>
+    <div class="license-meta">
+      
+        <div class="license-meta-item">
+          <div>作者</div>
+          <div>JunBin</div>
+        </div>
+      
+      
+        <div class="license-meta-item license-meta-date">
+          <div>发布于</div>
+          <div>2020年11月18日</div>
+        </div>
+      
+      
+      
+        <div class="license-meta-item">
+          <div>许可协议</div>
+          <div>
+            
+              
+              
+                <a target="_blank" href="https://creativecommons.org/licenses/by/4.0/">
+                  <span class="hint--top hint--rounded" aria-label="BY - 署名">
+                    <i class="iconfont icon-by"></i>
+                  </span>
+                </a>
+              
+            
+          </div>
+        </div>
+      
+    </div>
+    <div class="license-icon iconfont"></div>
+  </div>
+
+
+
+              
+                <div class="post-prevnext my-3">
+                  <article class="post-prev col-6">
+                    
+                    
+                      <a href="/2020/11/20/computer-science/dynamic-linking/search-symbols-in-one-binary/" title="Search Symbols In One Binary">
+                        <i class="iconfont icon-arrowleft"></i>
+                        <span class="hidden-mobile">Search Symbols In One Binary</span>
+                        <span class="visible-mobile">上一篇</span>
+                      </a>
+                    
+                  </article>
+                  <article class="post-next col-6">
+                    
+                    
+                      <a href="/2020/11/15/computer-science/dynamic-linking/init-order/" title="Init Order">
+                        <span class="hidden-mobile">Init Order</span>
+                        <span class="visible-mobile">下一篇</span>
+                        <i class="iconfont icon-arrowright"></i>
+                      </a>
+                    
+                  </article>
+                </div>
+              
+            </div>
+
+            
+          </article>
+        </div>
+      </div>
+    </div>
+
+    <div class="side-col d-none d-lg-block col-lg-2">
+      
+  <aside class="sidebar" style="margin-left: -1rem">
+    <div id="toc">
+  <p class="toc-header">
+    <i class="iconfont icon-list"></i>
+    <span>目录</span>
+  </p>
+  <div class="toc-body" id="toc-body"></div>
+</div>
+
+
+
+  </aside>
+
+
+    </div>
+  </div>
+</div>
+
+
+
+
+
+  
+
+
+
+  
+
+
+
+  
+
+
+
+  
+
+
+
+  
+
+
+
+  <script>
+  Fluid.utils.createScript('https://lib.baomitu.com/mermaid/8.14.0/mermaid.min.js', function() {
+    mermaid.initialize({"theme":"default"});
+
+    Fluid.events.registerRefreshCallback(function() {
+      if ('mermaid' in window) {
+        mermaid.init();
+      }
+    });
+  });
+</script>
+
+
+
+
+
+
+    
+
+    
+      <a id="scroll-top-button" aria-label="TOP" href="#" role="button">
+        <i class="iconfont icon-arrowup" aria-hidden="true"></i>
+      </a>
+    
+
+    
+      <div class="modal fade" id="modalSearch" tabindex="-1" role="dialog" aria-labelledby="ModalLabel"
+     aria-hidden="true">
+  <div class="modal-dialog modal-dialog-scrollable modal-lg" role="document">
+    <div class="modal-content">
+      <div class="modal-header text-center">
+        <h4 class="modal-title w-100 font-weight-bold">搜索</h4>
+        <button type="button" id="local-search-close" class="close" data-dismiss="modal" aria-label="Close">
+          <span aria-hidden="true">&times;</span>
+        </button>
+      </div>
+      <div class="modal-body mx-3">
+        <div class="md-form mb-5">
+          <input type="text" id="local-search-input" class="form-control validate">
+          <label data-error="x" data-success="v" for="local-search-input">关键词</label>
+        </div>
+        <div class="list-group" id="local-search-result"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+    
+
+    
+  </main>
+
+  <footer>
+    <div class="footer-inner">
+  
+    <div class="footer-content">
+       <a href="https://hexo.io" target="_blank" rel="nofollow noopener"><span>Hexo</span></a> <i class="iconfont icon-love"></i> <a href="https://github.com/fluid-dev/hexo-theme-fluid" target="_blank" rel="nofollow noopener"><span>Fluid</span></a> 
+    </div>
+  
+  
+  
+  
+</div>
+
+  </footer>
+
+  <!-- Scripts -->
+  
+  <script  src="https://lib.baomitu.com/nprogress/0.2.0/nprogress.min.js" ></script>
+  <link  rel="stylesheet" href="https://lib.baomitu.com/nprogress/0.2.0/nprogress.min.css" />
+
+  <script>
+    NProgress.configure({"showSpinner":false,"trickleSpeed":100})
+    NProgress.start()
+    window.addEventListener('load', function() {
+      NProgress.done();
+    })
+  </script>
+
+
+<script  src="https://lib.baomitu.com/jquery/3.6.0/jquery.min.js" ></script>
+<script  src="https://lib.baomitu.com/twitter-bootstrap/4.6.1/js/bootstrap.min.js" ></script>
+<script  src="/js/events.js" ></script>
+<script  src="/js/plugins.js" ></script>
+
+
+  <script  src="https://lib.baomitu.com/typed.js/2.0.12/typed.min.js" ></script>
+  <script>
+    (function (window, document) {
+      var typing = Fluid.plugins.typing;
+      var subtitle = document.getElementById('subtitle');
+      if (!subtitle || !typing) {
+        return;
+      }
+      var text = subtitle.getAttribute('data-typed-text');
+      
+        typing(text);
+      
+    })(window, document);
+  </script>
+
+
+
+
+  
+    <script  src="/js/img-lazyload.js" ></script>
+  
+
+
+
+
+  
+<script>
+  Fluid.utils.createScript('https://lib.baomitu.com/tocbot/4.18.2/tocbot.min.js', function() {
+    var toc = jQuery('#toc');
+    if (toc.length === 0 || !window.tocbot) { return; }
+    var boardCtn = jQuery('#board-ctn');
+    var boardTop = boardCtn.offset().top;
+
+    window.tocbot.init(Object.assign({
+      tocSelector     : '#toc-body',
+      contentSelector : '.markdown-body',
+      linkClass       : 'tocbot-link',
+      activeLinkClass : 'tocbot-active-link',
+      listClass       : 'tocbot-list',
+      isCollapsedClass: 'tocbot-is-collapsed',
+      collapsibleClass: 'tocbot-is-collapsible',
+      scrollSmooth    : true,
+      includeTitleTags: true,
+      headingsOffset  : -boardTop,
+    }, CONFIG.toc));
+    if (toc.find('.toc-list-item').length > 0) {
+      toc.css('visibility', 'visible');
+    }
+
+    Fluid.events.registerRefreshCallback(function() {
+      if ('tocbot' in window) {
+        tocbot.refresh();
+        var toc = jQuery('#toc');
+        if (toc.length === 0 || !tocbot) {
+          return;
+        }
+        if (toc.find('.toc-list-item').length > 0) {
+          toc.css('visibility', 'visible');
+        }
+      }
+    });
+  });
+</script>
+
+
+  <script src=https://lib.baomitu.com/clipboard.js/2.0.11/clipboard.min.js></script>
+
+  <script>Fluid.plugins.codeWidget();</script>
+
+
+  
+<script>
+  Fluid.utils.createScript('https://lib.baomitu.com/anchor-js/4.3.1/anchor.min.js', function() {
+    window.anchors.options = {
+      placement: CONFIG.anchorjs.placement,
+      visible  : CONFIG.anchorjs.visible
+    };
+    if (CONFIG.anchorjs.icon) {
+      window.anchors.options.icon = CONFIG.anchorjs.icon;
+    }
+    var el = (CONFIG.anchorjs.element || 'h1,h2,h3,h4,h5,h6').split(',');
+    var res = [];
+    for (var item of el) {
+      res.push('.markdown-body > ' + item.trim());
+    }
+    if (CONFIG.anchorjs.placement === 'left') {
+      window.anchors.options.class = 'anchorjs-link-left';
+    }
+    window.anchors.add(res.join(', '));
+
+    Fluid.events.registerRefreshCallback(function() {
+      if ('anchors' in window) {
+        anchors.removeAll();
+        var el = (CONFIG.anchorjs.element || 'h1,h2,h3,h4,h5,h6').split(',');
+        var res = [];
+        for (var item of el) {
+          res.push('.markdown-body > ' + item.trim());
+        }
+        if (CONFIG.anchorjs.placement === 'left') {
+          anchors.options.class = 'anchorjs-link-left';
+        }
+        anchors.add(res.join(', '));
+      }
+    });
+  });
+</script>
+
+
+  
+<script>
+  Fluid.utils.createScript('https://lib.baomitu.com/fancybox/3.5.7/jquery.fancybox.min.js', function() {
+    Fluid.plugins.fancyBox();
+  });
+</script>
+
+
+  <script>Fluid.plugins.imageCaption();</script>
+
+  <script  src="/js/local-search.js" ></script>
+
+
+
+
+
+<!-- 主题的启动项，将它保持在最底部 -->
+<!-- the boot of the theme, keep it at the bottom -->
+<script  src="/js/boot.js" ></script>
+
+
+  
+
+  <noscript>
+    <div class="noscript-warning">博客在允许 JavaScript 运行的环境下浏览效果更佳</div>
+  </noscript>
+</body>
+</html>

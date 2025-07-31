@@ -1,0 +1,881 @@
+
+
+<!DOCTYPE html>
+<html lang="zh-CN" data-default-color-scheme=auto>
+
+
+
+<head>
+  <meta charset="UTF-8">
+  <link rel="apple-touch-icon" sizes="76x76" href="/img/fluid.png">
+  <link rel="icon" href="/img/fluid.png">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, shrink-to-fit=no">
+  <meta http-equiv="x-ua-compatible" content="ie=edge">
+  
+  <meta name="theme-color" content="#2f4154">
+  <meta name="author" content="JunBin">
+  <meta name="keywords" content="">
+  
+    <meta name="description" content="The Classic Paxos Algorithm I have gained an understanding of the classic Paxos algorithm through The Part-Time Parliament. However, the terminology used in this paper differs from that of the current">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Paper Interpretation - Fast Paxos">
+<meta property="og:url" content="https://clcanny.github.io/2023/07/30/computer-science/consensus/paper-interpretation-fast-paxos/index.html">
+<meta property="og:site_name" content="On The Road">
+<meta property="og:description" content="The Classic Paxos Algorithm I have gained an understanding of the classic Paxos algorithm through The Part-Time Parliament. However, the terminology used in this paper differs from that of the current">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="http://junbin-hexo-img.oss-cn-beijing.aliyuncs.com/paper-interpretation-fast-paxos/figure-1-the-coordinator-s-rule-for-picking-value-v-in-phase-2a-of-round-i.png">
+<meta property="article:published_time" content="2023-07-30T09:59:36.000Z">
+<meta property="article:modified_time" content="2024-10-30T15:47:28.507Z">
+<meta property="article:author" content="JunBin">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="http://junbin-hexo-img.oss-cn-beijing.aliyuncs.com/paper-interpretation-fast-paxos/figure-1-the-coordinator-s-rule-for-picking-value-v-in-phase-2a-of-round-i.png">
+  
+  
+  
+  <title>Paper Interpretation - Fast Paxos - On The Road</title>
+
+  <link  rel="stylesheet" href="https://lib.baomitu.com/twitter-bootstrap/4.6.1/css/bootstrap.min.css" />
+
+
+
+  <link  rel="stylesheet" href="https://lib.baomitu.com/github-markdown-css/4.0.0/github-markdown.min.css" />
+
+  <link  rel="stylesheet" href="https://lib.baomitu.com/hint.css/2.7.0/hint.min.css" />
+
+  <link  rel="stylesheet" href="https://lib.baomitu.com/fancybox/3.5.7/jquery.fancybox.min.css" />
+
+
+
+<!-- 主题依赖的图标库，不要自行修改 -->
+<!-- Do not modify the link that theme dependent icons -->
+
+<link rel="stylesheet" href="//at.alicdn.com/t/font_1749284_hj8rtnfg7um.css">
+
+
+
+<link rel="stylesheet" href="//at.alicdn.com/t/font_1736178_lbnruvf0jn.css">
+
+
+<link  rel="stylesheet" href="/css/main.css" />
+
+
+  <link id="highlight-css" rel="stylesheet" href="/css/highlight.css" />
+  
+    <link id="highlight-css-dark" rel="stylesheet" href="/css/highlight-dark.css" />
+  
+
+
+
+
+  <script id="fluid-configs">
+    var Fluid = window.Fluid || {};
+    Fluid.ctx = Object.assign({}, Fluid.ctx)
+    var CONFIG = {"hostname":"clcanny.github.io","root":"/","version":"1.9.4","typing":{"enable":true,"typeSpeed":70,"cursorChar":"_","loop":false,"scope":[]},"anchorjs":{"enable":true,"element":"h1,h2,h3,h4,h5,h6","placement":"left","visible":"hover","icon":""},"progressbar":{"enable":true,"height_px":3,"color":"#29d","options":{"showSpinner":false,"trickleSpeed":100}},"code_language":{"enable":true,"default":"TEXT"},"copy_btn":true,"image_caption":{"enable":true},"image_zoom":{"enable":true,"img_url_replace":["",""]},"toc":{"enable":true,"placement":"right","headingSelector":"h1,h2,h3,h4,h5,h6","collapseDepth":0},"lazyload":{"enable":true,"loading_img":"/img/loading.gif","onlypost":false,"offset_factor":2},"web_analytics":{"enable":false,"follow_dnt":true,"baidu":null,"google":null,"gtag":null,"tencent":{"sid":null,"cid":null},"woyaola":null,"cnzz":null,"leancloud":{"app_id":null,"app_key":null,"server_url":null,"path":"window.location.pathname","ignore_local":false}},"search_path":"/local-search.xml"};
+
+    if (CONFIG.web_analytics.follow_dnt) {
+      var dntVal = navigator.doNotTrack || window.doNotTrack || navigator.msDoNotTrack;
+      Fluid.ctx.dnt = dntVal && (dntVal.startsWith('1') || dntVal.startsWith('yes') || dntVal.startsWith('on'));
+    }
+  </script>
+  <script  src="/js/utils.js" ></script>
+  <script  src="/js/color-schema.js" ></script>
+  
+
+
+  
+<meta name="generator" content="Hexo 7.0.0-rc1"></head>
+
+
+<body>
+  
+
+  <header>
+    
+
+<div class="header-inner" style="height: 70vh;">
+  <nav id="navbar" class="navbar fixed-top  navbar-expand-lg navbar-dark scrolling-navbar">
+  <div class="container">
+    <a class="navbar-brand" href="/">
+      <strong>Fluid</strong>
+    </a>
+
+    <button id="navbar-toggler-btn" class="navbar-toggler" type="button" data-toggle="collapse"
+            data-target="#navbarSupportedContent"
+            aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
+      <div class="animated-icon"><span></span><span></span><span></span></div>
+    </button>
+
+    <!-- Collapsible content -->
+    <div class="collapse navbar-collapse" id="navbarSupportedContent">
+      <ul class="navbar-nav ml-auto text-center">
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/">
+                <i class="iconfont icon-home-fill"></i>
+                <span>首页</span>
+              </a>
+            </li>
+          
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/archives/">
+                <i class="iconfont icon-archive-fill"></i>
+                <span>归档</span>
+              </a>
+            </li>
+          
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/categories/">
+                <i class="iconfont icon-category-fill"></i>
+                <span>分类</span>
+              </a>
+            </li>
+          
+        
+        
+          <li class="nav-item" id="search-btn">
+            <a class="nav-link" target="_self" href="javascript:;" data-toggle="modal" data-target="#modalSearch" aria-label="Search">
+              <i class="iconfont icon-search"></i>
+            </a>
+          </li>
+          
+        
+        
+          <li class="nav-item" id="color-toggle-btn">
+            <a class="nav-link" target="_self" href="javascript:;" aria-label="Color Toggle">
+              <i class="iconfont icon-dark" id="color-toggle-icon"></i>
+            </a>
+          </li>
+        
+      </ul>
+    </div>
+  </div>
+</nav>
+
+  
+
+<div id="banner" class="banner" parallax=true
+     style="background: url('/img/default.png') no-repeat center center; background-size: cover;">
+  <div class="full-bg-img">
+    <div class="mask flex-center" style="background-color: rgba(0, 0, 0, 0.3)">
+      <div class="banner-text text-center fade-in-up">
+        <div class="h2">
+          
+            <span id="subtitle" data-typed-text="Paper Interpretation - Fast Paxos"></span>
+          
+        </div>
+
+        
+          
+  <div class="mt-3">
+    
+    
+      <span class="post-meta">
+        <i class="iconfont icon-date-fill" aria-hidden="true"></i>
+        <time datetime="2023-07-30 17:59" pubdate>
+          2023年7月30日 下午
+        </time>
+      </span>
+    
+  </div>
+
+  <div class="mt-1">
+    
+      <span class="post-meta mr-2">
+        <i class="iconfont icon-chart"></i>
+        
+          19k 字
+        
+      </span>
+    
+
+    
+      <span class="post-meta mr-2">
+        <i class="iconfont icon-clock-fill"></i>
+        
+        
+        
+          155 分钟
+        
+      </span>
+    
+
+    
+    
+  </div>
+
+
+        
+      </div>
+
+      
+    </div>
+  </div>
+</div>
+
+</div>
+
+  </header>
+
+  <main>
+    
+      
+
+<div class="container-fluid nopadding-x">
+  <div class="row nomargin-x">
+    <div class="side-col d-none d-lg-block col-lg-2">
+      
+
+    </div>
+
+    <div class="col-lg-8 nopadding-x-md">
+      <div class="container nopadding-x-md" id="board-ctn">
+        <div id="board">
+          <article class="post-content mx-auto">
+            <!-- SEO header -->
+            <h1 style="display: none">Paper Interpretation - Fast Paxos</h1>
+            
+            
+              <div class="markdown-body">
+                
+                <h2 id="the-classic-paxos-algorithm">The Classic Paxos Algorithm</h2>
+<p>I have gained an understanding of the classic Paxos algorithm through <a target="_blank" rel="noopener" href="https://www.microsoft.com/en-us/research/uploads/prod/2016/12/The-Part-Time-Parliament.pdf">The Part-Time Parliament</a>. However, the terminology used in this paper differs from that of the current document. To simplify the transition and ensure clarity, I have created a table that aligns the terminologies from both resources.</p>
+<table>
+
+<thead>
+<tr class="header">
+<th style="text-align: left;">The Part-Time Parliament</th>
+<th style="text-align: left;">Fast Paxos</th>
+<th style="text-align: left;">Explanation of Terminology in Fast Paxos</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">ballot</td>
+<td style="text-align: left;">round</td>
+<td style="text-align: left;">Different values are not chosen in different rounds.</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><span class="math inline">\(\operatorname{nextBal}(p)\)</span></td>
+<td style="text-align: left;"><span class="math inline">\(\operatorname{rnd}(a)\)</span></td>
+<td style="text-align: left;">The highest-numbered round in which acceptor <span class="math inline">\(a\)</span> has participated.</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><span class="math inline">\({\operatorname{prevVote}(p)}_{bal}\)</span></td>
+<td style="text-align: left;"><span class="math inline">\(\operatorname{vrnd}(a)\)</span></td>
+<td style="text-align: left;">The highest-numbered round in which acceptor <span class="math inline">\(a\)</span> has cast a vote.</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><span class="math inline">\({\operatorname{prevVote}(p)}_{dec}\)</span></td>
+<td style="text-align: left;"><span class="math inline">\(\operatorname{vval}(a)\)</span></td>
+<td style="text-align: left;">The value acceptor <span class="math inline">\(a\)</span> voted to accept in round <span class="math inline">\(\operatorname{vrnd}(a)\)</span>.</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"><span class="math inline">\(\operatorname{lastTried}(p)\)</span></td>
+<td style="text-align: left;"><span class="math inline">\(\operatorname{crnd}(c)\)</span></td>
+<td style="text-align: left;">The highest-numbered round that coordinator <span class="math inline">\(c\)</span> has begun.</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"></td>
+<td style="text-align: left;"><span class="math inline">\(\operatorname{cval}(c)\)</span></td>
+<td style="text-align: left;">The value that coordinator <span class="math inline">\(c\)</span> has picked for round <span class="math inline">\(\operatorname{crnd}(c)\)</span>.</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Step 1 of the Basic Protocol</td>
+<td style="text-align: left;">phase 1a</td>
+<td style="text-align: left;"></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><span class="math inline">\(\operatorname{NextBallot}(b)\)</span></td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">Sends a message to each acceptor <span class="math inline">\(a\)</span> requesting that <span class="math inline">\(a\)</span> participate in round i.</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Step 2 of the Basic Protocol</td>
+<td style="text-align: left;">phase 1b</td>
+<td style="text-align: left;"></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><span class="math inline">\(\operatorname{LastVote}(b, v)\)</span></td>
+<td style="text-align: left;">phase 1b message</td>
+<td style="text-align: left;">Sends coordinator <span class="math inline">\(c\)</span> a message containing the round number <span class="math inline">\(i\)</span> and the current values of <span class="math inline">\(\operatorname{vrnd}(a)\)</span> and <span class="math inline">\(\operatorname{vval}(a)\)</span>.</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Step 3 of the Basic Protocol</td>
+<td style="text-align: left;">phase 2a</td>
+<td style="text-align: left;"></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><span class="math inline">\(\operatorname{BeginBallot}(b, d)\)</span></td>
+<td style="text-align: left;">phase 2a message</td>
+<td style="text-align: left;">Sends a message to the acceptors requesting that they vote in round <span class="math inline">\(i\)</span> to accept <span class="math inline">\(v\)</span>.</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Step 4 of the Basic Protocol</td>
+<td style="text-align: left;">phase 2b</td>
+<td style="text-align: left;"></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><span class="math inline">\(\operatorname{Voted}(b, q)\)</span></td>
+<td style="text-align: left;">phase 2b message</td>
+<td style="text-align: left;">Sends a message to all learners announcing its round <span class="math inline">\(i\)</span> vote.</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;"></td>
+<td style="text-align: left;">CP</td>
+<td style="text-align: left;">For any rounds <span class="math inline">\(i\)</span> and <span class="math inline">\(j\)</span> with <span class="math inline">\(j &lt; i\)</span>,if a value <span class="math inline">\(v\)</span> has been chosen or might yet be chosen in round <span class="math inline">\(j\)</span>, then no acceptor can vote for any value except <span class="math inline">\(v\)</span> in round <span class="math inline">\(i\)</span>.</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Theorem 1 in the "A Formal Statement of Three Conditions" section</td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">CP implies that if <span class="math inline">\(j &lt; i\)</span>, then no value other than <span class="math inline">\(v\)</span> can ever be chosen in round <span class="math inline">\(i\)</span> if <span class="math inline">\(v\)</span> is chosen in round <span class="math inline">\(j\)</span>.</td>
+</tr>
+</tbody>
+</table>
+<p>This paper divides the role of priests, as described in "The Part-Time Parliament," into three distinct roles: coordinators, acceptors, and learners. In this restructured model, a learner is said to learn a value <span class="math inline">\(v\)</span> if, for some round <span class="math inline">\(i\)</span>, it receives phase 2b messages from a majority of acceptors announcing that they have all voted for <span class="math inline">\(v\)</span> in round <span class="math inline">\(i\)</span>. The paper also maintains the role of the president, now referred to as the leader, who is essentially a special coordinator.</p>
+<p>This paper also introduces the role of proposers. Proposers send their proposals to the coordinators. The coordinator for round <span class="math inline">\(i\)</span> picks a value that it tries to get chosen in that round.</p>
+<p>A single process can play multiple roles. For example, in a client/server system, a client might play the roles of proposer and learner, and a server might play the roles of acceptor and learner.</p>
+<h2 id="picking-a-value-in-phase-2a">Picking a Value in Phase 2a</h2>
+<p>"The Part-Time Parliament" establishes the safety of the Synod protocol given conditions <span class="math inline">\(\operatorname{B1}(\mathcal{B})\)</span>, <span class="math inline">\(\operatorname{B2}(\mathcal{B})\)</span>, and <span class="math inline">\(\operatorname{B3}(\mathcal{B})\)</span>. However, this doesn't fully elucidate the safety of Fast Paxos, particularly when dealing with the complexities arising from the protocol's variations. "Fast Paxos" employs a different approach: it starts with the safety requirements and the scenario where phase 2a messages, requesting acceptance of different values, can be sent in different rounds. From this, it deduces the method to select a value in phase 2a. Through this perspective, we can comprehend how to respond to the variations involved in fast rounds. Additionally, I've found that the proof process is much more comprehensible than the one outlined in "The Part-Time Parliament".</p>
+<p>We define a value <span class="math inline">\(v\)</span> as chosen in round <span class="math inline">\(j\)</span> if a majority of acceptors accept it in round <span class="math inline">\(j\)</span>. Our goal is to validate Theorem 1 from "The Part-Time Parliament," which states that any two chosen values must be the same. Given that any accepted values must have previously been proposed, we can prove Theorem 1 by demonstrating a more stringent property, CP: For any rounds <span class="math inline">\(i\)</span> and <span class="math inline">\(j\)</span> with <span class="math inline">\(j &lt; i\)</span>, if a value <span class="math inline">\(v\)</span> has been chosen or might yet be chosen in round <span class="math inline">\(j\)</span>, then no acceptor can vote for any value except <span class="math inline">\(v\)</span> in round <span class="math inline">\(i\)</span>.</p>
+<p>A useful equivalent to CP that further facilitates the deduction is: For any rounds <span class="math inline">\(i\)</span> and <span class="math inline">\(j\)</span> with <span class="math inline">\(j &lt; i\)</span>, if an acceptor has voted for <span class="math inline">\(v\)</span> in round <span class="math inline">\(i\)</span>, then no value other than <span class="math inline">\(v\)</span> has been or might yet be chosen in round <span class="math inline">\(j\)</span>.</p>
+<p>For a specific round <span class="math inline">\(i\)</span> and its corresponding value <span class="math inline">\(v\)</span>, <span class="math inline">\(v\)</span> should fulfill a particular CP property, denoted as <span class="math inline">\(\operatorname{CP}(v, i)\)</span>: For any round <span class="math inline">\(j &lt; i\)</span>, no value other than <span class="math inline">\(v\)</span> has been or might yet be chosen in round <span class="math inline">\(j\)</span>.</p>
+<p>A useful insight, termed Observation 3, assists in fulfilling <span class="math inline">\(\operatorname{CP}(v, i)\)</span>: If there is a majority set <span class="math inline">\(Q\)</span> and a value <span class="math inline">\(v\)</span> such that every acceptor <span class="math inline">\(a\)</span> in <span class="math inline">\(Q\)</span> has <span class="math inline">\(\operatorname{rnd}(a) &gt; j\)</span> and has either voted for <span class="math inline">\(v\)</span> in round <span class="math inline">\(j\)</span> or has not voted in round <span class="math inline">\(j\)</span>, then no value other than <span class="math inline">\(v\)</span> has been or ever might be chosen in round <span class="math inline">\(j\)</span>. This is quite intuitive. Let's assume there is a different value <span class="math inline">\(v&#39;\)</span> (<span class="math inline">\(v&#39; \neq v\)</span>), and some coordinators attempt to have a majority of acceptors accept it in round <span class="math inline">\(j\)</span>. However, each acceptor in <span class="math inline">\(Q\)</span> won't accept it either because <span class="math inline">\(\operatorname{rnd}(a) &gt; j\)</span>, or because <span class="math inline">\(a\)</span> has already accepted <span class="math inline">\(v\)</span> (the enabling condition for the phase 2a action and the unique assignment of rounds to coordinators ensure that phase 2a messages with different values cannot be sent for the same round). Hence, there doesn't exist a majority set <span class="math inline">\(Q&#39;\)</span> in which every acceptor <span class="math inline">\(a&#39;\)</span> has accepted or might accept <span class="math inline">\(v&#39;\)</span> in round <span class="math inline">\(j\)</span> (It is not possible to find two majority subsets that do not intersect).</p>
+<p>Suppose the coordinator has received round <span class="math inline">\(i\)</span> phase 1b messages from a majority <span class="math inline">\(Q\)</span> of acceptors. Since an acceptor <span class="math inline">\(a\)</span> sets <span class="math inline">\(\operatorname{rnd}(a)\)</span> to <span class="math inline">\(i\)</span> upon sending <span class="math inline">\(a\)</span> round <span class="math inline">\(i\)</span> phase 1b message and it never decreases <span class="math inline">\(\operatorname{rnd}(a)\)</span>, the current value of <span class="math inline">\(\operatorname{rnd}(a)\)</span> satisfies <span class="math inline">\(\operatorname{rnd}(a) \ge i\)</span> for all <span class="math inline">\(a\)</span> in <span class="math inline">\(Q\)</span>. Let <span class="math inline">\(\operatorname{vr}(a)\)</span> and <span class="math inline">\(\operatorname{vv}(a)\)</span> be the values of <span class="math inline">\(\operatorname{vrnd}(a)\)</span> and <span class="math inline">\(\operatorname{vval}(a)\)</span>, respectively, reported by acceptor <span class="math inline">\(a\)</span>'s round <span class="math inline">\(i\)</span> phase 1b message, for <span class="math inline">\(a\)</span> in <span class="math inline">\(Q\)</span>. Let <span class="math inline">\(k\)</span> be the largest value of <span class="math inline">\(\operatorname{vr}(a)\)</span> for all acceptors <span class="math inline">\(a\)</span> in <span class="math inline">\(Q\)</span>. We now consider separately the two possible cases:</p>
+<ul>
+<li>K1. <span class="math inline">\(k = 0\)</span>. <span class="math inline">\(\operatorname{CP}(v, i)\)</span> is satisfied regardless of what value <span class="math inline">\(v\)</span> the coordinator picks.</li>
+<li>K2. <span class="math inline">\(k &gt; 0\)</span>. Because <span class="math inline">\(\operatorname{vrnd}(a) \le \operatorname{rnd}(a)\)</span> and acceptor <span class="math inline">\(a\)</span> responds to a round <span class="math inline">\(i\)</span> message only if <span class="math inline">\(i &gt; \operatorname{rnd}(a)\)</span>, we must have <span class="math inline">\(k &lt; i\)</span>. Then we aim to prove <span class="math inline">\(\operatorname{CP}(v, i)\)</span> (for any round <span class="math inline">\(j &lt; i\)</span>, no value other than <span class="math inline">\(v\)</span> has been or can still be chosen in round <span class="math inline">\(j\)</span>) by employing a classification approach.
+<ul>
+<li><span class="math inline">\(j &lt; k\)</span>: We can assume, through <strong>induction</strong>, that property CP holds. Consequently, no value other than the one proposed in round <span class="math inline">\(k\)</span> has been or can be chosen in round <span class="math inline">\(j\)</span>. Therefore, if we establish that <span class="math inline">\(\operatorname{CP}(v, i)\)</span> holds for round <span class="math inline">\(k\)</span>, it will also hold for round <span class="math inline">\(j\)</span>.</li>
+<li><span class="math inline">\(j = k\)</span>: By Observation 3.</li>
+<li><span class="math inline">\(j &gt; k \land j &lt; i\)</span>: Let <span class="math inline">\(a\)</span> be any acceptor in <span class="math inline">\(Q\)</span>. Because <span class="math inline">\(\operatorname{vr}(a)\)</span> is the largest round number in which <span class="math inline">\(a\)</span> had cast a vote when it sent that message and <span class="math inline">\(\operatorname{vr}(a) \le k \lt j\)</span>, acceptor <span class="math inline">\(a\)</span> had at that time not voted in round <span class="math inline">\(j\)</span>. Thus no value has been or might yet be chosen in round <span class="math inline">\(j\)</span> (It is not possible to find two majority subsets that do not intersect).</li>
+</ul></li>
+</ul>
+<h2 id="making-paxos-fast">Making Paxos Fast</h2>
+<p>The normal-case communication pattern in the classic Paxos consensus algorithm is: proposer -&gt; leader -&gt; acceptors -&gt; learners. In Fast Paxos, the proposer sends its proposal directly to the acceptors, bypassing the leader. This can save one message delay (and one message).</p>
+<p>In Fast Paxos, round numbers are partitioned into fast and classic round numbers. A round is said to be either fast or classic, depending on its number. Rounds proceed in two phases, just as before, except with two differences:</p>
+<ul>
+<li>The rule by which the coordinator picks a value in phase 2a is modified as explained below.</li>
+<li>In a fast round <span class="math inline">\(i\)</span>, if the coordinator can pick any proposed value in phase 2a, then instead of picking a single value, it may instead send a special phase 2a message called an <strong>any</strong> message to the acceptors. When an acceptor receives a phase 2a <strong>any</strong> message, it may treat <strong>any proposer's message</strong> proposing a value as if it were an ordinary round <span class="math inline">\(i\)</span> phase 2a message with that value. (However, it may execute its round <span class="math inline">\(i\)</span> phase 2b action <strong>only once</strong>, for a <strong>single</strong> value.)</li>
+</ul>
+<h3 id="maintaining-cp-after-involving-fast-rounds">Maintaining CP after Involving Fast Rounds</h3>
+<p>In a fast round, proposers send their proposals directly to the acceptors, bypassing the leader. Each acceptor independently decides what proposal message to take as a phase 2a message. Different acceptors can therefore vote to accept different values within the same round.</p>
+<p>Consequently, Observation 3 no longer holds true. It's plausible for different phase 2a messages in the same round <span class="math inline">\(i\)</span> to contain the same <span class="math inline">\(\operatorname{vr}(a)\)</span>, which is <span class="math inline">\(k\)</span> (where <span class="math inline">\(k\)</span> is the highest value of <span class="math inline">\(\operatorname{vr}(a)\)</span> for all acceptors <span class="math inline">\(a\)</span> in <span class="math inline">\(Q\)</span>), but have different values for <span class="math inline">\(\operatorname{vv}(a_1) = v_1\)</span> and <span class="math inline">\(\operatorname{vv}(a_2) = v_2\)</span>. In this scenario, we would still want property <span class="math inline">\(\operatorname{CP}(v, i)\)</span> to hold true.</p>
+<p>The coordinator's rule for picking a value in phase 2a no longer guarantees consistency, even for a classic round. Consider a situation where a classic round (with a higher id) occurs "after" a fast round (with a lower id). The leader can propose value <span class="math inline">\(v\)</span> in round <span class="math inline">\(i\)</span> while maintaining property <span class="math inline">\(\operatorname{CP}(v, i)\)</span> if and only if one of the following conditions is met:</p>
+<ul>
+<li>The leader knows that a majority of acceptors voted for value <span class="math inline">\(v\)</span> in round <span class="math inline">\(k\)</span>.</li>
+<li>Even if all other acceptors with unknown states vote for a value different from <span class="math inline">\(v\)</span> (for instance, the second majority value <span class="math inline">\(v&#39;\)</span> voted by <span class="math inline">\(\operatorname{vr}(a)\)</span> for <span class="math inline">\(a\)</span> in <span class="math inline">\(Q\)</span>), value <span class="math inline">\(v&#39;\)</span> cannot be chosen.</li>
+</ul>
+<h3 id="employing-quorum-based-approach-in-place-of-majority-sets">Employing Quorum-Based Approach in Place of Majority Sets</h3>
+<p>In a system with <span class="math inline">\(2 * n + 1\)</span> acceptors, suppose <span class="math inline">\(n\)</span> acceptors reply with the phase 2a message with <span class="math inline">\(\operatorname{vv}(a) = k\)</span> and <span class="math inline">\(\operatorname{vr}(a) = v_1\)</span>, and <span class="math inline">\(n\)</span> acceptors reply with the phase 2a message with <span class="math inline">\(\operatorname{vv}(a) = k\)</span> and <span class="math inline">\(\operatorname{vr}(a) = v_2\)</span> where <span class="math inline">\(v_2 \neq v_1\)</span>. In this case, round <span class="math inline">\(i\)</span> must stall and propose nothing. Otherwise, it is highly likely that property <span class="math inline">\(\operatorname{CP}(v, i)\)</span> would be violated: if the leader proposes <span class="math inline">\(v_1\)</span> and the unknown acceptor actually accepts <span class="math inline">\(v_2\)</span>, or vice versa.</p>
+<p>The example above illustrates that in the worst case, if even a single acceptor out of <span class="math inline">\(2 * n + 1\)</span> is down, a classic round cannot propose anything. This indicates that Paxos loses fault tolerance under certain circumstances, which is unacceptable. Therefore, it is necessary to generalize the algorithm as follows and continue our discussion based on this generalization: The Paxos algorithm is stated above in terms of majority sets, where a majority set comprises a majority of the acceptors. The only property required of majority sets is that any two majority sets have non-empty intersection. The algorithm trivially generalizes by assuming an arbitrary collection of sets called quorums such that any two quorums have non-empty intersection, and simply replacing "majority set" by "quorum".</p>
+<h3 id="observation-4">Observation 4</h3>
+<figure>
+<img src="http://junbin-hexo-img.oss-cn-beijing.aliyuncs.com/paper-interpretation-fast-paxos/figure-1-the-coordinator-s-rule-for-picking-value-v-in-phase-2a-of-round-i.png" srcset="/img/loading.gif" lazyload alt="" /><figcaption>Figure 1: The coordinator's rule for picking value <span class="math inline">\(v\)</span> in phase 2a of round <span class="math inline">\(i\)</span>.</figcaption>
+</figure>
+<p>With <span class="math inline">\(Q\)</span>, <span class="math inline">\(vr\)</span>, <span class="math inline">\(vv\)</span>, and <span class="math inline">\(k\)</span> as in Figure 1, a value <span class="math inline">\(v\)</span> has been or might yet be chosen in round <span class="math inline">\(k\)</span> iff there <strong>exists</strong> a <span class="math inline">\(k\)</span>-quorum <span class="math inline">\(R\)</span> such that <span class="math inline">\(\operatorname{vr}(a) = k\)</span> and <span class="math inline">\(\operatorname{vv}(a) = v\)</span> for all acceptors <span class="math inline">\(a\)</span> in <span class="math inline">\(R \cap Q\)</span>.</p>
+<p>I seem to have a misunderstanding about Observation 4. To clarify, let's consider a specific example. Consider a scenario where there's only one <span class="math inline">\(k\)</span>-quorum, <span class="math inline">\(R = \{a_0, a_1, a_2\}\)</span>, and <span class="math inline">\(Q = \{a_0, a_1, a_2\}\)</span> represents any quorum of acceptors that have sent round <span class="math inline">\(i\)</span> phase 1b messages. If <span class="math inline">\(a_0\)</span> has voted for <span class="math inline">\(x\)</span> and <span class="math inline">\(a_1\)</span> has voted for <span class="math inline">\(y\)</span> (where <span class="math inline">\(x \neq y\)</span>) in round <span class="math inline">\(k\)</span>, then not all acceptors <span class="math inline">\(a\)</span> in <span class="math inline">\(R \cap Q\)</span> have voted for either <span class="math inline">\(x\)</span> or <span class="math inline">\(y\)</span>. Given this, and considering that <span class="math inline">\(R\)</span> is the only <span class="math inline">\(k\)</span>-quorum in round <span class="math inline">\(k\)</span>, there doesn't appear to be a value <span class="math inline">\(v\)</span> in <span class="math inline">\(V\)</span> that satisfies <span class="math inline">\(\operatorname{O4}(v)\)</span>.</p>
+<p>Observation 4 asserts that <span class="math inline">\(v\)</span> has been or might be chosen in round <span class="math inline">\(k\)</span> only if <span class="math inline">\(\operatorname{O4}(v)\)</span> is true. There are three cases to consider:</p>
+<ul>
+<li>If no <span class="math inline">\(v\)</span> in <span class="math inline">\(V\)</span> satisfying <span class="math inline">\(\operatorname{O4}(v)\)</span>.
+<ul>
+<li>It implies that for every <span class="math inline">\(k\)</span>-quorum, namely <span class="math inline">\(R_0\)</span>, <span class="math inline">\(R_1\)</span>, ..., <span class="math inline">\(R_n\)</span>, one of the following cases must hold:
+<ul>
+<li>At least one acceptor in <span class="math inline">\(Q \cap R_m\)</span> has neither voted nor will vote for any values in the future.</li>
+<li>The acceptors in <span class="math inline">\(Q \cap R_m\)</span> have already voted for more than one value.</li>
+</ul></li>
+<li>From this, it's straightforward to infer, <span class="math inline">\(R_0\)</span>, <span class="math inline">\(R_1\)</span>, ..., <span class="math inline">\(R_n\)</span> have not chosen or will not choose any value in round <span class="math inline">\(k\)</span>.</li>
+</ul></li>
+<li>There is a single <span class="math inline">\(v\)</span> in <span class="math inline">\(V\)</span> satisfying <span class="math inline">\(\operatorname{O4}(v)\)</span>.
+<ul>
+<li>This scenario suggests that for every <span class="math inline">\(k\)</span>-quorum, such as <span class="math inline">\(R_0\)</span>, <span class="math inline">\(R_1\)</span>, ..., <span class="math inline">\(R_n\)</span>, one of the following cases must hold:
+<ul>
+<li>At least one acceptor in <span class="math inline">\(Q \cap R_m\)</span> has not voted and will not vote for any value in the future.</li>
+<li>The acceptors in <span class="math inline">\(Q \cap R_m\)</span> have voted for more than one value.</li>
+<li>All the acceptors in <span class="math inline">\(Q \cap R_m\)</span> have voted for the value <span class="math inline">\(v\)</span>.</li>
+</ul></li>
+<li>Then for each <span class="math inline">\(k\)</span>-quorum, such as <span class="math inline">\(R_0\)</span>, <span class="math inline">\(R_1\)</span>, ..., <span class="math inline">\(R_n\)</span>, one of the following cases must hold:
+<ul>
+<li>At least one acceptor in <span class="math inline">\(R_m\)</span> has not voted and will not vote for any value in the future.</li>
+<li>The acceptors in <span class="math inline">\(R_m\)</span> have voted for more than one value.</li>
+<li>All the acceptors in <span class="math inline">\(R_m\)</span> have voted for the value <span class="math inline">\(v\)</span>.</li>
+<li>The acceptors in <span class="math inline">\(R_m\)</span> have voted for more than one value, one of which is <span class="math inline">\(v\)</span>.</li>
+</ul></li>
+<li>Therefore, it's reasonable to deduce that <span class="math inline">\(R_0\)</span>, <span class="math inline">\(R_1\)</span>, ..., <span class="math inline">\(R_n\)</span> have chosen or might choose nothing other than <span class="math inline">\(v\)</span>.</li>
+</ul></li>
+<li>There is more than one <span class="math inline">\(v\)</span> in <span class="math inline">\(V\)</span> satisfying <span class="math inline">\(\operatorname{O4}(v)\)</span>. In this case we are stuck.</li>
+</ul>
+<p>The solution to the dilemma of case 3 is to make that case impossible. We make case 3 impossible by the <strong>Quorum Requirement</strong>. For any round numbers <span class="math inline">\(i\)</span> and <span class="math inline">\(j\)</span>:</p>
+<ul>
+<li>Any <span class="math inline">\(i\)</span>-quorum and any <span class="math inline">\(j\)</span>-quorum have non-empty intersection.</li>
+<li>If <span class="math inline">\(j\)</span> is a fast round number, then any <span class="math inline">\(i\)</span>-quorum and any two <span class="math inline">\(j\)</span>-quorums have non-empty intersection.</li>
+</ul>
+<p>Understanding why the Quorum Requirement prevents case 3 can be somewhat complex. Let's simplify it with an easy-to-grasp example. Consider five acceptors, <span class="math inline">\(a_1\)</span>, ..., <span class="math inline">\(a_5\)</span>. Let's set <span class="math inline">\(Q = {a_1, a_2, a_3}\)</span>, <span class="math inline">\(R_1 = {a_1, a_2, a_4}\)</span>, and <span class="math inline">\(R_2 = {a_3, a_4, a_5}\)</span>. In the fast round 1, acceptors <span class="math inline">\(a_1\)</span> and <span class="math inline">\(a_2\)</span> voted for <span class="math inline">\(x\)</span>, while acceptors <span class="math inline">\(a_3\)</span>, <span class="math inline">\(a_4\)</span>, and <span class="math inline">\(a_5\)</span> voted for <span class="math inline">\(y\)</span> (where <span class="math inline">\(x \neq y\)</span>). Following this, in the classic round 2, after receiving phase 1b messages from all acceptors in <span class="math inline">\(Q\)</span>, the coordinator <span class="math inline">\(c\)</span> identifies two values (<span class="math inline">\(x\)</span> and <span class="math inline">\(y\)</span>), both satisfying Observation 4. Here's the twist: If coordinator <span class="math inline">\(c\)</span> selects <span class="math inline">\(R_1\)</span> as the 1-quorum, then <span class="math inline">\(\operatorname{O4}(x)\)</span> is fulfilled (<span class="math inline">\((R_1 \cap Q = {a_1, a_2}) \land (\operatorname{vv}(a_1) = x) \land (\operatorname{vv}(a_2) = x)\)</span>). Alternatively, if coordinator <span class="math inline">\(c\)</span> selects <span class="math inline">\(R_2\)</span> as the 1-quorum, then <span class="math inline">\(\operatorname{O4}(y)\)</span> is satisfied (<span class="math inline">\((R_2 \cap Q = {a_3}) \land (\operatorname{vv}(a_3) = y)\)</span>). However, the catch is that <span class="math inline">\(Q \cap R_1 \cap R_2 = \emptyset\)</span>. This condition contradicts the Quorum Requirement, thereby illustrating how the Quorum Requirement can prevent such scenarios.</p>
+<p>Let's demonstrate in a more generalized manner how the Quorum Requirement prevents case 3. Assume the existence of a <span class="math inline">\(k\)</span>-quorum <span class="math inline">\(R_0\)</span> where all acceptors in <span class="math inline">\(Q \cap R_0\)</span> have voted for a value <span class="math inline">\(v_0\)</span>. We can prove that <span class="math inline">\(v_0\)</span> is the only value satisfying Observation 4, and we do this via a proof by contradiction. Suppose there is another distinct value <span class="math inline">\(v_m\)</span> that satisfies Observation 4 when we choose <span class="math inline">\(R_m\)</span> as another <span class="math inline">\(k\)</span>-quorum. By the Quorum Requirement, <span class="math inline">\(Q \cap R_0 \cap R_m \neq \emptyset\)</span>, which means there is at least one acceptor in <span class="math inline">\(Q \cap R_0 \cap R_m\)</span>. Without loss of generality, let's assume this acceptor is <span class="math inline">\(a_0\)</span>. We know that <span class="math inline">\(a_0\)</span> has already voted for <span class="math inline">\(v_0\)</span> (since all acceptors in <span class="math inline">\(Q \cap R_0\)</span> voted for <span class="math inline">\(v_0\)</span>), and that <span class="math inline">\(a_0\)</span> is in <span class="math inline">\(R_m\)</span> (because <span class="math inline">\(a_0 \in R_0 \cap R_m\)</span>). Consequently, the acceptors in <span class="math inline">\(Q \cap R_m\)</span> have voted for at least two different values: <span class="math inline">\(v_0\)</span> and <span class="math inline">\(v_m\)</span>. This is a contradiction.</p>
+<h3 id="choosing-quorums">Choosing Quorums</h3>
+<p>Let <span class="math inline">\(N\)</span> be the number of acceptors, and let us choose <span class="math inline">\(F\)</span> and <span class="math inline">\(E\)</span> such that any set of at least <span class="math inline">\(N − F\)</span> acceptors is a classic quorum and any set of at least <span class="math inline">\(N − E\)</span> acceptors is a fast quorum.</p>
+<p>In any given round, any two fast quorums, <span class="math inline">\(R_1\)</span> and <span class="math inline">\(R_2\)</span>, will intersect at least <span class="math inline">\(2 * (N - E) - N\)</span> acceptors, represented by <span class="math inline">\(R_1 \cap R_2\)</span>. If we consider <span class="math inline">\(Q\)</span> to be any classic quorum, there will be at least <span class="math inline">\((2 * (N - E) - N) + (N - F) - N\)</span> acceptors in the intersection <span class="math inline">\(Q \cap R_1 \cap R_2\)</span>. Therefore, if we ensure that <span class="math inline">\(N &gt; 2E + F\)</span>, it guarantees that the intersection <span class="math inline">\(Q \cap R_1 \cap R_2\)</span> is not empty.</p>
+<p>Given any two classic quorums, they will intersect at a minimum of <span class="math inline">\(2 * (N - F) - N\)</span> acceptors. Therefore, by ensuring that <span class="math inline">\(N &gt; 2F\)</span>, we can guarantee an intersection between any two classic quorums.</p>
+<p>Since the requirements for fast quorums are more stringent than for classic quorums, we can always <strong>assume</strong> <span class="math inline">\(E \le F\)</span>. For a fixed <span class="math inline">\(N\)</span>, the two natural ways to choose <span class="math inline">\(E\)</span> and <span class="math inline">\(F\)</span> are to maximize one or the other. Maximizing <span class="math inline">\(E\)</span> yields <span class="math inline">\(E = F = \lceil N / 3\rceil - 1\)</span>; maximizing <span class="math inline">\(F\)</span> yields <span class="math inline">\(F = \lceil N / 2\rceil - 1\)</span> and <span class="math inline">\(E = \lfloor N / 4\rfloor\)</span>.</p>
+<h3 id="collision-recovery">Collision Recovery</h3>
+<p>The round can fail if <strong>two or more</strong> different proposers send proposals at about the same time, and those proposals are received by the acceptors in different orders. I now consider what the algorithm does to recover from such a collision of competing proposals.</p>
+<p>The obvious way to recover from a collision is for <span class="math inline">\(c\)</span> to begin a new round, sending phase 1a messages to all acceptors, if it learns that round <span class="math inline">\(i\)</span> may not have chosen a value. Suppose the coordinator <span class="math inline">\(c\)</span> of round <span class="math inline">\(i\)</span> is also coordinator of round <span class="math inline">\(i + 1\)</span>, and that round <span class="math inline">\(i + 1\)</span> is the new one it starts. The phase 1b message that an acceptor a sends in response to <span class="math inline">\(c\)</span>'s round <span class="math inline">\(i + 1\)</span> phase 1a message does two things: it reports the current values of <span class="math inline">\(\operatorname{vrnd}(a)\)</span> and <span class="math inline">\(\operatorname{vval}(a)\)</span>, and it <strong>transmits <span class="math inline">\(a\)</span>'s promise not to cast any further vote in any round numbered less than <span class="math inline">\(i + 1\)</span></strong>. (This promise is implicit in <span class="math inline">\(a\)</span>'s setting <span class="math inline">\(\operatorname{rnd}(a)\)</span> to <span class="math inline">\(i + 1\)</span>.)</p>
+<p>Suppose a voted in round <span class="math inline">\(i\)</span>. In that case, <span class="math inline">\(a\)</span>'s phase 1b message reports that <span class="math inline">\(\operatorname{vrnd}(a) = i\)</span> and that <span class="math inline">\(\operatorname{vval}(a)\)</span> equals the value <span class="math inline">\(a\)</span> sent in its round <span class="math inline">\(i\)</span> phase 2b message. Moreover, that phase 2b message also implies that a can cast <strong>no further vote in any round numbered less than <span class="math inline">\(i + 1\)</span></strong>. In other words, <strong><span class="math inline">\(a\)</span>'s round <span class="math inline">\(i\)</span> phase 2b message carries exactly the same information as its round i + 1 phase 1b message</strong>. If coordinator <span class="math inline">\(c\)</span> has received the phase 2b message, it has no need of the phase 1b message. This observation leads to the following two methods for recovery from collision.</p>
+<h4 id="coordinated-recovery">Coordinated Recovery</h4>
+<p>Suppose <span class="math inline">\(i\)</span> is a fast round number and <span class="math inline">\(c\)</span> is coordinator of rounds <span class="math inline">\(i\)</span> and <span class="math inline">\(i + 1\)</span>. In coordinated recovery, acceptors send their round <span class="math inline">\(i\)</span> phase 2b messages to the coordinator <span class="math inline">\(c\)</span> (as well as to the learners). If <span class="math inline">\(c\)</span> receives those messages from an <span class="math inline">\((i + 1)\)</span>-quorum of acceptors and sees that a collision may have occurred, then it treats those <strong>round <span class="math inline">\(i\)</span> phase 2b messages</strong> as if they were the corresponding <strong>round <span class="math inline">\(i + 1\)</span> phase 1b messages</strong> and executes phase 2a of round <span class="math inline">\(i + 1\)</span>, using the rule of Figure 2 to choose the value <span class="math inline">\(v\)</span> in its phase 2a messages.</p>
+<p>Note that an acceptor can perform its phase 2b action even if it never received a phase 1a message for the round.</p>
+<h4 id="uncoordinated-recovery">Uncoordinated Recovery</h4>
+<p>Suppose <span class="math inline">\(i\)</span> and <span class="math inline">\(i + 1\)</span> are both fast round numbers. In uncoordinated recovery, acceptors send their round <span class="math inline">\(i\)</span> phase 2b messages to all other acceptors. Each acceptor uses <strong>the same procedure</strong> as in coordinated recovery to pick a value <span class="math inline">\(v\)</span> that the coordinator could send in a round <span class="math inline">\(i + 1\)</span> phase 2a message. It then executes phase 2b for round <span class="math inline">\(i + 1\)</span> <strong>as if it had received such a phase 2a message</strong>.</p>
+<p>An acceptor picks a value to vote for in round <span class="math inline">\(i + 1\)</span> <strong>based on the round <span class="math inline">\(i\)</span> phase 2b messages it receives</strong>. The nondeterminism in that rule could lead different acceptors to pick different values, which could prevent round <span class="math inline">\(i + 1\)</span> from choosing a value. This can be prevented by having the round's coordinator indicate in its round <span class="math inline">\(i\)</span> phase 2a any message what <span class="math inline">\((i + 1)\)</span>-quorum Q should be used for uncoordinated recovery in case of collision.</p>
+<h3 id="when-is-the-right-time-to-start-a-fast-round">When is the Right Time to Start a Fast Round?</h3>
+<p>If <span class="math inline">\(E &lt; F\)</span>, so fast quorums are larger than classic quorums, the leader will probably choose a fast round number iff it believes that a fast quorum of acceptors is nonfaulty. If <span class="math inline">\(E = F\)</span>, in most applications it will always select a fast round number.</p>
+<h2 id="reference">Reference</h2>
+<ul>
+<li><a target="_blank" rel="noopener" href="https://www.microsoft.com/en-us/research/uploads/prod/2016/12/The-Part-Time-Parliament.pdf">The Part-Time Parliament</a></li>
+<li><a target="_blank" rel="noopener" href="https://www.microsoft.com/en-us/research/wp-content/uploads/2016/02/tr-2005-112.pdf">Fast Paxos</a></li>
+</ul>
+
+                
+              </div>
+            
+            <hr/>
+            <div>
+              <div class="post-metas my-3">
+  
+    <div class="post-meta mr-3 d-flex align-items-center">
+      <i class="iconfont icon-category"></i>
+      
+
+<span class="category-chains">
+  
+  
+    
+      <span class="category-chain">
+        
+  <a href="/categories/Computer-Science/" class="category-chain-item">Computer Science</a>
+  
+  
+    <span>></span>
+    
+  <a href="/categories/Computer-Science/Consensus/" class="category-chain-item">Consensus</a>
+  
+  
+
+  
+
+      </span>
+    
+  
+</span>
+
+    </div>
+  
+  
+</div>
+
+
+              
+  
+
+  <div class="license-box my-3">
+    <div class="license-title">
+      <div>Paper Interpretation - Fast Paxos</div>
+      <div>https://clcanny.github.io/2023/07/30/computer-science/consensus/paper-interpretation-fast-paxos/</div>
+    </div>
+    <div class="license-meta">
+      
+        <div class="license-meta-item">
+          <div>作者</div>
+          <div>JunBin</div>
+        </div>
+      
+      
+        <div class="license-meta-item license-meta-date">
+          <div>发布于</div>
+          <div>2023年7月30日</div>
+        </div>
+      
+      
+      
+        <div class="license-meta-item">
+          <div>许可协议</div>
+          <div>
+            
+              
+              
+                <a target="_blank" href="https://creativecommons.org/licenses/by/4.0/">
+                  <span class="hint--top hint--rounded" aria-label="BY - 署名">
+                    <i class="iconfont icon-by"></i>
+                  </span>
+                </a>
+              
+            
+          </div>
+        </div>
+      
+    </div>
+    <div class="license-icon iconfont"></div>
+  </div>
+
+
+
+              
+                <div class="post-prevnext my-3">
+                  <article class="post-prev col-6">
+                    
+                    
+                      <a href="/2023/08/11/computer-science/consensus/paper-interpretation-there-is-more-consensus-in-egalitarian-parliaments/" title="Paper Interpretation - There Is More Consensus In Egalitarian Parliaments">
+                        <i class="iconfont icon-arrowleft"></i>
+                        <span class="hidden-mobile">Paper Interpretation - There Is More Consensus In Egalitarian Parliaments</span>
+                        <span class="visible-mobile">上一篇</span>
+                      </a>
+                    
+                  </article>
+                  <article class="post-next col-6">
+                    
+                    
+                      <a href="/2023/07/29/computer-science/consensus/paper-interpretation-flexible-paxos-quorum-intersection-revisited/" title="Paper Interpretation - Flexible Paxos: Quorum intersection revisited">
+                        <span class="hidden-mobile">Paper Interpretation - Flexible Paxos: Quorum intersection revisited</span>
+                        <span class="visible-mobile">下一篇</span>
+                        <i class="iconfont icon-arrowright"></i>
+                      </a>
+                    
+                  </article>
+                </div>
+              
+            </div>
+
+            
+          </article>
+        </div>
+      </div>
+    </div>
+
+    <div class="side-col d-none d-lg-block col-lg-2">
+      
+  <aside class="sidebar" style="margin-left: -1rem">
+    <div id="toc">
+  <p class="toc-header">
+    <i class="iconfont icon-list"></i>
+    <span>目录</span>
+  </p>
+  <div class="toc-body" id="toc-body"></div>
+</div>
+
+
+
+  </aside>
+
+
+    </div>
+  </div>
+</div>
+
+
+
+
+
+  
+
+
+
+  
+
+
+
+  
+
+
+
+  
+
+
+
+  
+
+
+  
+  
+
+
+
+
+
+  <script>
+  Fluid.utils.createScript('https://lib.baomitu.com/mermaid/8.14.0/mermaid.min.js', function() {
+    mermaid.initialize({"theme":"default"});
+
+    Fluid.events.registerRefreshCallback(function() {
+      if ('mermaid' in window) {
+        mermaid.init();
+      }
+    });
+  });
+</script>
+
+
+
+
+
+
+    
+
+    
+      <a id="scroll-top-button" aria-label="TOP" href="#" role="button">
+        <i class="iconfont icon-arrowup" aria-hidden="true"></i>
+      </a>
+    
+
+    
+      <div class="modal fade" id="modalSearch" tabindex="-1" role="dialog" aria-labelledby="ModalLabel"
+     aria-hidden="true">
+  <div class="modal-dialog modal-dialog-scrollable modal-lg" role="document">
+    <div class="modal-content">
+      <div class="modal-header text-center">
+        <h4 class="modal-title w-100 font-weight-bold">搜索</h4>
+        <button type="button" id="local-search-close" class="close" data-dismiss="modal" aria-label="Close">
+          <span aria-hidden="true">&times;</span>
+        </button>
+      </div>
+      <div class="modal-body mx-3">
+        <div class="md-form mb-5">
+          <input type="text" id="local-search-input" class="form-control validate">
+          <label data-error="x" data-success="v" for="local-search-input">关键词</label>
+        </div>
+        <div class="list-group" id="local-search-result"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+    
+
+    
+  </main>
+
+  <footer>
+    <div class="footer-inner">
+  
+    <div class="footer-content">
+       <a href="https://hexo.io" target="_blank" rel="nofollow noopener"><span>Hexo</span></a> <i class="iconfont icon-love"></i> <a href="https://github.com/fluid-dev/hexo-theme-fluid" target="_blank" rel="nofollow noopener"><span>Fluid</span></a> 
+    </div>
+  
+  
+  
+  
+</div>
+
+  </footer>
+
+  <!-- Scripts -->
+  
+  <script  src="https://lib.baomitu.com/nprogress/0.2.0/nprogress.min.js" ></script>
+  <link  rel="stylesheet" href="https://lib.baomitu.com/nprogress/0.2.0/nprogress.min.css" />
+
+  <script>
+    NProgress.configure({"showSpinner":false,"trickleSpeed":100})
+    NProgress.start()
+    window.addEventListener('load', function() {
+      NProgress.done();
+    })
+  </script>
+
+
+<script  src="https://lib.baomitu.com/jquery/3.6.0/jquery.min.js" ></script>
+<script  src="https://lib.baomitu.com/twitter-bootstrap/4.6.1/js/bootstrap.min.js" ></script>
+<script  src="/js/events.js" ></script>
+<script  src="/js/plugins.js" ></script>
+
+
+  <script  src="https://lib.baomitu.com/typed.js/2.0.12/typed.min.js" ></script>
+  <script>
+    (function (window, document) {
+      var typing = Fluid.plugins.typing;
+      var subtitle = document.getElementById('subtitle');
+      if (!subtitle || !typing) {
+        return;
+      }
+      var text = subtitle.getAttribute('data-typed-text');
+      
+        typing(text);
+      
+    })(window, document);
+  </script>
+
+
+
+
+  
+    <script  src="/js/img-lazyload.js" ></script>
+  
+
+
+
+
+  
+<script>
+  Fluid.utils.createScript('https://lib.baomitu.com/tocbot/4.18.2/tocbot.min.js', function() {
+    var toc = jQuery('#toc');
+    if (toc.length === 0 || !window.tocbot) { return; }
+    var boardCtn = jQuery('#board-ctn');
+    var boardTop = boardCtn.offset().top;
+
+    window.tocbot.init(Object.assign({
+      tocSelector     : '#toc-body',
+      contentSelector : '.markdown-body',
+      linkClass       : 'tocbot-link',
+      activeLinkClass : 'tocbot-active-link',
+      listClass       : 'tocbot-list',
+      isCollapsedClass: 'tocbot-is-collapsed',
+      collapsibleClass: 'tocbot-is-collapsible',
+      scrollSmooth    : true,
+      includeTitleTags: true,
+      headingsOffset  : -boardTop,
+    }, CONFIG.toc));
+    if (toc.find('.toc-list-item').length > 0) {
+      toc.css('visibility', 'visible');
+    }
+
+    Fluid.events.registerRefreshCallback(function() {
+      if ('tocbot' in window) {
+        tocbot.refresh();
+        var toc = jQuery('#toc');
+        if (toc.length === 0 || !tocbot) {
+          return;
+        }
+        if (toc.find('.toc-list-item').length > 0) {
+          toc.css('visibility', 'visible');
+        }
+      }
+    });
+  });
+</script>
+
+
+  <script src=https://lib.baomitu.com/clipboard.js/2.0.11/clipboard.min.js></script>
+
+  <script>Fluid.plugins.codeWidget();</script>
+
+
+  
+<script>
+  Fluid.utils.createScript('https://lib.baomitu.com/anchor-js/4.3.1/anchor.min.js', function() {
+    window.anchors.options = {
+      placement: CONFIG.anchorjs.placement,
+      visible  : CONFIG.anchorjs.visible
+    };
+    if (CONFIG.anchorjs.icon) {
+      window.anchors.options.icon = CONFIG.anchorjs.icon;
+    }
+    var el = (CONFIG.anchorjs.element || 'h1,h2,h3,h4,h5,h6').split(',');
+    var res = [];
+    for (var item of el) {
+      res.push('.markdown-body > ' + item.trim());
+    }
+    if (CONFIG.anchorjs.placement === 'left') {
+      window.anchors.options.class = 'anchorjs-link-left';
+    }
+    window.anchors.add(res.join(', '));
+
+    Fluid.events.registerRefreshCallback(function() {
+      if ('anchors' in window) {
+        anchors.removeAll();
+        var el = (CONFIG.anchorjs.element || 'h1,h2,h3,h4,h5,h6').split(',');
+        var res = [];
+        for (var item of el) {
+          res.push('.markdown-body > ' + item.trim());
+        }
+        if (CONFIG.anchorjs.placement === 'left') {
+          anchors.options.class = 'anchorjs-link-left';
+        }
+        anchors.add(res.join(', '));
+      }
+    });
+  });
+</script>
+
+
+  
+<script>
+  Fluid.utils.createScript('https://lib.baomitu.com/fancybox/3.5.7/jquery.fancybox.min.js', function() {
+    Fluid.plugins.fancyBox();
+  });
+</script>
+
+
+  <script>Fluid.plugins.imageCaption();</script>
+
+  
+      <script>
+        if (!window.MathJax) {
+          window.MathJax = {
+            tex    : {
+              inlineMath: { '[+]': [['$', '$']] }
+            },
+            loader : {
+              load: ['ui/lazy']
+            },
+            options: {
+              renderActions: {
+                insertedScript: [200, () => {
+                  document.querySelectorAll('mjx-container').forEach(node => {
+                    let target = node.parentNode;
+                    if (target.nodeName.toLowerCase() === 'li') {
+                      target.parentNode.classList.add('has-jax');
+                    }
+                  });
+                }, '', false]
+              }
+            }
+          };
+        } else {
+          MathJax.startup.document.state(0);
+          MathJax.texReset();
+          MathJax.typeset();
+          MathJax.typesetPromise();
+        }
+
+        Fluid.events.registerRefreshCallback(function() {
+          if ('MathJax' in window && MathJax.startup.document && typeof MathJax.startup.document.state === 'function') {
+            MathJax.startup.document.state(0);
+            MathJax.texReset();
+            MathJax.typeset();
+            MathJax.typesetPromise();
+          }
+        });
+      </script>
+    
+
+  <script  src="https://lib.baomitu.com/mathjax/3.2.2/es5/tex-mml-chtml.js" ></script>
+
+  <script  src="/js/local-search.js" ></script>
+
+
+
+
+
+<!-- 主题的启动项，将它保持在最底部 -->
+<!-- the boot of the theme, keep it at the bottom -->
+<script  src="/js/boot.js" ></script>
+
+
+  
+
+  <noscript>
+    <div class="noscript-warning">博客在允许 JavaScript 运行的环境下浏览效果更佳</div>
+  </noscript>
+</body>
+</html>

@@ -1,0 +1,1016 @@
+
+
+<!DOCTYPE html>
+<html lang="zh-CN" data-default-color-scheme=auto>
+
+
+
+<head>
+  <meta charset="UTF-8">
+  <link rel="apple-touch-icon" sizes="76x76" href="/img/fluid.png">
+  <link rel="icon" href="/img/fluid.png">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, shrink-to-fit=no">
+  <meta http-equiv="x-ua-compatible" content="ie=edge">
+  
+  <meta name="theme-color" content="#2f4154">
+  <meta name="author" content="JunBin">
+  <meta name="keywords" content="">
+  
+    <meta name="description" content="Introduction The paper Building Consistent Transactions with Inconsistent Replication introduces an innovative approach to jointly optimizing concurrency control and consensus protocols, offering valu">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Paper Interpretation - Building Consistent Transactions with Inconsistent Replication">
+<meta property="og:url" content="https://clcanny.github.io/2023/12/10/computer-science/serializability/paper-interpretation-building-consistent-transactions-with-inconsistent-replication/index.html">
+<meta property="og:site_name" content="On The Road">
+<meta property="og:description" content="Introduction The paper Building Consistent Transactions with Inconsistent Replication introduces an innovative approach to jointly optimizing concurrency control and consensus protocols, offering valu">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://junbin-hexo-img.oss-cn-beijing.aliyuncs.com/paper-interpretation-building-consistent-transactions-with-inconsistent-replication/figure-2-example-read-write-transaction-using-two-phase-commit-viewstamped-replication-and-strict-two-phase-locking.png">
+<meta property="og:image" content="https://junbin-hexo-img.oss-cn-beijing.aliyuncs.com/paper-interpretation-building-consistent-transactions-with-inconsistent-replication/figure-4-tapir-protocol.png">
+<meta property="og:image" content="https://junbin-hexo-img.oss-cn-beijing.aliyuncs.com/paper-interpretation-building-consistent-transactions-with-inconsistent-replication/case-1-uncommitted-transaction-tau.drawio.svg">
+<meta property="og:image" content="https://junbin-hexo-img.oss-cn-beijing.aliyuncs.com/paper-interpretation-building-consistent-transactions-with-inconsistent-replication/timeline-for-case-1.drawio.svg">
+<meta property="og:image" content="https://junbin-hexo-img.oss-cn-beijing.aliyuncs.com/paper-interpretation-building-consistent-transactions-with-inconsistent-replication/case-2-committed-transaction-tau.drawio.svg">
+<meta property="og:image" content="https://junbin-hexo-img.oss-cn-beijing.aliyuncs.com/paper-interpretation-building-consistent-transactions-with-inconsistent-replication/timeline-for-case-2.drawio.svg">
+<meta property="og:image" content="https://junbin-hexo-img.oss-cn-beijing.aliyuncs.com/paper-interpretation-building-consistent-transactions-with-inconsistent-replication/sample-state-tables-for-a-system-with-two-replicas-across-three-views-demonstrating-rule-5.svg">
+<meta property="article:published_time" content="2023-12-10T10:03:57.000Z">
+<meta property="article:modified_time" content="2024-10-30T15:47:28.515Z">
+<meta property="article:author" content="JunBin">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="https://junbin-hexo-img.oss-cn-beijing.aliyuncs.com/paper-interpretation-building-consistent-transactions-with-inconsistent-replication/figure-2-example-read-write-transaction-using-two-phase-commit-viewstamped-replication-and-strict-two-phase-locking.png">
+  
+  
+  
+  <title>Paper Interpretation - Building Consistent Transactions with Inconsistent Replication - On The Road</title>
+
+  <link  rel="stylesheet" href="https://lib.baomitu.com/twitter-bootstrap/4.6.1/css/bootstrap.min.css" />
+
+
+
+  <link  rel="stylesheet" href="https://lib.baomitu.com/github-markdown-css/4.0.0/github-markdown.min.css" />
+
+  <link  rel="stylesheet" href="https://lib.baomitu.com/hint.css/2.7.0/hint.min.css" />
+
+  <link  rel="stylesheet" href="https://lib.baomitu.com/fancybox/3.5.7/jquery.fancybox.min.css" />
+
+
+
+<!-- 主题依赖的图标库，不要自行修改 -->
+<!-- Do not modify the link that theme dependent icons -->
+
+<link rel="stylesheet" href="//at.alicdn.com/t/font_1749284_hj8rtnfg7um.css">
+
+
+
+<link rel="stylesheet" href="//at.alicdn.com/t/font_1736178_lbnruvf0jn.css">
+
+
+<link  rel="stylesheet" href="/css/main.css" />
+
+
+  <link id="highlight-css" rel="stylesheet" href="/css/highlight.css" />
+  
+    <link id="highlight-css-dark" rel="stylesheet" href="/css/highlight-dark.css" />
+  
+
+
+
+
+  <script id="fluid-configs">
+    var Fluid = window.Fluid || {};
+    Fluid.ctx = Object.assign({}, Fluid.ctx)
+    var CONFIG = {"hostname":"clcanny.github.io","root":"/","version":"1.9.4","typing":{"enable":true,"typeSpeed":70,"cursorChar":"_","loop":false,"scope":[]},"anchorjs":{"enable":true,"element":"h1,h2,h3,h4,h5,h6","placement":"left","visible":"hover","icon":""},"progressbar":{"enable":true,"height_px":3,"color":"#29d","options":{"showSpinner":false,"trickleSpeed":100}},"code_language":{"enable":true,"default":"TEXT"},"copy_btn":true,"image_caption":{"enable":true},"image_zoom":{"enable":true,"img_url_replace":["",""]},"toc":{"enable":true,"placement":"right","headingSelector":"h1,h2,h3,h4,h5,h6","collapseDepth":0},"lazyload":{"enable":true,"loading_img":"/img/loading.gif","onlypost":false,"offset_factor":2},"web_analytics":{"enable":false,"follow_dnt":true,"baidu":null,"google":null,"gtag":null,"tencent":{"sid":null,"cid":null},"woyaola":null,"cnzz":null,"leancloud":{"app_id":null,"app_key":null,"server_url":null,"path":"window.location.pathname","ignore_local":false}},"search_path":"/local-search.xml"};
+
+    if (CONFIG.web_analytics.follow_dnt) {
+      var dntVal = navigator.doNotTrack || window.doNotTrack || navigator.msDoNotTrack;
+      Fluid.ctx.dnt = dntVal && (dntVal.startsWith('1') || dntVal.startsWith('yes') || dntVal.startsWith('on'));
+    }
+  </script>
+  <script  src="/js/utils.js" ></script>
+  <script  src="/js/color-schema.js" ></script>
+  
+
+
+  
+<meta name="generator" content="Hexo 7.0.0-rc1"></head>
+
+
+<body>
+  
+
+  <header>
+    
+
+<div class="header-inner" style="height: 70vh;">
+  <nav id="navbar" class="navbar fixed-top  navbar-expand-lg navbar-dark scrolling-navbar">
+  <div class="container">
+    <a class="navbar-brand" href="/">
+      <strong>Fluid</strong>
+    </a>
+
+    <button id="navbar-toggler-btn" class="navbar-toggler" type="button" data-toggle="collapse"
+            data-target="#navbarSupportedContent"
+            aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
+      <div class="animated-icon"><span></span><span></span><span></span></div>
+    </button>
+
+    <!-- Collapsible content -->
+    <div class="collapse navbar-collapse" id="navbarSupportedContent">
+      <ul class="navbar-nav ml-auto text-center">
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/">
+                <i class="iconfont icon-home-fill"></i>
+                <span>首页</span>
+              </a>
+            </li>
+          
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/archives/">
+                <i class="iconfont icon-archive-fill"></i>
+                <span>归档</span>
+              </a>
+            </li>
+          
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/categories/">
+                <i class="iconfont icon-category-fill"></i>
+                <span>分类</span>
+              </a>
+            </li>
+          
+        
+        
+          <li class="nav-item" id="search-btn">
+            <a class="nav-link" target="_self" href="javascript:;" data-toggle="modal" data-target="#modalSearch" aria-label="Search">
+              <i class="iconfont icon-search"></i>
+            </a>
+          </li>
+          
+        
+        
+          <li class="nav-item" id="color-toggle-btn">
+            <a class="nav-link" target="_self" href="javascript:;" aria-label="Color Toggle">
+              <i class="iconfont icon-dark" id="color-toggle-icon"></i>
+            </a>
+          </li>
+        
+      </ul>
+    </div>
+  </div>
+</nav>
+
+  
+
+<div id="banner" class="banner" parallax=true
+     style="background: url('/img/default.png') no-repeat center center; background-size: cover;">
+  <div class="full-bg-img">
+    <div class="mask flex-center" style="background-color: rgba(0, 0, 0, 0.3)">
+      <div class="banner-text text-center fade-in-up">
+        <div class="h2">
+          
+            <span id="subtitle" data-typed-text="Paper Interpretation - Building Consistent Transactions with Inconsistent Replication"></span>
+          
+        </div>
+
+        
+          
+  <div class="mt-3">
+    
+    
+      <span class="post-meta">
+        <i class="iconfont icon-date-fill" aria-hidden="true"></i>
+        <time datetime="2023-12-10 18:03" pubdate>
+          2023年12月10日 晚上
+        </time>
+      </span>
+    
+  </div>
+
+  <div class="mt-1">
+    
+      <span class="post-meta mr-2">
+        <i class="iconfont icon-chart"></i>
+        
+          57k 字
+        
+      </span>
+    
+
+    
+      <span class="post-meta mr-2">
+        <i class="iconfont icon-clock-fill"></i>
+        
+        
+        
+          479 分钟
+        
+      </span>
+    
+
+    
+    
+  </div>
+
+
+        
+      </div>
+
+      
+    </div>
+  </div>
+</div>
+
+</div>
+
+  </header>
+
+  <main>
+    
+      
+
+<div class="container-fluid nopadding-x">
+  <div class="row nomargin-x">
+    <div class="side-col d-none d-lg-block col-lg-2">
+      
+
+    </div>
+
+    <div class="col-lg-8 nopadding-x-md">
+      <div class="container nopadding-x-md" id="board-ctn">
+        <div id="board">
+          <article class="post-content mx-auto">
+            <!-- SEO header -->
+            <h1 style="display: none">Paper Interpretation - Building Consistent Transactions with Inconsistent Replication</h1>
+            
+            
+              <div class="markdown-body">
+                
+                <h2 id="introduction">Introduction</h2>
+<p>The paper <a target="_blank" rel="noopener" href="https://syslab.cs.washington.edu/papers/tapir-tr14.pdf">Building Consistent Transactions with Inconsistent Replication</a> introduces an innovative approach to jointly optimizing concurrency control and consensus protocols, offering valuable insights that enhance my understanding of related works such as <a target="_blank" rel="noopener" href="https://www.cs.cmu.edu/~dga/papers/epaxos-sosp2013.pdf">There Is More Consensus in Egalitarian Parliaments</a> and <a target="_blank" rel="noopener" href="https://cwiki.apache.org/confluence/display/CASSANDRA/CEP-15%3A+General+Purpose+Transactions?preview=/188744725/188744736/Accord.pdf">CEP-15: Fast General Purpose Transaction</a>. The Q&amp;A section on the accompanying blog captures the questions I had when initially exploring this paper.</p>
+<blockquote>
+<p>Our key insight is that existing transactional storage systems <strong>waste</strong> work and performance by integrating a distributed transaction protocol and a replication protocol that <strong>both</strong> enforce strong consistency.</p>
+</blockquote>
+<blockquote>
+<p>Maintaining the ordered log abstraction means that replicated transactional storage systems use expensive distributed coordination to enforce strict serial ordering in two places: the transaction protocol enforces a serial ordering of transactions across data partitions or shards, and the replication protocol enforces a serial ordering of operations within a shard.</p>
+</blockquote>
+<blockquote>
+<p>By enforcing strong consistency only in the transaction protocol, TAPIR is able to commit transactions <strong>in a single round-trip</strong> and schedule distributed transactions <strong>with no centralized coordination</strong>.</p>
+</blockquote>
+<blockquote>
+<p>To support IR’s weak consistency model, TAPIR integrates several novel techniques:</p>
+<ul>
+<li>Loosely synchronized clocks for optimistic transaction ordering at clients.</li>
+<li>New use of optimistic concurrency control to detect conflicts with only a <strong>partial transaction history</strong>.</li>
+<li>Multi-versioning for executing transactions out-of-order.</li>
+</ul>
+</blockquote>
+<figure>
+<img src="https://junbin-hexo-img.oss-cn-beijing.aliyuncs.com/paper-interpretation-building-consistent-transactions-with-inconsistent-replication/figure-2-example-read-write-transaction-using-two-phase-commit-viewstamped-replication-and-strict-two-phase-locking.png" srcset="/img/loading.gif" lazyload alt="" /><figcaption><em>Figure 2: Example read-write transaction using two-phase commit, Viewstamped Replication and strict two-phase locking.</em> Each zone represents an availablity region, which could be a cluster, datacenter or geographic region. Each shard holds a partition of the data stored in the system and is replicated across zones for fault-tolerance. For each read-write transaction, there is a large amount of distributed coordination. The transaction protocol must coordinate reads with the designated leader in each shard to acquire locks. To commit a transaciton, the transaction protocol coordinates across shards and then the replication protocol must coordinate within each shard.</figcaption>
+</figure>
+<p>As illustrated in Figure 2, the two-phase commit protocol, when applied with viewstamped replication or Raft, requires a minimum of two round-trip times (RTTs). Considering the prepare phase within a Raft-based replication scenario: initially, the client communicates its intention to prepare a transaction to the leaders of Shard A, Shard B, and Shard C. Subsequently, each leader synchronizes this preparation event with its followers. Upon receiving affirmative responses from a majority, a leader then conveys its acknowledgment back to the client. In conclusion, the transaction preparation process from the client's perspective incurs a total of two RTTs: the first RTT occurs between the client and the leaders across Shard A, Shard B, and Shard C, while the second RTT takes place between these leaders and their respective followers.</p>
+<figure>
+<img src="https://junbin-hexo-img.oss-cn-beijing.aliyuncs.com/paper-interpretation-building-consistent-transactions-with-inconsistent-replication/figure-4-tapir-protocol.png" srcset="/img/loading.gif" lazyload alt="" /><figcaption>Figure 4: TAPIR protocol.</figcaption>
+</figure>
+<p>Figure 4 shows the messages sent during a sample transaction in TAPIR. Compared to the protocol shown in Figure 2, TAPIR has three immediately apparent advantages:</p>
+<ol type="1">
+<li><strong>Reads go to the closest replica.</strong> Unlike protocols that must send reads to the leader, TAPIR sends reads to the replica closest to the client.</li>
+<li><strong>Successful transactions commit in one round-trip.</strong> Unlike protocols that use consistent replication, TAPIR commits most transactions in a single round- trip by eliminating cross-replica coordination.</li>
+<li><strong>No leader needed.</strong> Unlike protocols that order operations at a leader, TAPIR replicas all process the same number of messages, eliminating a bottleneck.</li>
+</ol>
+<h2 id="qa">Q&amp;A</h2>
+<h3 id="qa-on-tapir-fundamentals">Q&amp;A on TAPIR Fundamentals</h3>
+<h4 id="understanding-the-key-distinctions-between-operatornamepreparetransaction-timestamp-and-operatornamecommittransaction-timestamp-operations">Understanding the Key Distinctions Between <span class="math inline">\(\operatorname{Prepare}(transaction, timestamp)\)</span> and <span class="math inline">\(\operatorname{Commit}(transaction, timestamp)\)</span> Operations</h4>
+<p>The most significant distinction is that replicas can <strong>independently</strong> decide to return <span class="math inline">\(\text{PREPARE-OK}\)</span> or <span class="math inline">\(\text{ABORT}\)</span>, without needing to communicate with other replicas. This independent decision is based on the outcome of the TAPIR validation checks, which may vary due to the different states that each replica might be in at the time of validation. Consequently, replicas may yield <strong>varying responses</strong>. The final decision is reached by a <strong>majority</strong> vote amongst the replicas, a process that is essentially a form of consensus. This is why the original paper refers to the <span class="math inline">\(\operatorname{Prepare}(transaction, timestamp)\)</span> as a <strong>consensus operation</strong>. In contrast, the <span class="math inline">\(\operatorname{Commit}(transaction, timestamp)\)</span> operation is processed <strong>identically</strong> by all replicas, who then return the same result: they simply commit the transaction. Therefore, the <span class="math inline">\(\operatorname{Commit}(transaction, timestamp)\)</span> operation is termed an <strong>inconsistent operation</strong>.</p>
+<blockquote>
+<p>The result of <span class="math inline">\(\operatorname{Prepare}\)</span> at <strong>each</strong> replica depends on the outcome of the TAPIR validation checks. As noted, TAPIR validation checks have four possible outcomes.</p>
+</blockquote>
+<blockquote>
+<p>Thus, in addition to normal-case execution, TAPIR performs the following checks for each operation:</p>
+<ul>
+<li><span class="math inline">\(\operatorname{Prepare}\)</span>: If the transaction has been committed or aborted (logged in the transaction log), <strong>ignore</strong>. Otherwise, TAPIR validation checks are run.</li>
+<li><span class="math inline">\(\operatorname{Commit}\)</span>: Commit the transaction to the transaction log and update the data store. If prepared, remove from prepared transaction list.</li>
+<li><span class="math inline">\(\operatorname{Abort}\)</span>: Log abort in the transaction log. If prepared, remove from prepared list.</li>
+</ul>
+</blockquote>
+<blockquote>
+<p>TAPIR prepares are consensus operations, while commits and aborts are inconsistent operations.</p>
+</blockquote>
+<p>Let's delve deeper into why the <span class="math inline">\(\operatorname{Prepare}(transaction, timestamp)\)</span> operation <strong>is designed as</strong> a consensus operation, while the <span class="math inline">\(\operatorname{Commit}(transaction, timestamp)\)</span> operation is an inconsistent operation. TAPIR employs a typical two-phase commit (2PC) protocol, which requires a transaction to be committed only if all participating shards confirm that there are no conflicts. <strong>Once this confirmation is given, the decision to commit or abort is final</strong>, and thus, it should be uniformly persisted across all replicas of each shard. In other words, the replicas <strong>do not need to reconsider the decision</strong>; they only need to execute it, making it an inconsistent operation. Conversely, during the preparation phase, TAPIR necessitates that each replica independently performs validation checks. The final decision is derived from aggregating these individual responses. For this reason, it must be a consensus operation.</p>
+<h4 id="evaluating-the-necessity-of-finalizing-successful-but-unfinalized-operatornamepreparetransaction-timestamp-operations">Evaluating the Necessity of Finalizing Successful but Unfinalized <span class="math inline">\(\operatorname{Prepare}(transaction, timestamp)\)</span> Operations</h4>
+<blockquote>
+<p>If the <span class="math inline">\(\operatorname{Prepare}\)</span> times out without finalizing the result in one of the participant shards, then the TAPIR client must take a <strong>slow path</strong> to finish the transaction. If <span class="math inline">\(\operatorname{Prepare}\)</span> succeeded with <span class="math inline">\(\text{PREPARE-OK}\)</span> in every shard, the client commits the transaction, otherwise it aborts. To complete the transaction, the client first logs the outcome of the transaction to the backup coordinator group. It then notifies the client, and sends a <span class="math inline">\(\operatorname{Commit}\)</span> or <span class="math inline">\(\operatorname{Abort}\)</span> to all participant replicas.</p>
+</blockquote>
+<p>Is there a need to impose an obligation to finalize <span class="math inline">\(\operatorname{Prepare}(transaction, timestamp)\)</span> operations that have been successful but remain unfinalized, specifically in cases where the transaction has not been committed via the fast path and subsequently enters the slow path?</p>
+<p>Without that obligation in place, after a system endures up to <span class="math inline">\(f\)</span> simultaneous failures and subsequently undergoes recovery, the most critical scenario that could emerge are as follows. Because these operations had been successful but were not finalized at the time of system failures, following the recovery process, it is possible that replicas might <strong>achieve different consensuses</strong>. After the system has recovered from the failures, it's possible to find that some <span class="math inline">\(\operatorname{Prepare}(transaction, timestamp)\)</span> operations have resulted in <span class="math inline">\(\text{ABORT}\)</span>, yet the corresponding transaction has already been committed through the slow path.</p>
+<p>At first glance, these scenarios might suggest the presence of inconsistency within the system in the absence of such an obligation. However, this is not an issue of concern if the replicas are designed to unconditionally accept and process the <span class="math inline">\(\operatorname{Commit}(transaction, timestamp)\)</span> operation, regardless of the state of the corresponding <span class="math inline">\(\operatorname{Prepare}(transaction, timestamp)\)</span> operation. By adhering to this straightforward rule, any appearance of inconsistency is effectively resolved, ensuring the system maintains consistent post-recovery.</p>
+<p>In conclusion, such an obligation is <strong>unnecessary</strong>.</p>
+<h4 id="evaluating-the-necessity-of-the-slow-path-for-abortion-processes">Evaluating the Necessity of the Slow Path for Abortion Processes</h4>
+<blockquote>
+<p>If the <span class="math inline">\(\operatorname{Prepare}\)</span> times out without finalizing the result in one of the participant shards, then the TAPIR client must take a slow path to finish the transaction. If <span class="math inline">\(\operatorname{Prepare}\)</span> succeeded with <span class="math inline">\(\text{PREPARE-OK}\)</span> in every shard, the client commits the transaction, otherwise it aborts. To complete the transaction, the client first logs the outcome of the transaction to the backup coordinator group. It then notifies the client, and sends a <span class="math inline">\(\operatorname{Commit}\)</span> or <span class="math inline">\(\operatorname{Abort}\)</span> to all participant replicas. The client <strong>uses the same slow path to abort the transaction</strong> if <span class="math inline">\(\operatorname{Prepare}\)</span> does not succeed in any shard because there were not enough matching responses.</p>
+</blockquote>
+<p>Why should the abortion process also be required to go through the slow path?</p>
+<p>Because the TAPIR protocol is not designed to finalize unsuccessful <span class="math inline">\(\operatorname{Prepare}(transaction, timestamp)\)</span> operations. In the event of failures and subsequent recovery, replicas can arrive at divergent consensus outcomes — <span class="math inline">\(\text{PREPARE-OK}\)</span> as opposed to the original <span class="math inline">\(\text{ABORT}\)</span> consensus. Without the slow path mechanism, a client might erroneously commit a transaction post-recovery that was initially aborted prior to recovery, leading to inconsistency within the system.</p>
+<p>We could potentially design an alternative IR protocol capable of finalizing unsuccessful <span class="math inline">\(\operatorname{Prepare}\)</span> operations, which would allow TAPIR to abort transactions without resorting to the slow path. However, this would add complexity to the overall protocol.</p>
+<h4 id="qa-on-coordinator-recovery">Q&amp;A on Coordinator Recovery</h4>
+<h5 id="mechanisms-of-operatornamecoordinatorchangetransaction-viewtext-num-in-fencing-the-operatornamepreparetransaction-timestamp-operation">Mechanisms of <span class="math inline">\(\operatorname{CoordinatorChange}(transaction, view\text{-}num)\)</span> in Fencing the <span class="math inline">\(\operatorname{Prepare}(transaction, timestamp)\)</span> Operation</h5>
+<blockquote>
+<p>Coordinator recovery uses a coordinator change protocol, conceptually similar to Viewstamped Replication's view change protocol. The currently active backup coordinator is identified by indexing into the list <strong>with a coordinator-view number</strong>; it is the only coordinator permitted to log an outcome for the transaction.</p>
+</blockquote>
+<blockquote>
+<p>If the new coordinator does not find a logged outcome, it sends a <span class="math inline">\(\operatorname{CoordinatorChange}(transaction, view\text{-}num)\)</span> message to all replicas in participating shards. Upon receiving this message, replicas agree <strong>not to process messages from the previous coordinator</strong>; they also reply to the new coordinator with any previous <span class="math inline">\(\operatorname{Prepare}\)</span> result for the transaction. Once the <span class="math inline">\(\operatorname{CoordinatorChange}\)</span> is successful (at <span class="math inline">\(f+1\)</span> replicas in each participating shard), the new coordinator determines the outcome of the transaction in the following way.</p>
+</blockquote>
+<p>In the Single-Decree Synod protocol from <a target="_blank" rel="noopener" href="https://www.microsoft.com/en-us/research/uploads/prod/2016/12/The-Part-Time-Parliament.pdf">The Part-Time Parliament</a>, a fencing mechanism is employed to halt the advancement of consensus on lower ballots that have not yet achieved consensus:</p>
+<blockquote>
+<p>Upon receipt of a <span class="math inline">\(\operatorname{NextBallot}(b)\)</span> message from <span class="math inline">\(p\)</span> with <span class="math inline">\(b &gt; \operatorname{nextBal}(q)\)</span>, priest <span class="math inline">\(q\)</span> sets <span class="math inline">\(\operatorname{nextBal}(q)\)</span> to <span class="math inline">\(b\)</span> and sends a <span class="math inline">\(\operatorname{LastVote}(b, v)\)</span> message to <span class="math inline">\(p\)</span>, where <span class="math inline">\(v\)</span> equals <span class="math inline">\(\operatorname{prevVote}(q)\)</span>. A <span class="math inline">\(\operatorname{NextBallot}(b)\)</span> message is ignored if <span class="math inline">\(b \le \operatorname{nextBal}(q)\)</span>.</p>
+</blockquote>
+<p>This critical fencing mechanism is also implemented within coordinator recovery as the coordinator change protocol. In this context, <span class="math inline">\(view\text{-}num\)</span> is analogous to the Single-Decree Synod protocol's ballot number <span class="math inline">\(b\)</span>, and <span class="math inline">\(transaction\)</span> is comparable to the instance ID. Similar to the Synod's protocol commitment that a <span class="math inline">\(\operatorname{BeginBallot}(b, d)\)</span> message is ignored if a higher <span class="math inline">\(\operatorname{NextBallot}(b^\prime)\)</span> message has been received, the coordinator change protocol ensures that messages from the previous coordinator are not processed.</p>
+<h5 id="why-must-every-conflicting-transaction-use-the-slow-path">Why Must Every Conflicting Transaction Use the Slow Path?</h5>
+<blockquote>
+<p>However, every conflicting transaction must have used the slow path.</p>
+</blockquote>
+<p>A transaction is considered conflicting if any of its <span class="math inline">\(\operatorname{Prepare}\)</span> operations within a shard results in an <span class="math inline">\(\text{ABORT}\)</span> status, indicating a conflict. As previously discussed, the abortion process is required to go through the slow path. Therefore, by design, every conflicting transaction inevitably takes the slow path.</p>
+<p>However, not all transactions that go through the slow path are necessarily conflicting. A transaction that has taken the slow path may also be a non-conflicting transaction that contains any successful but not yet finalized <span class="math inline">\(\operatorname{Prepare}\)</span> operations. In other words, transactions that use the slow path consist of two types: non-conflicting transactions still awaiting the finalization of at least one successful <span class="math inline">\(\operatorname{Prepare}\)</span> operation, and conflicting transactions.</p>
+<h5 id="why-must-the-new-coordinator-await-the-completion-of-all-transactions">Why Must the New Coordinator Await the Completion of All Transactions?</h5>
+<blockquote>
+<p>In doing so, it receives any slow-path outcome that was logged by a previous coordinator. If such an outcome has been logged, the new coordinator must follow that decision; it notifies the client and all replicas in every shard.</p>
+<p>... the new coordinator determines the outcome of the transaction in the following way:</p>
+<ul>
+<li>If any replica in any shard has recorded a <span class="math inline">\(\operatorname{Commit}\)</span> or <span class="math inline">\(\operatorname{Abort}\)</span>, it must be preserved.</li>
+<li>If any shard has less than <span class="math inline">\(\lceil\frac{f}{2}\rceil+1\)</span> <span class="math inline">\(\text{PREPARE-OK}\)</span> responses, the transaction could not have committed on the fast path, so the new coordinator aborts it.</li>
+<li>If at least <span class="math inline">\(\lceil\frac{f}{2}\rceil+1\)</span> replicas in every shard have <span class="math inline">\(\text{PREPARE-OK}\)</span> responses, <strong>the outcome of the transaction is uncertain: it may or may not have committed on the fast path.</strong> However, every conflicting transaction must have used the slow path. <strong>The new coordinator polls the coordinator (or backup coordinators) of each of these transactions until they have completed.</strong> If those transactions committed, it aborts the transaction; otherwise, it sends <span class="math inline">\(\text{Prepare}\)</span> operations to the remaining replicas until it receives a total of <span class="math inline">\(f+1\)</span> <span class="math inline">\(\text{PREPARE-OK}\)</span> responses and then commits.</li>
+</ul>
+</blockquote>
+<p>I would like to emphasize the following part:</p>
+<blockquote>
+<p>... the outcome of the transaction is uncertain: it may or may not have committed on the fast path. ... The new coordinator polls the coordinator (or backup coordinators) of each of these transactions until they have completed.</p>
+</blockquote>
+<p>Consider the following, Case 1:</p>
+<figure>
+<img src="https://junbin-hexo-img.oss-cn-beijing.aliyuncs.com/paper-interpretation-building-consistent-transactions-with-inconsistent-replication/case-1-uncommitted-transaction-tau.drawio.svg" srcset="/img/loading.gif" lazyload alt="" /><figcaption>Case 1: Uncommitted Transaction <span class="math inline">\(\tau\)</span></figcaption>
+</figure>
+<ul>
+<li>In the combined context of Part A and Part B, we consider a collective group of <span class="math inline">\(\lfloor\frac{3f}{2}\rfloor\)</span> replicas. Each replica in this group first receives an <span class="math inline">\(\operatorname{Prepare}(\gamma, t_\gamma)\)</span> operation, and subsequently receives an <span class="math inline">\(\operatorname{Prepare}(\tau, t_\tau)\)</span> operation. Given that transactions <span class="math inline">\(\gamma\)</span> and <span class="math inline">\(\tau\)</span> are in conflict, and the replicas have already responded to <span class="math inline">\(\operatorname{Prepare}(\gamma, t_\gamma)\)</span> with <span class="math inline">\(\text{PREPARE-OK}\)</span>, they are compelled to respond to <span class="math inline">\(\operatorname{Prepare}(\tau, t_\tau)\)</span> with <span class="math inline">\(\text{ABORT}\)</span>.
+<ul>
+<li>In Part A, there are <span class="math inline">\(f\)</span> replicas. These replicas do not respond to the <span class="math inline">\(\operatorname{CoordinatorChange}\)</span> message from the new coordinator.</li>
+<li>In Part B, there are <span class="math inline">\(\lfloor\frac{f}{2}\rfloor\)</span> replicas. These replicas inform the new coordinator of their previous <span class="math inline">\(\text{ABORT}\)</span> response for the <span class="math inline">\(\operatorname{Prepare}(\tau, t_\tau)\)</span> operation associated with transaction <span class="math inline">\(\tau\)</span>.</li>
+</ul></li>
+<li>In Part C, a group of <span class="math inline">\(\lceil\frac{f}{2}\rceil+1\)</span> replicas is considered. These replicas have not received any operations about transaction <span class="math inline">\(\gamma\)</span>. Consequently, they respond to the <span class="math inline">\(\operatorname{Prepare}(\tau, t_\tau)\)</span> operation with <span class="math inline">\(\text{PREPARE-OK}\)</span>. Upon receiving a <span class="math inline">\(\operatorname{CoordinatorChange}\)</span> message, they inform the new coordinator of their previous <span class="math inline">\(\text{PREPARE-OK}\)</span> response for the <span class="math inline">\(\operatorname{Prepare}(\tau, t_\tau)\)</span> operation associated with transaction <span class="math inline">\(\tau\)</span>.</li>
+<li>After successfully receiving <span class="math inline">\(\operatorname{CoordinatorChange}\)</span> responses from a combined total of <span class="math inline">\(f+1\)</span> replicas, encompassing both Part B and Part C (thereby the <span class="math inline">\(\operatorname{CoordinatorChange}\)</span> is successful), the new coordinator is unable to commit the transaction <span class="math inline">\(\tau\)</span>. Such a commitment could result in a conflict where both transactions <span class="math inline">\(\gamma\)</span> and <span class="math inline">\(\tau\)</span> are committed within the system, leading to inconsistency. This situation arises from the potential that the client of transaction <span class="math inline">\(\gamma\)</span> might obtain <span class="math inline">\(f+1\)</span> <span class="math inline">\(\text{PREPARE-OK}\)</span> responses and attempt to commit the successful but not yet finalized transaction <span class="math inline">\(\gamma\)</span> via the slow path at some future point (this action is unstoppable).</li>
+</ul>
+<figure>
+<img src="https://junbin-hexo-img.oss-cn-beijing.aliyuncs.com/paper-interpretation-building-consistent-transactions-with-inconsistent-replication/timeline-for-case-1.drawio.svg" srcset="/img/loading.gif" lazyload alt="" /><figcaption>Timeline for Case 1</figcaption>
+</figure>
+<ul>
+<li>At time <span class="math inline">\(t_1\)</span>, the client of transaction <span class="math inline">\(\gamma\)</span> receives <span class="math inline">\(\lfloor\frac{3f}{2}\rfloor\)</span> <span class="math inline">\(\text{PREPARE-OK}\)</span> responses from replicas in Part A and Part B.</li>
+<li>At time <span class="math inline">\(t_5\)</span>, the <span class="math inline">\(\operatorname{CoordinatorChange}\)</span> for transaction <span class="math inline">\(\tau\)</span> is successful, with <span class="math inline">\(\lceil\frac{f}{2}\rceil+1\)</span> replicas of Part C providing <span class="math inline">\(\text{PREPARE-OK}\)</span> responses for transaction <span class="math inline">\(\tau\)</span>, and <span class="math inline">\(\lfloor\frac{f}{2}\rfloor\)</span> replicas of Part B providing <span class="math inline">\(\text{ABORT}\)</span> responses for transaction <span class="math inline">\(\tau\)</span>. The new coordinator must refrain from committing transaction <span class="math inline">\(\tau\)</span> at this point to avoid system inconsistency at <span class="math inline">\(t_9\)</span>.</li>
+<li>At time <span class="math inline">\(t_8\)</span>, the client of transaction <span class="math inline">\(\gamma\)</span> initiates the slow path, writing the commit outcome of transaction <span class="math inline">\(\gamma\)</span> to a backup coordinator group.</li>
+<li>At time <span class="math inline">\(t_9\)</span>, the client of transaction <span class="math inline">\(\gamma\)</span> completes the slow path, with the commit outcome of transaction <span class="math inline">\(\gamma\)</span> now recorded by the backup coordinator group.</li>
+</ul>
+<p>Consider the following, Case 2:</p>
+<figure>
+<img src="https://junbin-hexo-img.oss-cn-beijing.aliyuncs.com/paper-interpretation-building-consistent-transactions-with-inconsistent-replication/case-2-committed-transaction-tau.drawio.svg" srcset="/img/loading.gif" lazyload alt="" /><figcaption>Case 2: Committed Transaction <span class="math inline">\(\tau\)</span></figcaption>
+</figure>
+<ul>
+<li>In Part D, a group of <span class="math inline">\(\lfloor\frac{f}{2}\rfloor\)</span> replicas is considered. Each replica in this group first receives an <span class="math inline">\(\operatorname{Prepare}(\gamma, t_\gamma)\)</span> operation, and subsequently receives an <span class="math inline">\(\operatorname{Prepare}(\tau, t_\tau)\)</span> operation. Given that transactions <span class="math inline">\(\gamma\)</span> and <span class="math inline">\(\tau\)</span> are in conflict, and the replicas have already responded to <span class="math inline">\(\operatorname{Prepare}(\gamma, t_\gamma)\)</span> with <span class="math inline">\(\text{PREPARE-OK}\)</span>, they are compelled to respond to <span class="math inline">\(\operatorname{Prepare}(\tau, t_\tau)\)</span> with <span class="math inline">\(\text{ABORT}\)</span>.</li>
+<li>In the combined context of Part E and Part F, we consider a collective group of <span class="math inline">\(\lceil\frac{3f}{2}\rceil+1\)</span> replicas. Each replica in this group have not received any operations about transaction <span class="math inline">\(\gamma\)</span>. Consequently, they respond to the <span class="math inline">\(\operatorname{Prepare}(\tau, t_\tau)\)</span> operation with <span class="math inline">\(\text{PREPARE-OK}\)</span>.
+<ul>
+<li>In Part E, there are <span class="math inline">\(\lceil\frac{f}{2}\rceil+1\)</span> replicas. These replicas inform the new coordinator of their previous <span class="math inline">\(\text{PREPARE-OK}\)</span> response for the <span class="math inline">\(\operatorname{Prepare}(\tau, t_\tau)\)</span> operation associated with transaction <span class="math inline">\(\tau\)</span>.</li>
+<li>In Part F, there are <span class="math inline">\(f\)</span> replicas. These replicas do not respond to the <span class="math inline">\(\operatorname{CoordinatorChange}\)</span> message from the new coordinator.</li>
+</ul></li>
+<li>After successfully receiving <span class="math inline">\(\operatorname{CoordinatorChange}\)</span> responses from a combined total of <span class="math inline">\(f+1\)</span> replicas, encompassing both Part D and Part E (thereby the <span class="math inline">\(\operatorname{CoordinatorChange}\)</span> is successful), the new coordinator is unable to abort the transaction <span class="math inline">\(\tau\)</span>. Aborting the transaction <span class="math inline">\(\tau\)</span> at this stage could lead to inconsistencies, as there is a possibility that the client of transaction <span class="math inline">\(\tau\)</span> has already committed <span class="math inline">\(\tau\)</span> on some replicas prior to this coordinator recovery.</li>
+</ul>
+<figure>
+<img src="https://junbin-hexo-img.oss-cn-beijing.aliyuncs.com/paper-interpretation-building-consistent-transactions-with-inconsistent-replication/timeline-for-case-2.drawio.svg" srcset="/img/loading.gif" lazyload alt="" /><figcaption>Timeline for Case 2</figcaption>
+</figure>
+<ul>
+<li>At time <span class="math inline">\(t_1^\prime\)</span>, the client of transaction <span class="math inline">\(\tau\)</span> receives <span class="math inline">\(\lceil\frac{3f}{2}\rceil+1\)</span> <span class="math inline">\(\text{PREPARE-OK}\)</span> responses from replicas in Part E and Part F.</li>
+<li>At time <span class="math inline">\(t_2^\prime\)</span>, some replicas within Part F receive the <span class="math inline">\(\operatorname{Commit}(t_\tau, \tau)\)</span> message from the client of transaction <span class="math inline">\(\tau\)</span>.</li>
+<li>At time <span class="math inline">\(t_3^\prime\)</span>, the client of transaction <span class="math inline">\(\tau\)</span> fails.</li>
+<li>At time <span class="math inline">\(t_4^\prime\)</span>, the new coordinator initiates coordinator recovery.</li>
+<li>At time <span class="math inline">\(t_5^\prime\)</span>, the <span class="math inline">\(\operatorname{CoordinatorChange}\)</span> for transaction <span class="math inline">\(\tau\)</span> is successful, with <span class="math inline">\(\lceil\frac{f}{2}\rceil+1\)</span> replicas of Part C providing <span class="math inline">\(\text{PREPARE-OK}\)</span> responses for transaction <span class="math inline">\(\tau\)</span>, and <span class="math inline">\(\lfloor\frac{f}{2}\rfloor\)</span> replicas of Part B providing <span class="math inline">\(\text{ABORT}\)</span> responses for transaction <span class="math inline">\(\tau\)</span>. The new coordinator must refrain from aborting transaction <span class="math inline">\(\tau\)</span> at this point to avoid system inconsistency.</li>
+</ul>
+<p>At times <span class="math inline">\(t_5\)</span> and <span class="math inline">\(t_5^\prime\)</span>, the new coordinator observes the same set of responses, confirming a successful <span class="math inline">\(\operatorname{CoordinatorChange}\)</span> with a total of <span class="math inline">\(f+1\)</span> replicas responding: <span class="math inline">\(\lfloor\frac{f}{2}\rfloor\)</span> replicas send <span class="math inline">\(\text{ABORT}\)</span> responses, and <span class="math inline">\(\lceil\frac{f}{2}\rceil+1\)</span> replicas send <span class="math inline">\(\text{PREPARE-OK}\)</span> responses. In Case 1, the coordinator cannot commit transaction <span class="math inline">\(\tau\)</span>; in Case 2, it cannot abort transaction <span class="math inline">\(\tau\)</span>. It is stuck in a dilemma.</p>
+<p>The only way to resolve this dilemma is to wait for all conflicting transactions to be conclusively committed or aborted. In the above two cases described, if the new coordinator of transaction <span class="math inline">\(\tau\)</span> has already received <span class="math inline">\(\lceil\frac{f}{2}\rceil+1\)</span> <span class="math inline">\(\text{PREPARE-OK}\)</span> responses for a <span class="math inline">\(\operatorname{CoordinatorChange}\)</span>, then a conflicting transaction <span class="math inline">\(\gamma\)</span> cannot be finalized through the fast path. This is because the client of transaction <span class="math inline">\(\gamma\)</span> will not be able to receive <span class="math inline">\(\lceil\frac{3f}{2}\rceil+1\)</span> <span class="math inline">\(\text{PREPARE-OK}\)</span> responses for the corresponding <span class="math inline">\(\operatorname{Prepare}\)</span> operation. As a result, transaction <span class="math inline">\(\gamma\)</span> is required to proceed through the slow path. More generally, any conflicting transactions are compelled to take the slow path. This is the rationale behind the author's statement:</p>
+<blockquote>
+<p>However, every conflicting transaction must have used the slow path. The new coordinator polls the coordinator (or backup coordinators) of each of these transactions until they have completed.</p>
+</blockquote>
+<h4 id="a-sketch-of-the-proof-for-tapirs-correctness">A Sketch of the Proof for TAPIR's Correctness</h4>
+<p>Databases are traditionally expected to maintain four key properties, collectively known as ACID. Atomicity, isolation, and durability are intrinsic guarantees provided by the database system, while consistency is typically ensured by the application logic implemented by the user:</p>
+<ul>
+<li>Atomicity: If a transaction commits at any participating shard, it commits at them all. This is usually secured by the two-phase commit (2PC) mechanism; in cases of client or coordinator failures, the coordinator recovery protocol ensures that a backup coordinator will reach the same decision. Essentially, the integrity of atomicity is maintained by 2PC along with a strict adherence to making no more than one decision per transaction.</li>
+<li>Isolation: There exists a global linearizable ordering of committed transactions. I speculate that the CLOCC protocol ensures that if any two committed transactions in a history do not conflict and adhere to timestamp ordering, then the history is serializable. TAPIR supports this assumption by guaranteeing that any transactions that could potentially conflict intersect at a sufficient number of replicas, a condition that remains valid even after replica or coordinator failovers. Subsequently, any two conflicting transactions are detected by a sufficient number of replicas, which leads to the abortion of at least one of the transactions. Consequently, when any two transactions do not conflict and adhere to timestamp ordering, the result is that the entire history is serializable.</li>
+<li>Duration: Committed transactions stay committed, maintaining the original linearizable order. Duration is principally preserved through the IR protocol, which we will delve into in subsequent discussions.</li>
+</ul>
+<p>The following excerpt from <a href="https://clcanny.github.io/2023/03/06/computer-science/serializability/paper-interpretation-weak-consistency-a-generalized-theory-and-optimistic-implementations-for-distributed-transactions/">Paper Interpretation - Weak Consistency: A Generalized Theory and Optimistic Implementations for Distributed</a> explains the core principles of the CLOCC protocol in ensuring isolation:</p>
+<blockquote>
+<p>The start-depends conflict from Snapshot Isolation can help in understanding Read Object Set (ROS) and Modified Object Set (MOS) tests more effectively. This is particularly useful when utilizing the Start-ordered Serialization Graph. If the timestamp of transaction <span class="math inline">\(T_i\)</span> is less than the timestamp of transaction <span class="math inline">\(T_j\)</span> (<span class="math inline">\(\operatorname{ts}(T_i) &lt; \operatorname{ts}(T_j)\)</span>), then we draw a Start-Depends edge from <span class="math inline">\(T_i\)</span> to <span class="math inline">\(T_j\)</span>, denoted as <span class="math inline">\(T_i \stackrel{s}{\longrightarrow} T_j\)</span>.</p>
+<p>Suppose transaction <span class="math inline">\(T\)</span> reaches the server for validation such that <span class="math inline">\(\operatorname{ts}(S_i) &lt; \operatorname{ts}(T) &lt; \operatorname{ts}(S_j)\)</span>. Notice that every transaction in the transaction history must be validated against <span class="math inline">\(T\)</span>, not only adjacent transactions.</p>
+<ul>
+<li>To simplify our algorithm, we arrange the read set to always contain the write set (no blind writes), i.e., if a transaction modifies an object but does not read it, the client enters the object in the read set anyway. As a result, we don't need to consider Direct Write-Depends, since accounting for Direct Read-Depends achieves the same effect when determining whether any cycles exist in the SSG. Thus, we need not consider the following four conflicts:
+<ul>
+<li><span class="math inline">\(S_i \stackrel{ww}{\longrightarrow} T\)</span></li>
+<li><span class="math inline">\(T \stackrel{ww}{\longrightarrow} S_i\)</span></li>
+<li><span class="math inline">\(T \stackrel{ww}{\longrightarrow} S_j\)</span></li>
+<li><span class="math inline">\(S_j \stackrel{ww}{\longrightarrow} T\)</span></li>
+</ul></li>
+<li>The following three conflicts are valid because they have the same directions as the start-dependence conflicts in the SSG.
+<ul>
+<li><span class="math inline">\(S_i \stackrel{wr}{\longrightarrow} T\)</span>
+<ul>
+<li>However, if transaction <span class="math inline">\(S_i\)</span> is prepared but not yet committed, transaction <span class="math inline">\(T\)</span> should not read versions of objects written by <span class="math inline">\(S_i\)</span>. If <span class="math inline">\(T\)</span> reads versions of objects written by <span class="math inline">\(S_i\)</span> before <span class="math inline">\(S_i\)</span> commits, it would constitute a dirty read if the coordinator ultimately aborts <span class="math inline">\(S_i\)</span>.</li>
+</ul></li>
+<li><span class="math inline">\(S_i \stackrel{rw}{\longrightarrow} T\)</span></li>
+<li><span class="math inline">\(T \stackrel{rw}{\longrightarrow} S_j\)</span></li>
+</ul></li>
+<li>Since <span class="math inline">\(S_i\)</span> is prepared/committed, it could not have observed <span class="math inline">\(T\)</span>'s updates (there are no dirty reads in CLOCC). In simpler terms, <span class="math inline">\(T \stackrel{wr}{\longrightarrow} S_i\)</span> is not possible. Similarly, <span class="math inline">\(T \stackrel{wr}{\longrightarrow} S_j\)</span> is not possible.</li>
+<li>(1) <strong>ROS test.</strong> This test validates the objects that have been read by <span class="math inline">\(T\)</span>. Let <span class="math inline">\(S_k\)</span> be the transaction from which <span class="math inline">\(T\)</span> has read <span class="math inline">\(x\)</span>, i.e., <span class="math inline">\(\operatorname{ts}(S_k)\)</span> is equal to the value of <span class="math inline">\(\text{install_ts}\)</span> in <span class="math inline">\(x\)</span>'s ROS tuple.
+<ul>
+<li>(1a) If <span class="math inline">\(\operatorname{ts}(S_k) &lt; \operatorname{ts}(S_i)\)</span>, then the transaction manager (TM) verifies that <span class="math inline">\(S_i\)</span> has not modified <span class="math inline">\(x\)</span>. This rule disables <span class="math inline">\(T \stackrel{rw}{\longrightarrow} S_i\)</span>.</li>
+<li>(1b) Furthermore, the TM also verifies that <span class="math inline">\(\operatorname{ts}(T)\)</span> is greater than <span class="math inline">\(\operatorname{ts}(S_k)\)</span>. This rule disables <span class="math inline">\(S_j \stackrel{wr}{\longrightarrow} T\)</span>.</li>
+</ul></li>
+<li>(2) <strong>MOS test</strong>. The TM validates <span class="math inline">\(\operatorname{MOS}(T)\)</span> by verifying that <span class="math inline">\(T\)</span> has not modified any object <span class="math inline">\(y\)</span> that has been read by <span class="math inline">\(S_j\)</span>. This rule disables <span class="math inline">\(S_j \stackrel{rw}{\longrightarrow} T\)</span>.</li>
+</ul>
+</blockquote>
+<h3 id="qa-on-ir-fundamentals">Q&amp;A on IR Fundamentals</h3>
+<h4 id="finalized-vs.-successful-but-not-finalized-operations-understanding-the-distinction">Finalized vs. Successful But Not Finalized Operations: Understanding the Distinction</h4>
+<p>The fundamental differences between finalized and successful but not finalized operations hinge on their respective behaviors in response to replica failures and recoveries. The first distinction addresses the robustness following failures, while the second focuses on the ability to maintain success after a failure has occurred and a subsequent recovery takes place.</p>
+<p>The first distinction is that finalized operations can withstand up to <span class="math inline">\(f\)</span> failures out of <span class="math inline">\(2f+1\)</span> total replicas — the maximum failure count that still allows the corresponding partition to process client requests. In such a worst-case scenario, there will be at least <span class="math inline">\((\lceil\frac{3f}{2}\rceil+1) - f = \lceil\frac{f}{2}\rceil+1\)</span> functioning replicas out of the <span class="math inline">\(f+1\)</span> survivors that have acknowledged the operation with a <span class="math inline">\(\text{PREPARE-OK}\)</span> response. This represents a majority of the remaining active replicas, ensuring the operation's success despite the failures.</p>
+<p>Conversely, successful but not finalized operations are less resilient. With <span class="math inline">\(f\)</span> replica failures, it's possible that only <span class="math inline">\((f+1) - f = 1\)</span> replica is aware it returned a <span class="math inline">\(\text{PREPARE-OK}\)</span> response. This lone replica does not constitute a majority of the living replicas, which means the operation may no longer be considered successful in the face of these failures.</p>
+<p>The second distinction is that finalized operations remain successful through replica failures and subsequent <strong>recoveries</strong>, whereas successful but not finalized operations do not. The specifics of the IR recovery protocol, which guarantees that a failed replica can recover any operation that it may have executed previously and maintain success, will be addressed in the upcoming Q&amp;A section.</p>
+<h4 id="the-single-operation-ir-spec">The Single-Operation IR Spec</h4>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br><span class="line">86</span><br><span class="line">87</span><br><span class="line">88</span><br><span class="line">89</span><br><span class="line">90</span><br><span class="line">91</span><br><span class="line">92</span><br><span class="line">93</span><br><span class="line">94</span><br><span class="line">95</span><br><span class="line">96</span><br><span class="line">97</span><br><span class="line">98</span><br><span class="line">99</span><br><span class="line">100</span><br><span class="line">101</span><br><span class="line">102</span><br><span class="line">103</span><br><span class="line">104</span><br><span class="line">105</span><br><span class="line">106</span><br><span class="line">107</span><br><span class="line">108</span><br><span class="line">109</span><br><span class="line">110</span><br><span class="line">111</span><br><span class="line">112</span><br><span class="line">113</span><br><span class="line">114</span><br><span class="line">115</span><br><span class="line">116</span><br><span class="line">117</span><br><span class="line">118</span><br><span class="line">119</span><br><span class="line">120</span><br><span class="line">121</span><br><span class="line">122</span><br><span class="line">123</span><br><span class="line">124</span><br><span class="line">125</span><br><span class="line">126</span><br><span class="line">127</span><br><span class="line">128</span><br><span class="line">129</span><br><span class="line">130</span><br><span class="line">131</span><br><span class="line">132</span><br><span class="line">133</span><br><span class="line">134</span><br><span class="line">135</span><br><span class="line">136</span><br><span class="line">137</span><br><span class="line">138</span><br><span class="line">139</span><br><span class="line">140</span><br><span class="line">141</span><br><span class="line">142</span><br><span class="line">143</span><br><span class="line">144</span><br><span class="line">145</span><br><span class="line">146</span><br><span class="line">147</span><br><span class="line">148</span><br><span class="line">149</span><br><span class="line">150</span><br><span class="line">151</span><br><span class="line">152</span><br><span class="line">153</span><br><span class="line">154</span><br><span class="line">155</span><br><span class="line">156</span><br><span class="line">157</span><br><span class="line">158</span><br><span class="line">159</span><br><span class="line">160</span><br><span class="line">161</span><br><span class="line">162</span><br><span class="line">163</span><br><span class="line">164</span><br><span class="line">165</span><br><span class="line">166</span><br><span class="line">167</span><br><span class="line">168</span><br><span class="line">169</span><br><span class="line">170</span><br><span class="line">171</span><br><span class="line">172</span><br><span class="line">173</span><br><span class="line">174</span><br><span class="line">175</span><br><span class="line">176</span><br><span class="line">177</span><br><span class="line">178</span><br><span class="line">179</span><br><span class="line">180</span><br><span class="line">181</span><br><span class="line">182</span><br><span class="line">183</span><br><span class="line">184</span><br><span class="line">185</span><br><span class="line">186</span><br><span class="line">187</span><br><span class="line">188</span><br><span class="line">189</span><br><span class="line">190</span><br><span class="line">191</span><br><span class="line">192</span><br><span class="line">193</span><br><span class="line">194</span><br><span class="line">195</span><br><span class="line">196</span><br><span class="line">197</span><br><span class="line">198</span><br><span class="line">199</span><br><span class="line">200</span><br><span class="line">201</span><br><span class="line">202</span><br><span class="line">203</span><br><span class="line">204</span><br><span class="line">205</span><br><span class="line">206</span><br><span class="line">207</span><br><span class="line">208</span><br><span class="line">209</span><br><span class="line">210</span><br><span class="line">211</span><br><span class="line">212</span><br><span class="line">213</span><br><span class="line">214</span><br><span class="line">215</span><br><span class="line">216</span><br><span class="line">217</span><br><span class="line">218</span><br><span class="line">219</span><br><span class="line">220</span><br><span class="line">221</span><br><span class="line">222</span><br><span class="line">223</span><br><span class="line">224</span><br><span class="line">225</span><br><span class="line">226</span><br><span class="line">227</span><br><span class="line">228</span><br><span class="line">229</span><br><span class="line">230</span><br><span class="line">231</span><br><span class="line">232</span><br><span class="line">233</span><br><span class="line">234</span><br><span class="line">235</span><br><span class="line">236</span><br><span class="line">237</span><br><span class="line">238</span><br><span class="line">239</span><br><span class="line">240</span><br><span class="line">241</span><br><span class="line">242</span><br><span class="line">243</span><br><span class="line">244</span><br><span class="line">245</span><br><span class="line">246</span><br><span class="line">247</span><br><span class="line">248</span><br><span class="line">249</span><br><span class="line">250</span><br><span class="line">251</span><br><span class="line">252</span><br><span class="line">253</span><br><span class="line">254</span><br><span class="line">255</span><br><span class="line">256</span><br><span class="line">257</span><br><span class="line">258</span><br><span class="line">259</span><br><span class="line">260</span><br><span class="line">261</span><br><span class="line">262</span><br><span class="line">263</span><br><span class="line">264</span><br><span class="line">265</span><br><span class="line">266</span><br><span class="line">267</span><br><span class="line">268</span><br><span class="line">269</span><br><span class="line">270</span><br><span class="line">271</span><br><span class="line">272</span><br><span class="line">273</span><br><span class="line">274</span><br><span class="line">275</span><br><span class="line">276</span><br><span class="line">277</span><br><span class="line">278</span><br><span class="line">279</span><br><span class="line">280</span><br><span class="line">281</span><br><span class="line">282</span><br><span class="line">283</span><br><span class="line">284</span><br><span class="line">285</span><br><span class="line">286</span><br><span class="line">287</span><br></pre></td><td class="code"><pre><code class="hljs tla">--------------------------------- MODULE IR ---------------------------------<br>(***************************************************************************)<br>(* This is a TLA+ specification of the Inconsistent Replication algorithm. *)<br>(***************************************************************************)<br><br>EXTENDS FiniteSets, Naturals, TLC<br><br>-----------------------------------------------------------------------------<br>(***************************************************************************)<br>(* `^ \center \large&#123;\textbf&#123;Constants&#125;&#125; ^&#x27;                                *)<br>(***************************************************************************)<br><br>(***************************************************************************)<br>(*  Constant parameters:                                                   *)<br>(*        MaxViewNum: max view number                                      *)<br>(*        Replica: the set of all replicas (Replica IDs)                   *)<br>(*        Quorum: the set of all quorums                                   *)<br>(*        SuperQuorum: the set of all super quorums                        *)<br>(*        F: maximum number of failures allowed (half of n)                *)<br>(***************************************************************************)<br><br>CONSTANTS UNWRITTEN, SUCCEED, FAILED,<br>          NORMAL, RFAILED, VIEWCHANGING,<br>          STARTVIEWCHANGE, DOVIEWCHANGE, STARTVIEW, STARTVIEWREPLY,<br>          Replica, Quorum, SuperQuorum, MaxViewNum, F<br><br>SYMM ==<br>         Permutations(&#123;SUCCEED, FAILED&#125;)<br>  \union Permutations(Replica)<br><br>ViewNum == 0..MaxViewNum<br>ASSUME IsFiniteSet(ViewNum)<br>ASSUME IsFiniteSet(Replica)<br>ASSUME \A Q \in Quorum: Q \subseteq Replica<br>ASSUME \A Q \in SuperQuorum: Q \subseteq Replica<br>ASSUME \A Q \in Quorum: \A S1, S2 \in SuperQuorum: Q \cap S1 \cap S2 # &#123;&#125;<br><br>(***************************************************************************)<br>(* The possible states of a replica and the two types of operations        *)<br>(* currently defined by IR.                                                *)<br>(***************************************************************************)<br><br>Val == &#123;UNWRITTEN, SUCCEED, FAILED&#125;<br>ReplicaState == &#123;NORMAL, RFAILED, VIEWCHANGING&#125;<br><br>(***************************************************************************)<br>(* Message is defined to be the set of all possible messages               *)<br>(***************************************************************************)<br><br>Message ==<br>       [type: &#123;STARTVIEWCHANGE&#125;,<br>        vn: ViewNum,<br>        src: Replica]<br>  \cup<br>       [type: &#123;DOVIEWCHANGE&#125;,<br>        val: Val,<br>        vn: ViewNum,<br>        src: Replica,<br>        dst: Replica]<br>  \cup<br>       [type: &#123;STARTVIEW&#125;,<br>        vn: ViewNum,<br>        src: Replica]<br>  \cup<br>       [type: &#123;STARTVIEWREPLY&#125;,<br>        vn: ViewNum,<br>        src: Replica,<br>        dst: Replica]<br><br>-----------------------------------------------------------------------------<br>(***************************************************************************)<br>(* `^ \center \large&#123;\textbf&#123;Variables and State Predicates&#125;&#125; ^&#x27;           *)<br>(***************************************************************************)<br><br>(***************************************************************************)<br>(* Variables:                                                              *)<br>(*        1. State at each replica:                                        *)<br>(*            rState = Denotes current replica state. Either:              *)<br>(*                       - NORMAL (processing operations)                  *)<br>(*                       - VIEW-CHANGING (participating in recovery)       *)<br>(*            rVal = Operation result                                      *)<br>(*            rViewNum = current view number                               *)<br>(*        2. State of communication medium:                                *)<br>(*            sentMsg = sent (but not yet received) messages               *)<br>(*                                                                         *)<br>(***************************************************************************)<br><br>VARIABLES rState, rVal, rViewNum, sentMsg, aFinalized<br><br>(***************************************************************************)<br>(* Defining these tuples makes it easier to express which varibles remain  *)<br>(* unchanged.                                                              *)<br>(***************************************************************************)<br><br>rVars == &lt;&lt;rState, rVal, rViewNum&gt;&gt; \* Replica variables.<br>aVars == &lt;&lt;aFinalized&gt;&gt;             \* Application variables<br>oVars == &lt;&lt;sentMsg&gt;&gt;                \* Other variables.<br>vars == &lt;&lt;rVars, aVars, oVars&gt;&gt;     \* All variables.<br><br>TypeOK ==<br>  /\ rState \in [Replica -&gt; ReplicaState]<br>  /\ rVal \in [Replica -&gt; Val]<br>  /\ rViewNum \in [Replica -&gt; ViewNum]<br>  \* /\ sentMsg \in SUBSET Message<br>  \* /\ aFinalized \subseteq Val<br><br>Init ==<br>  /\ rState = [r \in Replica |-&gt; NORMAL]<br>  /\ rVal = [r \in Replica |-&gt; UNWRITTEN]<br>  /\ rViewNum = [r \in Replica |-&gt; 0]<br>  /\ sentMsg = &#123;&#125;<br>  /\ aFinalized = &#123;&#125;<br><br>-----------------------------------------------------------------------------<br>(***************************************************************************)<br>(* `^ \center \large&#123;\textbf&#123;Actions&#125;&#125; ^&#x27;                                  *)<br>(***************************************************************************)<br><br>Send(m) == sentMsg&#x27; = sentMsg \cup &#123;m&#125;<br><br>-----------------------------------------------------------------------------<br>(***************************************************************************)<br>(* `^ \center \large&#123;\textbf&#123;Replica Actions&#125;&#125; ^&#x27;                          *)<br>(***************************************************************************)<br><br>\* Replica executes the operation.<br>ReplicaExecute(r, val) ==<br>  /\ rState[r] = NORMAL<br>  /\ rVal[r] = UNWRITTEN<br>  /\ rVal&#x27; = [rVal EXCEPT ![r] = val]<br>  /\ UNCHANGED &lt;&lt;rState, rViewNum, aVars, oVars&gt;&gt;<br><br>\* A replica fails and looses everything.<br>ReplicaFail(r) ==<br>  \* We assume less than F replicas are allowed to fail.<br>  /\ Cardinality(&#123;re \in Replica: rState[re] = RFAILED&#125; \cup &#123;r&#125;) &lt;= F<br>  /\ rState&#x27; = [rState EXCEPT ![r] = RFAILED]<br>  /\ rVal&#x27; = [rVal EXCEPT ![r] = UNWRITTEN]<br>  \* If rViewNum[r] is reset, TLC will report a counterexample.<br>  \* /\ rViewNum&#x27; = [rViewNum EXCEPT ![r] = 0]<br>  /\ UNCHANGED &lt;&lt;rViewNum, aVars, oVars&gt;&gt;<br><br>AppFinalizedVal(val) ==<br>  \* A super-quorum of replicas with matching view numbers and results.<br>  \* https://lamport.azurewebsites.net/video/video5-script.pdf<br>  \* The scope of \A and \E extends as far as possible.<br>  \* The expression ... extends to the end of its enclosing expression<br>  \* unless explicitly ended<br>  \*   - by parentheses<br>  \*   - or by the end of a list item<br>  \* https://lamport.azurewebsites.net/pubs/spec-book-chap.pdf<br>  \* A list bulleted by /\ or \/ represents the conjunction or disjunction<br>  \* of the items. Indentation is used to eliminate parentheses in<br>  \* nested lists of conjunctions and/or disjunctions.<br>  /\ \E Q \in SuperQuorum, vn \in ViewNum:<br>    /\ \A r \in Q:<br>      /\ rState[r] = NORMAL<br>      /\ rVal[r] = val<br>      /\ rViewNum[r] = vn<br>  /\ aFinalized&#x27; = aFinalized \cup &#123;val&#125;<br>  /\ UNCHANGED &lt;&lt;rVars, oVars&gt;&gt;<br><br>\* A replica starts the view change procedure<br>\* supports concurrent view changes (id by src).<br>ReplicaStartViewChange(r) ==<br>  /\ rState[r] = RFAILED<br>  /\ Send([type |-&gt; STARTVIEWCHANGE, vn |-&gt; rViewNum[r], src |-&gt; r])<br>  /\ UNCHANGED &lt;&lt;rVars, aVars&gt;&gt;<br><br>\* A replica received a message to start view change.<br>ReplicaReceiveStartViewChange(r) ==<br>  /\ rState[r] # RFAILED<br>  /\ \E m \in &#123;m \in sentMsg: m.type = STARTVIEWCHANGE&#125;:<br>       LET vn == (IF m.vn &gt; rViewNum[r] THEN m.vn ELSE rViewNum[r]) + 1<br>       IN<br>         /\ vn \in ViewNum<br>         /\ rState&#x27; = [rState EXCEPT ![r] = VIEWCHANGING]<br>         /\ rViewNum&#x27; = [rViewNum EXCEPT ![r] = vn]<br>         /\ Send([type |-&gt; DOVIEWCHANGE,<br>                  vn   |-&gt; vn,<br>                  val  |-&gt; rVal[r],<br>                  src  |-&gt; r,<br>                  dst  |-&gt; m.src])<br>         /\ UNCHANGED &lt;&lt;rVal, aVars&gt;&gt;<br><br>\* A replica received enough view change replies<br>\* to start processing in the new view.<br>ReplicaReceiveDoViewChange(r) ==<br>  /\ rState[r] = RFAILED<br>  /\ \E Q \in Quorum:<br>       LET receivedMsg == &#123;m \in sentMsg:<br>                             /\ m.type = DOVIEWCHANGE<br>                             /\ m.vn &gt; rViewNum[r]<br>                             /\ m.src \in Q<br>                             /\ m.dst = r&#125;<br>           vn == IF Cardinality(receivedMsg) = 0 THEN 0<br>                 ELSE CHOOSE x \in &#123;m.vn: m \in receivedMsg&#125;:<br>                        \A y \in &#123;m.vn: m \in receivedMsg&#125;:<br>                          x &gt;= y<br>           IsMatchingMajorityVal(val) ==<br>             \E P \in SuperQuorum:<br>               \A s \in Q \cap P:<br>                 \E m \in receivedMsg:<br>                   /\ m.val = val<br>                   /\ m.src = s<br>           IsNotMatchingMajorityVal(val) == \neg IsMatchingMajorityVal(val)<br>           CanRecover(val) ==<br>             \/ IsMatchingMajorityVal(val)<br>             \/ IsNotMatchingMajorityVal(<br>                  CHOOSE v \in Val: v \notin &#123;val, UNWRITTEN&#125;)<br>       IN<br>         /\ &#123;m.src: m \in receivedMsg&#125; = Q<br>         /\ \/ /\ CanRecover(SUCCEED)<br>               /\ rVal&#x27; = [rVal EXCEPT ![r] = SUCCEED]<br>            \/ /\ CanRecover(FAILED)<br>               /\ rVal&#x27; = [rVal EXCEPT ![r] = FAILED]<br>         /\ rViewNum&#x27; = [rViewNum EXCEPT ![r] = vn]<br>         /\ Send([type |-&gt; STARTVIEW, vn |-&gt; vn, src |-&gt; r])<br>         /\ UNCHANGED &lt;&lt;rState, aVars&gt;&gt;<br><br>\*A replica receives a start view message.<br>ReplicaReceiveStartView(r) ==<br>  /\ rState[r] # RFAILED<br>  /\ \E msg \in sentMsg:<br>       /\ msg.type = STARTVIEW<br>       /\ msg.vn &gt;= rViewNum[r]<br>       \* Don&#x27;t reply to myself.<br>       /\ msg.src # r<br>       /\ rState&#x27; = [rState EXCEPT ![r] = NORMAL]<br>       /\ rViewNum&#x27; = [rViewNum EXCEPT ![r] = msg.vn]<br>       /\ Send([type |-&gt; STARTVIEWREPLY,<br>                vn   |-&gt; msg.vn,<br>                src  |-&gt; r,<br>                dst  |-&gt; msg.src])<br>       /\ UNCHANGED &lt;&lt;rVal, aVars&gt;&gt;<br><br>ReplicaReceiveStartViewReply(r) ==<br>  /\ rState[r] = RFAILED<br>  /\ rVal[r] # UNWRITTEN<br>  /\ \E Q \in Quorum:<br>       /\ r \in Q<br>       /\ \A p \in Q \ &#123;r&#125;:<br>            \E msg \in sentMsg:<br>              /\ msg.type = STARTVIEWREPLY<br>              \* This differs from the author&#x27;s original specification.<br>              /\ msg.vn = rViewNum[r]<br>              /\ msg.src = p<br>              /\ msg.dst = r<br>  /\ rState&#x27; = [rState EXCEPT ![r] = NORMAL]<br>  /\ UNCHANGED &lt;&lt;rVal, rViewNum, aVars, oVars&gt;&gt;<br><br>-----------------------------------------------------------------------------<br>(***************************************************************************)<br>(* `^ \center \large&#123;\textbf&#123;High-Level Actions&#125;&#125; ^&#x27;                       *)<br>(***************************************************************************)<br><br>Next ==<br>  \/ \E r \in Replica:<br>       \/ ReplicaExecute(r, SUCCEED)<br>       \/ ReplicaExecute(r, FAILED)<br>       \/ ReplicaFail(r)<br>       \/ ReplicaStartViewChange(r)<br>       \/ ReplicaReceiveStartViewChange(r)<br>       \/ ReplicaReceiveDoViewChange(r)<br>       \/ ReplicaReceiveStartView(r)<br>       \/ ReplicaReceiveStartViewReply(r)<br>  \/ \/ AppFinalizedVal(SUCCEED)<br>     \/ AppFinalizedVal(FAILED)<br><br>Spec ==<br>  TypeOK /\ Init /\ [] [Next]_vars<br><br>FaultTolerance ==<br>  /\ Cardinality(aFinalized) &lt;= 1<br>  /\ \A finalizedVal \in aFinalized, Q \in Quorum:<br>         (\A r \in Q: rState[r] = NORMAL \/ rState[r] = VIEWCHANGING)<br>      =&gt; (\E P \in SuperQuorum:<br>            \A p \in Q \cap P:<br>              rVal[p] = finalizedVal)<br><br>Inv ==<br>  /\ TypeOK<br>  /\ FaultTolerance<br><br>THEOREM Spec =&gt; []Inv<br><br>=============================================================================<br></code></pre></td></tr></table></figure>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br></pre></td><td class="code"><pre><code class="hljs cfg">CONSTANT<br>UNWRITTEN = UNWRITTEN<br>SUCCEED = SUCCEED<br>FAILED = FAILED<br>NORMAL = NORMAL<br>RFAILED = RFAILED<br>VIEWCHANGING = VIEWCHANGING<br>STARTVIEWCHANGE = STARTVIEWCHANGE<br>DOVIEWCHANGE = DOVIEWCHANGE<br>STARTVIEW = STARTVIEW<br>STARTVIEWREPLY = STARTVIEWREPLY<br>Replica = &#123;r1, r2, r3, r4, r5&#125;<br>Quorum = &#123;&#123;r1, r2, r3&#125;, &#123;r1, r2, r4&#125;, &#123;r1, r2, r5&#125;, &#123;r1, r3, r4&#125;, &#123;r1, r3, r5&#125;, &#123;r1, r4, r5&#125;, &#123;r2, r3, r4&#125;, &#123;r2, r3, r5&#125;, &#123;r2, r4, r5&#125;, &#123;r3, r4, r5&#125;&#125;<br>SuperQuorum = &#123;&#123;r2, r3, r4, r5&#125;, &#123;r1, r3, r4, r5&#125;, &#123;r1, r2, r4, r5&#125;, &#123;r1, r2, r3, r5&#125;, &#123;r1, r2, r3, r4&#125;&#125;<br>MaxViewNum = 2<br>F = 2<br><br>SYMMETRY<br>SYMM<br><br>SPECIFICATION<br>Spec<br><br>INVARIANT<br>Inv<br></code></pre></td></tr></table></figure>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><code class="hljs bash">java -Xms50g -XX:+UseParallelGC -XX:MaxDirectMemorySize=300g -Dtlc2.tool.fp.FPSet.impl=tlc2.tool.fp.OffHeapDiskFPSet -<span class="hljs-built_in">cp</span> /usr/local/lib/tla2tools.jar tlc2.TLC IR -workers auto -checkpoint 0 &gt;stdout 2&gt;stderr<br></code></pre></td></tr></table></figure>
+<figure class="highlight text"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><code class="hljs text">Model checking completed. No error has been found.<br>  Estimates of the probability that TLC did not check all reachable states<br>  because two distinct states had the same fingerprint:<br>  calculated (optimistic):  val = .0033<br>  based on the actual fingerprints:  val = 2.5E-4<br>765862621 states generated, 88535063 distinct states found, 0 states left on queue.<br>The depth of the complete state graph search is 37.<br>The average outdegree of the complete state graph is 1 (minimum is 0, the maximum 14 and the 95th percentile is 3).<br>Finished in 02h 40min at (2024-01-02 14:20:54)<br></code></pre></td></tr></table></figure>
+<h4 id="ensuring-the-success-of-finalized-operations-post-recovery-with-the-ir-protocol">Ensuring the Success of Finalized Operations Post-Recovery with the IR Protocol</h4>
+<blockquote>
+<p>IR's recovery protocol is carefully designed to ensure that a failed replica recovers any operation that it may have executed previously and can still succeed. Without this property, successful IR operations could be lost. For example, suppose an IR client receives a quorum of responses and reports success to the application. Then, each replica in the quorum fails in sequence and each lose the operation, leading to the previously successful operation being lost by the group.</p>
+</blockquote>
+<p>In <a target="_blank" rel="noopener" href="https://arxiv.org/pdf/1902.06776.pdf">A Generalised Solution to Distributed Consensus</a>, Heidi Howard and Richard Mortier propose a generalised solution to consensus that uses only immutable state to enable more intuitive reasoning about correctness, encompassing both Paxos and Fast Paxos as specific instances. In this section, I intend to demonstrate that the IR protocol aligns with this generalized consensus framework, thereby affirming its correctness. I will specifically address the agreement requirement of consensus, which mandates all clients that output a value must output the same value. Given that in IR every operation can only yield a binary outcome - SUCCEED or FAILED, non-triviality is inherently satisfied when clients input these values. However, I will also discuss the protocol's limitations with respect to the progress requirement, acknowledging the potential for IR to be indecisive under certain conditions.</p>
+<p>Below is a table designed to align the terminology between the two papers for clarity:</p>
+<table>
+
+<thead>
+<tr class="header">
+<th style="text-align: left;">A Generalised Solution to Distributed Consensus</th>
+<th style="text-align: left;">Building Consistent Transactions with Inconsistent Replication</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">server</td>
+<td style="text-align: left;">replica</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"></td>
+<td style="text-align: left;">quorum</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">quorum</td>
+<td style="text-align: left;">super-quorum</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">register</td>
+<td style="text-align: left;"></td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">register set</td>
+<td style="text-align: left;">view</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;"><span class="math inline">\(v\)</span> is decided.</td>
+<td style="text-align: left;"><span class="math inline">\(v\)</span> is finalized.</td>
+</tr>
+</tbody>
+</table>
+<p>An important distinction exists between the concepts of quorums in "A Generalized Solution to Distributed Consensus" (GSDC) and "Building Consistent Transactions with Inconsistent Replication" (IR) that may lead to confusion. To clarify: what GSDC refers to as a quorum is analogous to a super-quorum in IR. In IR, a value <span class="math inline">\(v\)</span> is considered finalized when it is written to all registers within the same view of a super-quorum <span class="math inline">\(S\)</span>. Conversely, in the context of IR, a regular quorum <span class="math inline">\(Q\)</span> is utilized for recovery purposes, and writing value <span class="math inline">\(v\)</span> to all registers in the same view of <span class="math inline">\(Q\)</span> <strong>does not</strong> imply the value is finalized.</p>
+<p>The following three rules ensure the fulfillment of the agreement requirement:</p>
+<ul>
+<li>Rule 1: <strong>Super-quorum agreement</strong>. A client may only output a (non-nil) value <span class="math inline">\(v\)</span> if it has read <span class="math inline">\(v\)</span> from a super-quorum of replicas in the same view, where a super-quorum consists of <span class="math inline">\(\lceil\frac{3f}{2}\rceil+1\)</span> replicas.</li>
+<li>Rule 3: <strong>Current decision</strong>. A client may only write a (non-nil) value <span class="math inline">\(v\)</span> to register <span class="math inline">\(reg\)</span> on replica <span class="math inline">\(r\)</span> provided that if <span class="math inline">\(v\)</span> is finalized in view <span class="math inline">\(vw\)</span> by a super-quorum <span class="math inline">\(S \in \mathcal{S}_{vw}\)</span> where <span class="math inline">\(r \in S\)</span> then no value <span class="math inline">\(v^\prime\)</span> where <span class="math inline">\(v \neq v^\prime\)</span> can also be finalized in view <span class="math inline">\(vw\)</span>. Given that super-quorums intersect, it is guaranteed within a single view, only one value can be finalized.</li>
+<li>Rule 4: <strong>Previous decisions</strong>. A client may only write a (non-nil) value <span class="math inline">\(v\)</span> to register <span class="math inline">\(reg\)</span> provided no value <span class="math inline">\(v^\prime\)</span> where <span class="math inline">\(v \neq v^\prime\)</span> can be finalized by the super-quorums in views <span class="math inline">\(0\)</span> to <span class="math inline">\(r − 1\)</span>. This rule poses challenges to implement; it will be further explained in the following paragraph.</li>
+</ul>
+<p>In addition to the three rules from GSDC, IR includes three specific rules:</p>
+<ul>
+<li>Rule 5: <strong>Value preservation</strong>. If a replica <span class="math inline">\(r\)</span> has voted for a value <span class="math inline">\(v\)</span> in view <span class="math inline">\(vw\)</span>, and there are no failures, then replica <span class="math inline">\(r\)</span> should only vote for <span class="math inline">\(v\)</span> in any subsequent view <span class="math inline">\({vw}&#39;\)</span> where <span class="math inline">\({vw}&#39; &gt; vw\)</span>.</li>
+<li>Rule 6: <strong>Recovering only myself</strong>. During recovery, a failover replica <span class="math inline">\(r\)</span> is restricted to writing solely to its own register, avoiding writes to registers of other replicas. This approach significantly deviates from that of Paxos.</li>
+<li>Rule 7: <strong>View number preservation</strong>. If a failure occurs, the view number <span class="math inline">\(vw\)</span> is preserved and remains usable after failover, while all other states are lost.</li>
+</ul>
+<figure>
+<img src="https://junbin-hexo-img.oss-cn-beijing.aliyuncs.com/paper-interpretation-building-consistent-transactions-with-inconsistent-replication/sample-state-tables-for-a-system-with-two-replicas-across-three-views-demonstrating-rule-5.svg" srcset="/img/loading.gif" lazyload alt="" /><figcaption>Sample state tables for a system with two replicas across three views demonstrating rule 5</figcaption>
+</figure>
+<h5 id="modifing-the-ir-recovery-protocol-for-easier-correctness-proveness">Modifing the IR Recovery Protocol for Easier Correctness Proveness</h5>
+<p>To enhance the original IR Recovery Protocol in alignment with Rule 4: Previous decisions, the following modifications are proposed:</p>
+<ol start="3" type="1">
+<li>... <del>It then adds the operation to its record.</del> The operation will be recorded at a later stage, as outlined in step 6.</li>
+<li>The replica then sends a <span class="math inline">\(\langle\text{START-VIEW}, val, {vn}_{new}\rangle\)</span>, where <span class="math inline">\(val\)</span> represents the value determined from steps 3.a or 3.b, <span class="math inline">\({vn}_{new}\)</span> is the max of the view numbers from other replicas.</li>
+<li>Any replica that receives <span class="math inline">\(\text{START-VIEW}\)</span> checks whether it has not voted for any value other than <span class="math inline">\(val\)</span>. If this conditions is met, the replica updates its current view number to <span class="math inline">\(\operatorname{max}(vn, {vn}_{new})\)</span>, enters the <span class="math inline">\(\text{NORMAL}\)</span> state, and replies with a <span class="math inline">\(\langle\text{START-VIEW-REPLY}, {vn}_{new}\rangle\)</span> message. If not, the replica remains in its current state without sending any reply.</li>
+<li>After the recovering replica receives <span class="math inline">\(\lfloor\frac{f}{2}\rfloor+1\)</span> <span class="math inline">\(\text{START-VIEW-REPLY}\)</span> responses, it adds <span class="math inline">\(val\)</span> to its record, enters the <span class="math inline">\(\text{NORMAL}\)</span> state and resumes processing client requests. At this point, the replica is considered to be recovered.</li>
+</ol>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br></pre></td><td class="code"><pre><code class="hljs tla">\* A replica received enough view change replies<br>\* to start processing in the new view.<br>ReplicaReceiveDoViewChange(r, val) ==<br>  /\ rState[r] = RFAILED<br>  /\ \E Q \in Quorum:<br>       LET receivedMsg == &#123;m \in sentMsg:<br>                             /\ m.type = DOVIEWCHANGE<br>                             /\ m.vn &gt; rViewNum[r]<br>                             /\ m.src \in Q<br>                             /\ m.dst = r&#125;<br>           vn == IF Cardinality(receivedMsg) = 0 THEN 0<br>                 ELSE CHOOSE x \in &#123;m.vn: m \in receivedMsg&#125;:<br>                        \A y \in &#123;m.vn: m \in receivedMsg&#125;:<br>                          x &gt;= y<br>           IsMatchingMajorityVal(v) ==<br>             \E P \in SuperQuorum:<br>               \A s \in Q \cap P:<br>                 \E m \in receivedMsg:<br>                   /\ m.val = v<br>                   /\ m.src = s<br>           IsNotMatchingMajorityVal(v) == \neg IsMatchingMajorityVal(v)<br>           CanRecover(v) ==<br>             \/ IsMatchingMajorityVal(v)<br>             \/ IsNotMatchingMajorityVal(<br>                  CHOOSE x \in Val: x \notin &#123;val, UNWRITTEN&#125;)<br>       IN<br>         /\ &#123;m.src: m \in receivedMsg&#125; = Q<br>         /\ CanRecover(val)<br>         /\ rViewNum&#x27; = [rViewNum EXCEPT ![r] = vn]<br>         /\ Send([type |-&gt; STARTVIEW, val |-&gt; val, vn |-&gt; vn, src |-&gt; r])<br>         /\ UNCHANGED &lt;&lt;rState, rVal, aVars&gt;&gt;<br><br>\*A replica receives a start view message.<br>ReplicaReceiveStartView(r) ==<br>  /\ rState[r] # RFAILED<br>  /\ \E msg \in sentMsg:<br>       /\ msg.type = STARTVIEW<br>       /\ rVal[r] \in &#123;msg.val, UNWRITTEN&#125;<br>       \* /\ rViewNum[r] &lt;= msg.vn<br>       /\ rState&#x27; = [rState EXCEPT ![r] = NORMAL]<br>       /\ rViewNum&#x27; = [rViewNum EXCEPT ![r] = IF msg.vn &gt; @ THEN msg.vn ELSE @]<br>       /\ Send([type |-&gt; STARTVIEWREPLY,<br>                val  |-&gt; msg.val,<br>                vn   |-&gt; msg.vn,<br>                src  |-&gt; r,<br>                dst  |-&gt; msg.src])<br>       /\ UNCHANGED &lt;&lt;rVal, aVars&gt;&gt;<br><br>ReplicaReceiveStartViewReply(r, val) ==<br>  /\ rState[r] = RFAILED<br>  /\ rVal[r] # UNWRITTEN<br>  /\ \E Q \in Quorum, S \in SuperQuorum:<br>       \A p \in Q \cap S:<br>         \E msg \in sentMsg:<br>           /\ msg.type = STARTVIEWREPLY<br>           /\ msg.val = val<br>           /\ msg.vn = rViewNum[r]<br>           /\ msg.src = p<br>           /\ msg.dst = r<br>  /\ rState&#x27; = [rState EXCEPT ![r] = NORMAL]<br>  /\ rVal&#x27; = [rVal EXCEPT ![r] = val]<br>  /\ UNCHANGED &lt;&lt;rViewNum, aVars, oVars&gt;&gt;<br></code></pre></td></tr></table></figure>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><code class="hljs bash">java -Xms50g -XX:+UseParallelGC -XX:MaxDirectMemorySize=300g -Dtlc2.tool.fp.FPSet.impl=tlc2.tool.fp.OffHeapDiskFPSet -<span class="hljs-built_in">cp</span> /usr/local/lib/tla2tools.jar tlc2.TLC IR -workers auto -checkpoint 0 &gt;stdout 2&gt;stderr<br></code></pre></td></tr></table></figure>
+<figure class="highlight text"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><code class="hljs text">Model checking completed. No error has been found.<br>  Estimates of the probability that TLC did not check all reachable states<br>  because two distinct states had the same fingerprint:<br>  calculated (optimistic):  val = 1.7E-5<br>  based on the actual fingerprints:  val = 2.4E-6<br>59799625 states generated, 5739708 distinct states found, 0 states left on queue.<br>The depth of the complete state graph search is 31.<br>The average outdegree of the complete state graph is 1 (minimum is 0, the maximum 11 and the 95th percentile is 3).<br>Finished in 13min 52s at (2024-01-09 01:40:37)<br></code></pre></td></tr></table></figure>
+<p>The correctness of the above-modified IR Recovery Protocol is straightforward to establish. Because at least <span class="math inline">\(\lfloor\frac{f}{2}\rfloor+1\)</span> replicas confirm that they have not written, and will not write (the view number is maintained and remains valid even post-failover), votes for any value other than <span class="math inline">\(val\)</span>. This assurance means that no values other than <span class="math inline">\(val\)</span> could have been or will be finalized by a quorum of <span class="math inline">\(\lceil\frac{3f}{2}\rceil+1\)</span> in any prior view. Thus, it is safe for the recovering replica to write <span class="math inline">\(val\)</span> in <span class="math inline">\({vn}_{new}\)</span>, which is in full compliance with Rule 4: Previous Decisions.</p>
+<h5 id="proving-the-correctness-of-the-original-ir-recovery-protocol-a-more-complex-task">Proving the Correctness of the Original IR Recovery Protocol: A More Complex Task</h5>
+<p>I have made minor revisions to the original IR Recovery protocol, omitting extraneous steps that could potentially obfuscate the proof process. These modifications are subtle and retain the essence of the original protocol:</p>
+<ol start="3" type="1">
+<li>Once the recovering replica receives <span class="math inline">\(f+1\)</span> responses, it updates its record using the received records: ... It updates its current view number to <span class="math inline">\({vn}_{new}\)</span> as the <strong>max</strong> view number received from other replicas, enters the <span class="math inline">\(\text{NORMAL}\)</span> state and resumes processing client requests. <strong>At this point, the replica is considered to be recovered.</strong></li>
+<li>The replica then sends a <span class="math inline">\(\langle\text{START-VIEW}, val, {vn}_{new}\rangle\)</span>, where <span class="math inline">\({vn}_{new}\)</span> is the <strong>max</strong> of the view numbers from other replicas.</li>
+<li>Any replica that receives <span class="math inline">\(\text{START-VIEW}\)</span> checks ... The replica then always replies with a <span class="math inline">\(\langle\text{START-VIEW}, val, {vn}_{new}\rangle\)</span> message.</li>
+<li><del>After the recovering replica receives <span class="math inline">\(f\)</span> <span class="math inline">\(\text{START-VIEW-REPLY}\)</span> responses, it enters the <span class="math inline">\(\text{NORMAL}\)</span> state and resumes processing client requests. At this point, the replica is considered to be recovered.</del></li>
+</ol>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br></pre></td><td class="code"><pre><code class="hljs tla">\* A replica received enough view change replies<br>\* to start processing in the new view.<br>ReplicaReceiveDoViewChange(r) ==<br>  /\ rState[r] = RFAILED<br>  /\ \E Q \in Quorum:<br>       LET receivedMsg == &#123;m \in sentMsg:<br>                             /\ m.type = DOVIEWCHANGE<br>                             /\ m.vn &gt; rViewNum[r]<br>                             /\ m.src \in Q<br>                             /\ m.dst = r&#125;<br>           vn == IF Cardinality(receivedMsg) = 0 THEN 0<br>                 ELSE CHOOSE x \in &#123;m.vn: m \in receivedMsg&#125;:<br>                        \A y \in &#123;m.vn: m \in receivedMsg&#125;:<br>                          x &gt;= y<br>           IsMatchingMajorityVal(val) ==<br>             \E P \in SuperQuorum:<br>               \A s \in Q \cap P:<br>                 \E m \in receivedMsg:<br>                   /\ m.val = val<br>                   /\ m.src = s<br>           IsNotMatchingMajorityVal(val) == \neg IsMatchingMajorityVal(val)<br>           CanRecover(val) ==<br>             \/ IsMatchingMajorityVal(val)<br>             \/ IsNotMatchingMajorityVal(<br>                  CHOOSE v \in Val: v \notin &#123;val, UNWRITTEN&#125;)<br>       IN<br>         /\ &#123;m.src: m \in receivedMsg&#125; = Q<br>         /\ rState&#x27; = [rState EXCEPT ![r] = NORMAL]<br>         /\ \/ /\ CanRecover(SUCCEED)<br>               /\ rVal&#x27; = [rVal EXCEPT ![r] = SUCCEED]<br>            \/ /\ CanRecover(FAILED)<br>               /\ rVal&#x27; = [rVal EXCEPT ![r] = FAILED]<br>         /\ rViewNum&#x27; = [rViewNum EXCEPT ![r] = vn]<br>         /\ Send([type |-&gt; STARTVIEW, vn |-&gt; vn, src |-&gt; r])<br>         /\ UNCHANGED &lt;&lt;aVars&gt;&gt;<br><br>Next ==<br>  \/ \E r \in Replica:<br>       \/ ReplicaExecute(r, SUCCEED)<br>       \/ ReplicaExecute(r, FAILED)<br>       \/ ReplicaFail(r)<br>       \/ ReplicaStartViewChange(r)<br>       \/ ReplicaReceiveStartViewChange(r)<br>       \/ ReplicaReceiveDoViewChange(r)<br>       \/ ReplicaReceiveStartView(r)<br>       \* \/ ReplicaReceiveStartViewReply(r)<br>  \/ \/ AppFinalizedVal(SUCCEED)<br>     \/ AppFinalizedVal(FAILED)<br></code></pre></td></tr></table></figure>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><code class="hljs bash">java -Xms50g -XX:+UseParallelGC -XX:MaxDirectMemorySize=300g -Dtlc2.tool.fp.FPSet.impl=tlc2.tool.fp.OffHeapDiskFPSet -<span class="hljs-built_in">cp</span> /usr/local/lib/tla2tools.jar tlc2.TLC IR -workers auto -checkpoint 0 &gt;stdout 2&gt;stderr<br></code></pre></td></tr></table></figure>
+<figure class="highlight text"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><code class="hljs text">Model checking completed. No error has been found.<br>  Estimates of the probability that TLC did not check all reachable states<br>  because two distinct states had the same fingerprint:<br>  calculated (optimistic):  val = 4.4E-4<br>  based on the actual fingerprints:  val = 2.9E-5<br>274556881 states generated, 33937916 distinct states found, 0 states left on queue.<br>The depth of the complete state graph search is 33.<br>The average outdegree of the complete state graph is 1 (minimum is 0, the maximum 16 and the 95th percentile is 3).<br>Finished in 16min 00s at (2024-01-12 23:20:32)<br></code></pre></td></tr></table></figure>
+<p>The complexity in establishing the correctness of the original IR Recovery Protocol arises from its third step. Here, the recovering replica selects the highest view number, denoted as <span class="math inline">\({vn}_{max}\)</span>, from the <span class="math inline">\(\text{DO-VIEW-CHANGE}\)</span> messages received from other replicas, and then uses this view number in the steps that follow.</p>
+<p>Consider the scenario where the response from replica <span class="math inline">\(r_1\)</span> is <span class="math inline">\(\langle\text{DO-VIEW-CHANGE}, {val}_1, {vn}_1\rangle\)</span>, from <span class="math inline">\(r_2\)</span> is <span class="math inline">\(\langle\text{DO-VIEW-CHANGE}, {val}_2, {vn}_2\rangle\)</span>, and so on, up to the response from <span class="math inline">\(r_{f+1}\)</span>, which is <span class="math inline">\(\langle\text{DO-VIEW-CHANGE}, {val}_{f+1}, {vn}_{f+1}\rangle\)</span>, with the condition that <span class="math inline">\({vn}_1 &lt; {vn}_{max}\)</span>, <span class="math inline">\({vn}_2 &lt; {vn}_{max}\)</span>, ..., and <span class="math inline">\({vn}_{f+1} = {vn}_{max}\)</span>.</p>
+<p>In such a case, only replica <span class="math inline">\(r_{f+1}\)</span> is promised to not voting for any value other than <span class="math inline">\({val}_{f+1}\)</span>. The remaining replicas, <span class="math inline">\(r_1\)</span> through <span class="math inline">\(r_f\)</span>, have made no such promisement regarding their respective values <span class="math inline">\({val}_1\)</span> through <span class="math inline">\({val}_f\)</span>. This lack of promisement could result in a situation where the recovering replica may vote for <span class="math inline">\(val\)</span> in <span class="math inline">\({vn}_{max}\)</span>, while other replicas might have already finalized a different value, <span class="math inline">\({val}^\prime\)</span> (where <span class="math inline">\({val}^\prime \neq val\)</span>), in a previous view number <span class="math inline">\({vn}_k\)</span> with <span class="math inline">\({vn}_k &lt; {vn}_{max}\)</span>. Thus, demonstrating that the original IR recovery protocol adheres to previous decisions, becomes a challenging endeavor.</p>
+<p>I suggest the term <strong>Subsequent Decisions</strong>: After a non-nil value <span class="math inline">\(v\)</span> is finalized by the super-quorums in view <span class="math inline">\(r\)</span>, it is guaranteed that no other non-nil value <span class="math inline">\(v^\prime\)</span> where <span class="math inline">\(v \neq v^\prime\)</span> can be finalized in subsequent views <span class="math inline">\(r+1\)</span>, <span class="math inline">\(r+2\)</span>, ... I posit, with some uncertainty, that "subsequent decisions" and "previous decisions" are simply different facets of the same consistency constraint, applied to different views -- in essence, they are two sides of the same coin. Contrary to the complexity involved in proving adherence to "previous decisions," demonstrating that the original IR protocol complies with "subsequent decisions" is notably more straightforward.</p>
+<p>The proof unfolds as follows: at the juncture when a value <span class="math inline">\(v\)</span> is finalized, at least <span class="math inline">\(\lceil\frac{3f}{2}\rceil+1\)</span> replicas are operational and have recorded the value <span class="math inline">\(v\)</span> in their registers. Should any of these replicas fail thereafter, upon recovery, they will encounter at least <span class="math inline">\(\lfloor\frac{f}{2}\rfloor+1\)</span> out of <span class="math inline">\(f+1\)</span> replicas that had <span class="math inline">\(v\)</span> written in their registers, compelling them to also write <span class="math inline">\(v\)</span> to their own register. Thus, post-finalization, regardless of how the involved replicas may experience failures, they are destined to re-adopt the value <span class="math inline">\(v\)</span> upon recovery. With a maximum of <span class="math inline">\(\lfloor\frac{f}{2}\rfloor-1\)</span> replicas not participating in the finalization process, these may cast their vote for any value. However, their votes are inconsequential to the outcome as they lack the numbers to influence or alter the already finalized value <span class="math inline">\(v\)</span>.</p>
+<h3 id="qa-on-conflict-detection-and-ensuring-isolation-correctness">Q&amp;A on Conflict Detection and Ensuring Isolation Correctness</h3>
+<p>The original paper maintains that isolation is guaranteed by employing optimistic concurrency control and quorum intersection mechanisms. However, I posit there's a flaw in the quorum intersection during failover events. To elaborate, a transaction <span class="math inline">\(X\)</span> can be committed only if it obtains at least <span class="math inline">\(f+1\)</span> <span class="math inline">\(\text{PREPARE-OK}\)</span> responses. Nonetheless, in the worst-case scenario, only <span class="math inline">\(\lceil\frac{f}{2}\rceil+1\)</span> of the <span class="math inline">\(f+1\)</span> replicas may independently decide to record and return <span class="math inline">\(\text{PREPARE-OK}\)</span>, with the remaining replicas succumbing to sequential failovers. Consequently, these replicas are compelled to record and send <span class="math inline">\(\text{PREPARE-OK}\)</span> based on the matching <span class="math inline">\(\lceil\frac{f}{2}\rceil+1\)</span> <span class="math inline">\(\text{PREPARE-OK}\)</span> responses from <span class="math inline">\(f+1\)</span> responses during the recovery protocol. These failover replicas do not execute the operation independently and, consequently, do not perform conflict detection. In such cases, transaction <span class="math inline">\(X\)</span> could be committed with just <span class="math inline">\(\lceil\frac{f}{2}\rceil+1\)</span> replicas genuinely detecting conflicts and voluntarily responding with <span class="math inline">\(\text{PREPARE-OK}\)</span>. As a result, the condition for quorum intersection may not be satisfied, as the overlap between quorums could be insufficient. If a conflicting transaction <span class="math inline">\(Y\)</span> had already committed on <span class="math inline">\(f+1\)</span> replicas, the calculation <span class="math inline">\((\lceil\frac{f}{2}\rceil+1)+(f+1)-(2f+1)=-\lfloor\frac{f}{2}\rfloor+1\)</span> yields a negative number, indicating an overlap of less than zero, which means there is no guarantee of a common replica between the quorums.</p>
+<blockquote>
+<p>TAPIR solves this problem using optimistic concurrency control and quorum intersection. OCC validation checks occur between the committing transaction and one previous transaction at a time. Thus, it not necessary or a single server to perform all the checks. Since IR ensures that every <span class="math inline">\(\text{Commit}\)</span> executes at at least 1 replica in any set of <span class="math inline">\(f+1\)</span> replicas, and every <span class="math inline">\(\text{Prepare}\)</span> executes at at least <span class="math inline">\(\lceil\frac{f}{2}\rceil\)</span> replicas in any set of <span class="math inline">\(f+1\)</span>, at least one replica will detect any possible OCC conflict between transactions, thus ensuring correctness.</p>
+</blockquote>
+<blockquote>
+<p>Because <span class="math inline">\(\text{Prepare}\)</span> is a consensus operation, a transaction <span class="math inline">\(X\)</span> can be committed only if <span class="math inline">\(f+1\)</span> replicas return <span class="math inline">\(\text{PREPARE-OK}\)</span>. We show that this means the transaction is consistent with the serial timestamp ordering of transactions.</p>
+<p>If a replica returns <span class="math inline">\(\text{PREPARE-OK}\)</span>, it has not prepared or committed any conflicting transactions. If a conflicting transaction <span class="math inline">\(Y\)</span> had committed, then there is one common participant shard where at least <span class="math inline">\(f+1\)</span> replicas responded <span class="math inline">\(\text{PREPARE-OK}\)</span> to <span class="math inline">\(Y\)</span>. However, those replicas would not return <span class="math inline">\(\text{PREPARE-OK}\)</span> to <span class="math inline">\(X\)</span>. Thus, by quorum intersection, <span class="math inline">\(X\)</span> cannot obtain <span class="math inline">\(f+1\)</span> <span class="math inline">\(\text{PREPARE-OK}\)</span> responses.</p>
+</blockquote>
+<p>To address the identified flaw, I propose reducing the tolerance for simultaneous failures from <span class="math inline">\(f\)</span> to <span class="math inline">\(\lfloor\frac{f}{2}\rfloor\)</span>. Consequently, during the recovery protocol, a recovering replica would need to gather <span class="math inline">\(\lceil\frac{3f}{2}\rceil+1\)</span> responses. The "force recover operation", denoted as <span class="math inline">\(\operatorname{Recover}(op, res)\)</span>, would only be invoked if at least <span class="math inline">\((\lceil\frac{3f}{2}\rceil+1)+(\lceil\frac{3f}{2}\rceil+1)-(2f+1) \ge f+1\)</span> responses are matching results <span class="math inline">\(res\)</span>. This ensures that a minimum of <span class="math inline">\(f+1\)</span> replicas, which have independently detected conflicts, respond with <span class="math inline">\(\text{PREPARE-OK}\)</span> before transaction <span class="math inline">\(X\)</span> is committed. By implementing this change, the requirement for quorum intersection is satisfied, thus upholding the integrity of the isolation guarantee.</p>
+<h2 id="replacing-ir-with-fast-paxos-a-protocol-substitution-analysis">Replacing IR with Fast Paxos: A Protocol Substitution Analysis</h2>
+<blockquote>
+<p>The inconsistent replication protocol shares many features with Viewstamped Replication. Like VR, inconsistent replication is designed for <strong>in-memory</strong> replication without relying on synchronous disk writes. The possibility of data loss on replica failure, which does not happen in protocols like Paxos that assume durable writes, necessitates the use of viewstamps for both replication protocols. Our decision to focus on in-memory replication is motivated by the popularity of recent inmemory systems like RAMCloud and H-Base.</p>
+</blockquote>
+<blockquote>
+<p><strong>IR does not rely on synchronous disk writes;</strong> it ensures guarantees are maintained even if clients or replicas <strong>lose state on failure</strong>. This property allows IR to provide better performance, especially within a datacenter, compared to Paxos and its variants, which require synchronous disk writes and recovery from disk on failure. IR also provide better fault-tolerance because this property allows it to tolerate disk failures at replicas.</p>
+</blockquote>
+<p>The authors highlight that IR is an in-memory replication protocol that operates independently of synchronous disk writes. However, the need for persistence is critical in certain systems, like the metadata components of distributed file systems, where the marginal slowdown due to sequential writes on industrial-grade SSDs is often negligible and tolerable. Consequently, I believe the practical advantages of in-memory replication may not be as significant as suggested. With this perspective, I am keen to explore the integration of synchronous log-writing capabilities into the IR framework. The original paper states:</p>
+<blockquote>
+<p>Given the ability to synchronously log to durable storage (e.g. hard disk, NVRAM), we can reduce the quorum requirements for TAPIR. As long as we can recover the log after failures, we can reduce the replica group size to <span class="math inline">\(2f+1\)</span> and reduce all consensus and synchronization quorums to <span class="math inline">\(f+1\)</span>.</p>
+</blockquote>
+<p>Considering the capability to synchronously log to durable storage, the benefits extend beyond just lowering quorum requirements for TAPIR. I am contemplating the use of Fast Paxos to replace IR because Fast Paxos is a well-established protocol with broader adoption in industrial applications.</p>
+<p>The Modified Fast Paxos, designed as a replacement for the IR protocol, deviates from the original Fast Paxos in several key aspects:</p>
+<ol type="1">
+<li><strong>Transaction Scope</strong>: Unlike the original Fast Paxos, which orders multiple transactions, the Modified Fast Paxos protocol handles a single transaction independently. It does not consider the order or relationship with other transactions.</li>
+<li><strong>Fast Round</strong>: The initial round is the only one fast round in the protocol. The protocol initiates with a fast round, where a client may propose a <span class="math inline">\(\text{Prepare}\)</span> command as a consensus operation without a predetermined result (<span class="math inline">\(\text{PREPARE-OK}\)</span> or <span class="math inline">\(\text{ABORT}\)</span>). Replicas decide independently whether to record and return <span class="math inline">\(\text{PREPARE-OK}\)</span> or <span class="math inline">\(\text{ABORT}\)</span>, eliminating the need for inter-replica communication at this stage. This <span class="math inline">\(\text{Prepare}\)</span> command and its subsequent result are analogous to the client-proposed value in the original Fast Paxos.</li>
+<li><strong>Slow Round</strong>: Rounds following the initial one are classified as slow rounds.
+<ol type="1">
+<li>The slow quorum requirement is set at <span class="math inline">\(f\)</span>, consistent with the original Fast Paxos.</li>
+<li>If all phase 1b messages only contain the same <span class="math inline">\(\operatorname{vrnd}(a)\)</span> value that matches the fast round's ID, but no other ballot IDs, the slow round must receive more than <span class="math inline">\(\lceil\frac{3f}{2}\rceil+1\)</span> of these messages to move on to phase 2. This step is crucial for detecting conflicting transactions and maintaining isolation correctness, as mentioned previously. In contrast, the original Fast Paxos protocol only requires more than <span class="math inline">\(f+1\)</span> phase 1b messages to enter phase 2. As a result, the failure tolerance has been decreased from <span class="math inline">\(f\)</span> to <span class="math inline">\(\lfloor\frac{f}{2}\rfloor\)</span> in the modified protocol.</li>
+<li>In alignment with Quorum Requirement of the original protocol, the Modified Fast Paxos ensures that every two fast quorums and each slow quorum have non-empty intersection. Consequently, no more than one value can fulfill the original Fast Paxos's Observation 4. During phase 1 of the slow round, if a value satisfying this requirement exists, it should be proposed in phase 2. If no such value exists, the protocol defaults to proposing an <span class="math inline">\(\text{ABORT}\)</span> for safety reasons.</li>
+</ol></li>
+</ol>
+<h2 id="reference">Reference</h2>
+<ul>
+<li><a target="_blank" rel="noopener" href="https://syslab.cs.washington.edu/papers/tapir-tr14.pdf">Building Consistent Transactions with Inconsistent Replication</a></li>
+<li><a target="_blank" rel="noopener" href="https://github.com/UWSysLab/tapir">GitHub: UWSysLab/tapir</a></li>
+<li><a target="_blank" rel="noopener" href="https://www.microsoft.com/en-us/research/uploads/prod/2016/12/The-Part-Time-Parliament.pdf">The Part-Time Parliament</a></li>
+<li><a target="_blank" rel="noopener" href="https://arxiv.org/pdf/1902.06776.pdf">A Generalised Solution to Distributed Consensus</a></li>
+<li><a href="https://clcanny.github.io/2023/03/06/computer-science/serializability/paper-interpretation-weak-consistency-a-generalized-theory-and-optimistic-implementations-for-distributed-transactions/">Paper Interpretation - Weak Consistency: A Generalized Theory and Optimistic Implementations for Distributed</a></li>
+<li><a target="_blank" rel="noopener" href="https://www.cs.cmu.edu/~dga/papers/epaxos-sosp2013.pdf">There Is More Consensus in Egalitarian Parliaments</a></li>
+<li><a target="_blank" rel="noopener" href="https://cwiki.apache.org/confluence/display/CASSANDRA/CEP-15%3A+General+Purpose+Transactions?preview=/188744725/188744736/Accord.pdf">CEP-15: Fast General Purpose Transaction</a></li>
+</ul>
+
+                
+              </div>
+            
+            <hr/>
+            <div>
+              <div class="post-metas my-3">
+  
+    <div class="post-meta mr-3 d-flex align-items-center">
+      <i class="iconfont icon-category"></i>
+      
+
+<span class="category-chains">
+  
+  
+    
+      <span class="category-chain">
+        
+  <a href="/categories/Computer-Science/" class="category-chain-item">Computer Science</a>
+  
+  
+    <span>></span>
+    
+  <a href="/categories/Computer-Science/Serializability/" class="category-chain-item">Serializability</a>
+  
+  
+
+  
+
+      </span>
+    
+  
+</span>
+
+    </div>
+  
+  
+</div>
+
+
+              
+  
+
+  <div class="license-box my-3">
+    <div class="license-title">
+      <div>Paper Interpretation - Building Consistent Transactions with Inconsistent Replication</div>
+      <div>https://clcanny.github.io/2023/12/10/computer-science/serializability/paper-interpretation-building-consistent-transactions-with-inconsistent-replication/</div>
+    </div>
+    <div class="license-meta">
+      
+        <div class="license-meta-item">
+          <div>作者</div>
+          <div>JunBin</div>
+        </div>
+      
+      
+        <div class="license-meta-item license-meta-date">
+          <div>发布于</div>
+          <div>2023年12月10日</div>
+        </div>
+      
+      
+      
+        <div class="license-meta-item">
+          <div>许可协议</div>
+          <div>
+            
+              
+              
+                <a target="_blank" href="https://creativecommons.org/licenses/by/4.0/">
+                  <span class="hint--top hint--rounded" aria-label="BY - 署名">
+                    <i class="iconfont icon-by"></i>
+                  </span>
+                </a>
+              
+            
+          </div>
+        </div>
+      
+    </div>
+    <div class="license-icon iconfont"></div>
+  </div>
+
+
+
+              
+                <div class="post-prevnext my-3">
+                  <article class="post-prev col-6">
+                    
+                    
+                      <a href="/2024/02/02/computer-science/consensus/understanding-raft-within-the-context-of-a-generalized-solution-to-distributed-consensus/" title="Understanding Raft within the Context of a Generalized Solution to Distributed Consensus">
+                        <i class="iconfont icon-arrowleft"></i>
+                        <span class="hidden-mobile">Understanding Raft within the Context of a Generalized Solution to Distributed Consensus</span>
+                        <span class="visible-mobile">上一篇</span>
+                      </a>
+                    
+                  </article>
+                  <article class="post-next col-6">
+                    
+                    
+                      <a href="/2023/11/04/computer-science/consensus/paper-interpretation-a-generalised-solution-to-distributed-consensus/" title="Paper Interpretation - A Generalised Solution to Distributed Consensus">
+                        <span class="hidden-mobile">Paper Interpretation - A Generalised Solution to Distributed Consensus</span>
+                        <span class="visible-mobile">下一篇</span>
+                        <i class="iconfont icon-arrowright"></i>
+                      </a>
+                    
+                  </article>
+                </div>
+              
+            </div>
+
+            
+          </article>
+        </div>
+      </div>
+    </div>
+
+    <div class="side-col d-none d-lg-block col-lg-2">
+      
+  <aside class="sidebar" style="margin-left: -1rem">
+    <div id="toc">
+  <p class="toc-header">
+    <i class="iconfont icon-list"></i>
+    <span>目录</span>
+  </p>
+  <div class="toc-body" id="toc-body"></div>
+</div>
+
+
+
+  </aside>
+
+
+    </div>
+  </div>
+</div>
+
+
+
+
+
+  
+
+
+
+  
+
+
+
+  
+
+
+
+  
+
+
+
+  
+
+
+  
+  
+
+
+
+
+
+  <script>
+  Fluid.utils.createScript('https://lib.baomitu.com/mermaid/8.14.0/mermaid.min.js', function() {
+    mermaid.initialize({"theme":"default"});
+
+    Fluid.events.registerRefreshCallback(function() {
+      if ('mermaid' in window) {
+        mermaid.init();
+      }
+    });
+  });
+</script>
+
+
+
+
+
+
+    
+
+    
+      <a id="scroll-top-button" aria-label="TOP" href="#" role="button">
+        <i class="iconfont icon-arrowup" aria-hidden="true"></i>
+      </a>
+    
+
+    
+      <div class="modal fade" id="modalSearch" tabindex="-1" role="dialog" aria-labelledby="ModalLabel"
+     aria-hidden="true">
+  <div class="modal-dialog modal-dialog-scrollable modal-lg" role="document">
+    <div class="modal-content">
+      <div class="modal-header text-center">
+        <h4 class="modal-title w-100 font-weight-bold">搜索</h4>
+        <button type="button" id="local-search-close" class="close" data-dismiss="modal" aria-label="Close">
+          <span aria-hidden="true">&times;</span>
+        </button>
+      </div>
+      <div class="modal-body mx-3">
+        <div class="md-form mb-5">
+          <input type="text" id="local-search-input" class="form-control validate">
+          <label data-error="x" data-success="v" for="local-search-input">关键词</label>
+        </div>
+        <div class="list-group" id="local-search-result"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+    
+
+    
+  </main>
+
+  <footer>
+    <div class="footer-inner">
+  
+    <div class="footer-content">
+       <a href="https://hexo.io" target="_blank" rel="nofollow noopener"><span>Hexo</span></a> <i class="iconfont icon-love"></i> <a href="https://github.com/fluid-dev/hexo-theme-fluid" target="_blank" rel="nofollow noopener"><span>Fluid</span></a> 
+    </div>
+  
+  
+  
+  
+</div>
+
+  </footer>
+
+  <!-- Scripts -->
+  
+  <script  src="https://lib.baomitu.com/nprogress/0.2.0/nprogress.min.js" ></script>
+  <link  rel="stylesheet" href="https://lib.baomitu.com/nprogress/0.2.0/nprogress.min.css" />
+
+  <script>
+    NProgress.configure({"showSpinner":false,"trickleSpeed":100})
+    NProgress.start()
+    window.addEventListener('load', function() {
+      NProgress.done();
+    })
+  </script>
+
+
+<script  src="https://lib.baomitu.com/jquery/3.6.0/jquery.min.js" ></script>
+<script  src="https://lib.baomitu.com/twitter-bootstrap/4.6.1/js/bootstrap.min.js" ></script>
+<script  src="/js/events.js" ></script>
+<script  src="/js/plugins.js" ></script>
+
+
+  <script  src="https://lib.baomitu.com/typed.js/2.0.12/typed.min.js" ></script>
+  <script>
+    (function (window, document) {
+      var typing = Fluid.plugins.typing;
+      var subtitle = document.getElementById('subtitle');
+      if (!subtitle || !typing) {
+        return;
+      }
+      var text = subtitle.getAttribute('data-typed-text');
+      
+        typing(text);
+      
+    })(window, document);
+  </script>
+
+
+
+
+  
+    <script  src="/js/img-lazyload.js" ></script>
+  
+
+
+
+
+  
+<script>
+  Fluid.utils.createScript('https://lib.baomitu.com/tocbot/4.18.2/tocbot.min.js', function() {
+    var toc = jQuery('#toc');
+    if (toc.length === 0 || !window.tocbot) { return; }
+    var boardCtn = jQuery('#board-ctn');
+    var boardTop = boardCtn.offset().top;
+
+    window.tocbot.init(Object.assign({
+      tocSelector     : '#toc-body',
+      contentSelector : '.markdown-body',
+      linkClass       : 'tocbot-link',
+      activeLinkClass : 'tocbot-active-link',
+      listClass       : 'tocbot-list',
+      isCollapsedClass: 'tocbot-is-collapsed',
+      collapsibleClass: 'tocbot-is-collapsible',
+      scrollSmooth    : true,
+      includeTitleTags: true,
+      headingsOffset  : -boardTop,
+    }, CONFIG.toc));
+    if (toc.find('.toc-list-item').length > 0) {
+      toc.css('visibility', 'visible');
+    }
+
+    Fluid.events.registerRefreshCallback(function() {
+      if ('tocbot' in window) {
+        tocbot.refresh();
+        var toc = jQuery('#toc');
+        if (toc.length === 0 || !tocbot) {
+          return;
+        }
+        if (toc.find('.toc-list-item').length > 0) {
+          toc.css('visibility', 'visible');
+        }
+      }
+    });
+  });
+</script>
+
+
+  <script src=https://lib.baomitu.com/clipboard.js/2.0.11/clipboard.min.js></script>
+
+  <script>Fluid.plugins.codeWidget();</script>
+
+
+  
+<script>
+  Fluid.utils.createScript('https://lib.baomitu.com/anchor-js/4.3.1/anchor.min.js', function() {
+    window.anchors.options = {
+      placement: CONFIG.anchorjs.placement,
+      visible  : CONFIG.anchorjs.visible
+    };
+    if (CONFIG.anchorjs.icon) {
+      window.anchors.options.icon = CONFIG.anchorjs.icon;
+    }
+    var el = (CONFIG.anchorjs.element || 'h1,h2,h3,h4,h5,h6').split(',');
+    var res = [];
+    for (var item of el) {
+      res.push('.markdown-body > ' + item.trim());
+    }
+    if (CONFIG.anchorjs.placement === 'left') {
+      window.anchors.options.class = 'anchorjs-link-left';
+    }
+    window.anchors.add(res.join(', '));
+
+    Fluid.events.registerRefreshCallback(function() {
+      if ('anchors' in window) {
+        anchors.removeAll();
+        var el = (CONFIG.anchorjs.element || 'h1,h2,h3,h4,h5,h6').split(',');
+        var res = [];
+        for (var item of el) {
+          res.push('.markdown-body > ' + item.trim());
+        }
+        if (CONFIG.anchorjs.placement === 'left') {
+          anchors.options.class = 'anchorjs-link-left';
+        }
+        anchors.add(res.join(', '));
+      }
+    });
+  });
+</script>
+
+
+  
+<script>
+  Fluid.utils.createScript('https://lib.baomitu.com/fancybox/3.5.7/jquery.fancybox.min.js', function() {
+    Fluid.plugins.fancyBox();
+  });
+</script>
+
+
+  <script>Fluid.plugins.imageCaption();</script>
+
+  
+      <script>
+        if (!window.MathJax) {
+          window.MathJax = {
+            tex    : {
+              inlineMath: { '[+]': [['$', '$']] }
+            },
+            loader : {
+              load: ['ui/lazy']
+            },
+            options: {
+              renderActions: {
+                insertedScript: [200, () => {
+                  document.querySelectorAll('mjx-container').forEach(node => {
+                    let target = node.parentNode;
+                    if (target.nodeName.toLowerCase() === 'li') {
+                      target.parentNode.classList.add('has-jax');
+                    }
+                  });
+                }, '', false]
+              }
+            }
+          };
+        } else {
+          MathJax.startup.document.state(0);
+          MathJax.texReset();
+          MathJax.typeset();
+          MathJax.typesetPromise();
+        }
+
+        Fluid.events.registerRefreshCallback(function() {
+          if ('MathJax' in window && MathJax.startup.document && typeof MathJax.startup.document.state === 'function') {
+            MathJax.startup.document.state(0);
+            MathJax.texReset();
+            MathJax.typeset();
+            MathJax.typesetPromise();
+          }
+        });
+      </script>
+    
+
+  <script  src="https://lib.baomitu.com/mathjax/3.2.2/es5/tex-mml-chtml.js" ></script>
+
+  <script  src="/js/local-search.js" ></script>
+
+
+
+
+
+<!-- 主题的启动项，将它保持在最底部 -->
+<!-- the boot of the theme, keep it at the bottom -->
+<script  src="/js/boot.js" ></script>
+
+
+  
+
+  <noscript>
+    <div class="noscript-warning">博客在允许 JavaScript 运行的环境下浏览效果更佳</div>
+  </noscript>
+</body>
+</html>

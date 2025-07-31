@@ -1,0 +1,797 @@
+
+
+<!DOCTYPE html>
+<html lang="zh-CN" data-default-color-scheme=auto>
+
+
+
+<head>
+  <meta charset="UTF-8">
+  <link rel="apple-touch-icon" sizes="76x76" href="/img/fluid.png">
+  <link rel="icon" href="/img/fluid.png">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, shrink-to-fit=no">
+  <meta http-equiv="x-ua-compatible" content="ie=edge">
+  
+  <meta name="theme-color" content="#2f4154">
+  <meta name="author" content="JunBin">
+  <meta name="keywords" content="">
+  
+    <meta name="description" content="导读 Dynamic Linking: Symbol Search Order 介绍了在多个文件间查找符号的顺序，本篇文章会聚焦于 do_lookup_x 函数，探讨在单文件内查找符号的步骤：  布隆过滤器和哈希表是两个重要的数据结构； 它们是由编译器而不是运行时链接器准备的。  Hash sections 有两种格式，GNU hash section 和 SYSV hash section ：">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Search Symbols In One Binary">
+<meta property="og:url" content="https://clcanny.github.io/2020/11/20/computer-science/dynamic-linking/search-symbols-in-one-binary/index.html">
+<meta property="og:site_name" content="On The Road">
+<meta property="og:description" content="导读 Dynamic Linking: Symbol Search Order 介绍了在多个文件间查找符号的顺序，本篇文章会聚焦于 do_lookup_x 函数，探讨在单文件内查找符号的步骤：  布隆过滤器和哈希表是两个重要的数据结构； 它们是由编译器而不是运行时链接器准备的。  Hash sections 有两种格式，GNU hash section 和 SYSV hash section ：">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="http://junbin-hexo-img.oss-cn-beijing.aliyuncs.com/dynamic-linking-search-symbols-in-one-binary/one-dimensional-hash-table.png">
+<meta property="og:image" content="http://junbin-hexo-img.oss-cn-beijing.aliyuncs.com/dynamic-linking-search-symbols-in-one-binary/two-dimensional-hash-table.png">
+<meta property="article:published_time" content="2020-11-19T17:28:45.000Z">
+<meta property="article:modified_time" content="2024-10-30T15:47:28.515Z">
+<meta property="article:author" content="JunBin">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="http://junbin-hexo-img.oss-cn-beijing.aliyuncs.com/dynamic-linking-search-symbols-in-one-binary/one-dimensional-hash-table.png">
+  
+  
+  
+  <title>Search Symbols In One Binary - On The Road</title>
+
+  <link  rel="stylesheet" href="https://lib.baomitu.com/twitter-bootstrap/4.6.1/css/bootstrap.min.css" />
+
+
+
+  <link  rel="stylesheet" href="https://lib.baomitu.com/github-markdown-css/4.0.0/github-markdown.min.css" />
+
+  <link  rel="stylesheet" href="https://lib.baomitu.com/hint.css/2.7.0/hint.min.css" />
+
+  <link  rel="stylesheet" href="https://lib.baomitu.com/fancybox/3.5.7/jquery.fancybox.min.css" />
+
+
+
+<!-- 主题依赖的图标库，不要自行修改 -->
+<!-- Do not modify the link that theme dependent icons -->
+
+<link rel="stylesheet" href="//at.alicdn.com/t/font_1749284_hj8rtnfg7um.css">
+
+
+
+<link rel="stylesheet" href="//at.alicdn.com/t/font_1736178_lbnruvf0jn.css">
+
+
+<link  rel="stylesheet" href="/css/main.css" />
+
+
+  <link id="highlight-css" rel="stylesheet" href="/css/highlight.css" />
+  
+    <link id="highlight-css-dark" rel="stylesheet" href="/css/highlight-dark.css" />
+  
+
+
+
+
+  <script id="fluid-configs">
+    var Fluid = window.Fluid || {};
+    Fluid.ctx = Object.assign({}, Fluid.ctx)
+    var CONFIG = {"hostname":"clcanny.github.io","root":"/","version":"1.9.4","typing":{"enable":true,"typeSpeed":70,"cursorChar":"_","loop":false,"scope":[]},"anchorjs":{"enable":true,"element":"h1,h2,h3,h4,h5,h6","placement":"left","visible":"hover","icon":""},"progressbar":{"enable":true,"height_px":3,"color":"#29d","options":{"showSpinner":false,"trickleSpeed":100}},"code_language":{"enable":true,"default":"TEXT"},"copy_btn":true,"image_caption":{"enable":true},"image_zoom":{"enable":true,"img_url_replace":["",""]},"toc":{"enable":true,"placement":"right","headingSelector":"h1,h2,h3,h4,h5,h6","collapseDepth":0},"lazyload":{"enable":true,"loading_img":"/img/loading.gif","onlypost":false,"offset_factor":2},"web_analytics":{"enable":false,"follow_dnt":true,"baidu":null,"google":null,"gtag":null,"tencent":{"sid":null,"cid":null},"woyaola":null,"cnzz":null,"leancloud":{"app_id":null,"app_key":null,"server_url":null,"path":"window.location.pathname","ignore_local":false}},"search_path":"/local-search.xml"};
+
+    if (CONFIG.web_analytics.follow_dnt) {
+      var dntVal = navigator.doNotTrack || window.doNotTrack || navigator.msDoNotTrack;
+      Fluid.ctx.dnt = dntVal && (dntVal.startsWith('1') || dntVal.startsWith('yes') || dntVal.startsWith('on'));
+    }
+  </script>
+  <script  src="/js/utils.js" ></script>
+  <script  src="/js/color-schema.js" ></script>
+  
+
+
+  
+<meta name="generator" content="Hexo 7.0.0-rc1"></head>
+
+
+<body>
+  
+
+  <header>
+    
+
+<div class="header-inner" style="height: 70vh;">
+  <nav id="navbar" class="navbar fixed-top  navbar-expand-lg navbar-dark scrolling-navbar">
+  <div class="container">
+    <a class="navbar-brand" href="/">
+      <strong>Fluid</strong>
+    </a>
+
+    <button id="navbar-toggler-btn" class="navbar-toggler" type="button" data-toggle="collapse"
+            data-target="#navbarSupportedContent"
+            aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
+      <div class="animated-icon"><span></span><span></span><span></span></div>
+    </button>
+
+    <!-- Collapsible content -->
+    <div class="collapse navbar-collapse" id="navbarSupportedContent">
+      <ul class="navbar-nav ml-auto text-center">
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/">
+                <i class="iconfont icon-home-fill"></i>
+                <span>首页</span>
+              </a>
+            </li>
+          
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/archives/">
+                <i class="iconfont icon-archive-fill"></i>
+                <span>归档</span>
+              </a>
+            </li>
+          
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/categories/">
+                <i class="iconfont icon-category-fill"></i>
+                <span>分类</span>
+              </a>
+            </li>
+          
+        
+        
+          <li class="nav-item" id="search-btn">
+            <a class="nav-link" target="_self" href="javascript:;" data-toggle="modal" data-target="#modalSearch" aria-label="Search">
+              <i class="iconfont icon-search"></i>
+            </a>
+          </li>
+          
+        
+        
+          <li class="nav-item" id="color-toggle-btn">
+            <a class="nav-link" target="_self" href="javascript:;" aria-label="Color Toggle">
+              <i class="iconfont icon-dark" id="color-toggle-icon"></i>
+            </a>
+          </li>
+        
+      </ul>
+    </div>
+  </div>
+</nav>
+
+  
+
+<div id="banner" class="banner" parallax=true
+     style="background: url('/img/default.png') no-repeat center center; background-size: cover;">
+  <div class="full-bg-img">
+    <div class="mask flex-center" style="background-color: rgba(0, 0, 0, 0.3)">
+      <div class="banner-text text-center fade-in-up">
+        <div class="h2">
+          
+            <span id="subtitle" data-typed-text="Search Symbols In One Binary"></span>
+          
+        </div>
+
+        
+          
+  <div class="mt-3">
+    
+    
+      <span class="post-meta">
+        <i class="iconfont icon-date-fill" aria-hidden="true"></i>
+        <time datetime="2020-11-20 01:28" pubdate>
+          2020年11月20日 凌晨
+        </time>
+      </span>
+    
+  </div>
+
+  <div class="mt-1">
+    
+      <span class="post-meta mr-2">
+        <i class="iconfont icon-chart"></i>
+        
+          8.2k 字
+        
+      </span>
+    
+
+    
+      <span class="post-meta mr-2">
+        <i class="iconfont icon-clock-fill"></i>
+        
+        
+        
+          69 分钟
+        
+      </span>
+    
+
+    
+    
+  </div>
+
+
+        
+      </div>
+
+      
+    </div>
+  </div>
+</div>
+
+</div>
+
+  </header>
+
+  <main>
+    
+      
+
+<div class="container-fluid nopadding-x">
+  <div class="row nomargin-x">
+    <div class="side-col d-none d-lg-block col-lg-2">
+      
+
+    </div>
+
+    <div class="col-lg-8 nopadding-x-md">
+      <div class="container nopadding-x-md" id="board-ctn">
+        <div id="board">
+          <article class="post-content mx-auto">
+            <!-- SEO header -->
+            <h1 style="display: none">Search Symbols In One Binary</h1>
+            
+            
+              <div class="markdown-body">
+                
+                <h1 id="导读">导读</h1>
+<p><a href="https://clcanny.github.io/2020/11/18/dynamic-linking-symbol-search-order/">Dynamic Linking: Symbol Search Order</a> 介绍了在多个文件间查找符号的顺序，本篇文章会聚焦于 <code>do_lookup_x</code> 函数，探讨在单文件内查找符号的步骤：</p>
+<ol type="1">
+<li>布隆过滤器和哈希表是两个重要的数据结构；</li>
+<li>它们是由编译器而不是运行时链接器准备的。</li>
+</ol>
+<p>Hash sections 有两种格式，GNU hash section 和 SYSV hash section ：</p>
+<ol type="1">
+<li>GNU hash section 比 SYSV hash section 具备更好的性能；</li>
+<li>通过 <code>-Wl,--hash-style=sysv</code> 选项指定编译 SYSV hash section ；</li>
+<li>通过 <code>-Wl,--hash-style=gnu</code> 选项指定编译 GNU hash section 。</li>
+</ol>
+<p>本文讨论 GNU hash section 。</p>
+<h1 id="code">Code</h1>
+<h2 id="加载-.gnu.hash-section">加载 .gnu.hash section</h2>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br></pre></td><td class="code"><pre><code class="hljs c"><span class="hljs-class"><span class="hljs-keyword">struct</span> <span class="hljs-title">link_map</span> &#123;</span><br>  <span class="hljs-comment">// ...</span><br>  <span class="hljs-comment">// Symbol hash table.</span><br>  <span class="hljs-comment">// The number of hash buckets.</span><br>  Elf_Symndx l_nbuckets;<br>  <span class="hljs-comment">// bitmask_words is the number of __ELF_NATIVE_CLASS sized words</span><br>  <span class="hljs-comment">// in the Bloom filter portion of the hash table section. This value</span><br>  <span class="hljs-comment">// must be non-zero, and must be a power of 2.</span><br>  <span class="hljs-comment">// l_gnu_bitmask_idxbits = bitmask_nwords - 1</span><br>  Elf32_Word l_gnu_bitmask_idxbits;<br>  <span class="hljs-comment">// A shift count used by the Bloom filter.</span><br>  <span class="hljs-comment">// HashValue_2 = HashValue_1 &gt;&gt; l_gnu_shift.</span><br>  Elf32_Word l_gnu_shift;<br>  <span class="hljs-type">const</span> <span class="hljs-title function_">ElfW</span><span class="hljs-params">(Addr)</span> * l_gnu_bitmask;<br>  <span class="hljs-class"><span class="hljs-keyword">union</span> &#123;</span><br>    <span class="hljs-type">const</span> Elf32_Word* l_gnu_buckets;<br>    <span class="hljs-type">const</span> Elf_Symndx* l_chain;<br>  &#125;;<br>  <span class="hljs-class"><span class="hljs-keyword">union</span> &#123;</span><br>    <span class="hljs-type">const</span> Elf32_Word* l_gnu_chain_zero;<br>    <span class="hljs-type">const</span> Elf_Symndx* l_buckets;<br>  &#125;;<br>  <span class="hljs-comment">// ...</span><br>&#125;;<br></code></pre></td></tr></table></figure>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br></pre></td><td class="code"><pre><code class="hljs c"><span class="hljs-type">void</span> _dl_setup_hash(<span class="hljs-keyword">struct</span> link_map* <span class="hljs-built_in">map</span>) &#123;<br>  <span class="hljs-keyword">if</span> (__glibc_likely(<span class="hljs-built_in">map</span>-&gt;l_info[ADDRIDX(DT_GNU_HASH)] != <span class="hljs-literal">NULL</span>)) &#123;<br>    Elf32_Word* hash32 = (<span class="hljs-type">void</span>*)D_PTR(<span class="hljs-built_in">map</span>, l_info[ADDRIDX(DT_GNU_HASH)]);<br>    <span class="hljs-built_in">map</span>-&gt;l_nbuckets = *hash32++;<br>    Elf32_Word symbias = *hash32++;<br>    Elf32_Word bitmask_nwords = *hash32++;<br>    <span class="hljs-comment">// Must be a power of two.</span><br>    assert((bitmask_nwords &amp; (bitmask_nwords - <span class="hljs-number">1</span>)) == <span class="hljs-number">0</span>);<br>    <span class="hljs-built_in">map</span>-&gt;l_gnu_bitmask_idxbits = bitmask_nwords - <span class="hljs-number">1</span>;<br>    <span class="hljs-built_in">map</span>-&gt;l_gnu_shift = *hash32++;<br><br>    <span class="hljs-built_in">map</span>-&gt;l_gnu_bitmask = (ElfW(Addr)*)hash32;<br>    hash32 += __ELF_NATIVE_CLASS / <span class="hljs-number">32</span> * bitmask_nwords;<br><br>    <span class="hljs-built_in">map</span>-&gt;l_gnu_buckets = hash32;<br>    hash32 += <span class="hljs-built_in">map</span>-&gt;l_nbuckets;<br>    <span class="hljs-built_in">map</span>-&gt;l_gnu_chain_zero = hash32 - symbias;<br>    <span class="hljs-keyword">return</span>;<br>  &#125;<br>  <span class="hljs-comment">// ...</span><br>&#125;<br></code></pre></td></tr></table></figure>
+<p>从 <a target="_blank" rel="noopener" href="https://blogs.oracle.com/solaris/gnu-hash-elf-sections-v2">GNU Hash ELF Sections</a> 摘抄了一段关于 .gnu.hash section 的描述：</p>
+<blockquote>
+<ul>
+<li><p><strong>l_nbuckets</strong> The number of hash buckets</p></li>
+<li><p><strong>symbias</strong> The dynamic symbol table has <em>dynsymcount</em> symbols. <em>symndx</em> is the index of the first symbol in the dynamic symbol table that is to be accessible via the hash table. This implies that there are (<em>dynsymcount</em> - <em>symndx</em>) symbols accessible via the hash table.</p></li>
+<li><p><strong>bitmask_nwords</strong></p>
+<p>The number of __ELF_NATIVE_CLASS sized words in the Bloom filter portion of the hash table section. This value must be non-zero, and must be a power of 2 as explained below.</p>
+<p>Note that a value of 0 could be interpreted to mean that no Bloom filter is present in the hash section. However, the GNU linkers do not do this — the GNU hash section always includes at least 1 mask word.</p></li>
+<li><p><strong>l_gnu_shift</strong> A shift count used by the Bloom filter. HashValue_2 = HashValue_1 &gt;&gt; l_gnu_shift.</p></li>
+</ul>
+</blockquote>
+<h2 id="哈希算法">哈希算法</h2>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><code class="hljs cpp"><span class="hljs-function"><span class="hljs-type">static</span> <span class="hljs-type">uint_fast32_t</span></span><br><span class="hljs-function"><span class="hljs-title">dl_new_hash</span> <span class="hljs-params">(<span class="hljs-type">const</span> <span class="hljs-type">char</span> *s)</span></span><br><span class="hljs-function"></span>&#123;<br>  <span class="hljs-type">uint_fast32_t</span> h = <span class="hljs-number">5381</span>;<br>  <span class="hljs-keyword">for</span> (<span class="hljs-type">unsigned</span> <span class="hljs-type">char</span> c = *s; c != <span class="hljs-string">&#x27;\0&#x27;</span>; c = *++s)<br>    h = h * <span class="hljs-number">33</span> + c;<br>  <span class="hljs-keyword">return</span> h &amp; <span class="hljs-number">0xffffffff</span>;<br>&#125;<br></code></pre></td></tr></table></figure>
+<h2 id="查找符号">查找符号</h2>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br></pre></td><td class="code"><pre><code class="hljs cpp"><span class="hljs-comment">// elf/dl-lookup.c</span><br><span class="hljs-comment">// do_lookup_x</span><br><span class="hljs-comment">// const uint_fast32_t new_hash = dl_new_hash (undef_name);</span><br><span class="hljs-type">const</span> <span class="hljs-keyword">struct</span> <span class="hljs-title class_">link_map</span> *map = list[i]-&gt;l_real;<br><span class="hljs-function"><span class="hljs-type">const</span> <span class="hljs-title">ElfW</span><span class="hljs-params">(Addr)</span> *bitmask </span>= map-&gt;l_gnu_bitmask;<br><span class="hljs-keyword">if</span> (__glibc_likely (bitmask != <span class="hljs-literal">NULL</span>))<br>&#123;<br>  <span class="hljs-built_in">ElfW</span>(Addr) bitmask_word<br>    = bitmask[(new_hash / __ELF_NATIVE_CLASS)&amp; map-&gt;l_gnu_bitmask_idxbits];<br>  <span class="hljs-type">unsigned</span> <span class="hljs-type">int</span> hashbit1 = new_hash &amp; (__ELF_NATIVE_CLASS - <span class="hljs-number">1</span>);<br>  <span class="hljs-type">unsigned</span> <span class="hljs-type">int</span> hashbit2 = ((new_hash &gt;&gt; map-&gt;l_gnu_shift)<br>                           &amp; (__ELF_NATIVE_CLASS - <span class="hljs-number">1</span>));<br>  <span class="hljs-keyword">if</span> (__glibc_unlikely ((bitmask_word &gt;&gt; hashbit1)<br>                        &amp; (bitmask_word &gt;&gt; hashbit2) &amp; <span class="hljs-number">1</span>))<br>  &#123;<br>    Elf32_Word bucket = map-&gt;l_gnu_buckets[new_hash<br>                                           % map-&gt;l_nbuckets];<br>    <span class="hljs-keyword">if</span> (bucket != <span class="hljs-number">0</span>)<br>    &#123;<br>      <span class="hljs-type">const</span> Elf32_Word *hasharr = &amp;map-&gt;l_gnu_chain_zero[bucket];<br>      <span class="hljs-function"><span class="hljs-keyword">do</span></span><br><span class="hljs-function">        <span class="hljs-title">if</span> <span class="hljs-params">(((*hasharr ^ new_hash) &gt;&gt; <span class="hljs-number">1</span>) == <span class="hljs-number">0</span>)</span></span><br><span class="hljs-function">        </span>&#123;<br>          symidx = hasharr - map-&gt;l_gnu_chain_zero;<br>          sym = <span class="hljs-built_in">check_match</span> (undef_name, ref, version, flags,<br>                             type_class, &amp;symtab[symidx], symidx,<br>                             strtab, map, &amp;versioned_sym,<br>                             &amp;num_versions);<br>          <span class="hljs-keyword">if</span> (sym != <span class="hljs-literal">NULL</span>)<br>            <span class="hljs-keyword">goto</span> found_it;<br>        &#125;<br>      <span class="hljs-keyword">while</span> ((*hasharr++ &amp; <span class="hljs-number">1u</span>) == <span class="hljs-number">0</span>);<br>    &#125;<br>  &#125;<br>  <span class="hljs-keyword">else</span><br>  &#123;<br>    <span class="hljs-comment">/* Use the old SysV-style hash table.  Search the appropriate</span><br><span class="hljs-comment">       hash bucket in this object&#x27;s symbol table for a definition</span><br><span class="hljs-comment">       for the same symbol name.  */</span><br>    <span class="hljs-comment">// ...</span><br>  &#125;<br>&#125;<br></code></pre></td></tr></table></figure>
+<h1 id="详解">详解</h1>
+<p>.gnu.hash 需要有多个导出符号才能较方便地分析，因此我们将使用 test_gnu_hash.cpp 作为待分析的文件：</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><code class="hljs cpp"><span class="hljs-comment">// test_gnu_hash.cpp</span><br><span class="hljs-comment">// g++ -std=c++11 -shared -fPIC test_gnu_hash.cpp -o libtest_gnu_hash.so</span><br><span class="hljs-function"><span class="hljs-type">void</span> <span class="hljs-title">foo</span><span class="hljs-params">()</span> </span>&#123;&#125;<br><span class="hljs-function"><span class="hljs-type">void</span> <span class="hljs-title">bar</span><span class="hljs-params">()</span> </span>&#123;&#125;<br><span class="hljs-function"><span class="hljs-type">void</span> <span class="hljs-title">test</span><span class="hljs-params">()</span> </span>&#123;&#125;<br><span class="hljs-function"><span class="hljs-type">void</span> <span class="hljs-title">haha</span><span class="hljs-params">()</span> </span>&#123;&#125;<br><span class="hljs-function"><span class="hljs-type">void</span> <span class="hljs-title">more</span><span class="hljs-params">()</span> </span>&#123;&#125;<br></code></pre></td></tr></table></figure>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><code class="hljs bash"><span class="hljs-comment"># readelf --dynamic libtest_gnu_hash.so | grep -E &quot;Tag|GNU_HASH&quot;</span><br>  Tag        Type                         Name/Value<br> 0x000000006ffffef5 (GNU_HASH)           0x260<br></code></pre></td></tr></table></figure>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><code class="hljs bash"><span class="hljs-comment"># readelf --section-headers libtest_gnu_hash.so | grep -E &quot;Nr|260&quot; -A1 | grep -v &quot;\-\-&quot;</span><br>  [Nr] Name              Type             Address           Offset<br>       Size              EntSize          Flags  Link  Info  Align<br>  [ 2] .gnu.hash         GNU_HASH         0000000000000260  00000260<br>       0000000000000038  0000000000000000   A       3     0     8<br></code></pre></td></tr></table></figure>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><code class="hljs bash"><span class="hljs-comment"># export gnu_hash_start_addr=0x260</span><br><span class="hljs-comment"># export gnu_hash_size=0x38</span><br><span class="hljs-comment"># od --skip-bytes=$gnu_hash_start_addr --read-bytes=$gnu_hash_size --format=xI libtest_gnu_hash.so</span><br>0001140 00000003 00000005 00000001 00000006<br>0001160 04200400 18012908 00000005 00000008<br>0001200 00000000 b8f7d29a b95a257a b9d35b69<br>0001220 6a5ebc3c 6a6128eb<br></code></pre></td></tr></table></figure>
+<table style="width:100%;">
+
+<thead>
+<tr class="header">
+<th style="text-align: center;"></th>
+<th style="text-align: center;">l_nbuckets</th>
+<th style="text-align: center;">symbias</th>
+<th style="text-align: center;">bitmask_nwords</th>
+<th style="text-align: center;">l_gnu_bitmask_idxbits</th>
+<th style="text-align: center;">l_gnu_shift</th>
+<th style="text-align: center;">l_gnu_bitmask</th>
+<th style="text-align: center;">l_gnu_buckets</th>
+<th style="text-align: center;">l_gnu_chain_zero + symbias</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: center;">value</td>
+<td style="text-align: center;">0x3</td>
+<td style="text-align: center;">0x5</td>
+<td style="text-align: center;">0x1</td>
+<td style="text-align: center;">0x0</td>
+<td style="text-align: center;">0x6</td>
+<td style="text-align: center;">0x1801290804200400</td>
+<td style="text-align: center;">[0x5, 0x8, 0x0]</td>
+<td style="text-align: center;">[0xb8f7d29a, 0xb95a257a, 0xb9d35b69, 0x6a5ebc3c, 0x6a6128eb]</td>
+</tr>
+</tbody>
+</table>
+<h2 id="哈希表">哈希表</h2>
+<p>编译器实现哈希表时用了几个技巧：</p>
+<ol type="1">
+<li>用一维数组 <code>l_gnu_chain_zero + symbias</code> 实现二维哈希表：
+<ol type="1">
+<li>将在同一个哈希桶内的元素放在数组的连续区域；</li>
+<li>用另一个一维数组 <code>l_gnu_buckets</code> 记录哈希桶的起始位置；</li>
+<li>约定哈希桶的最后一个元素的最后一个比特是 1 ，其余元素的最后一个比特是 0 ；</li>
+</ol></li>
+<li>为节省哈希表空间：
+<ol type="1">
+<li>哈希表只记录哈希值，不记录符号在 .dynsym 表中的下标；</li>
+<li>哈希表只记录可导出符号（比如 <code>_Z3foov</code> ）的哈希值，不记录不可导出符号（比如 <code>__cxa_finalize@GLIBC_2.2.5</code> ）的哈希值；</li>
+<li>为同时达到以上两个目标，编译器在 .dynsym 表中将不可导出符号（比如 <code>__cxa_finalize@GLIBC_2.2.5</code> ）排在可导出符号（比如 <code>_Z3foov</code> ）的前面，将第一个可导出符号在 .dynsym 表中的下标记为 <code>symbias</code> ，计算 <code>l_gnu_chain_zero</code> 的公式是 <code>map-&gt;l_gnu_chain_zero = map-&gt;l_gnu_buckets + map-&gt;l_nbuckets - symbias</code> 。</li>
+</ol></li>
+</ol>
+<p>因此，链接器查找哈希表的步骤是：</p>
+<ol type="1">
+<li>根据 <code>l_gnu_buckets</code> 找到哈希桶的第一个元素；</li>
+<li>顺序搜索哈希桶内的元素，直到找到相应的哈希值或者到达结尾。</li>
+</ol>
+<p><img src="http://junbin-hexo-img.oss-cn-beijing.aliyuncs.com/dynamic-linking-search-symbols-in-one-binary/one-dimensional-hash-table.png" srcset="/img/loading.gif" lazyload /></p>
+<p><img src="http://junbin-hexo-img.oss-cn-beijing.aliyuncs.com/dynamic-linking-search-symbols-in-one-binary/two-dimensional-hash-table.png" srcset="/img/loading.gif" lazyload /></p>
+<table>
+<thead>
+<tr class="header">
+<th style="text-align: center;">id</th>
+<th style="text-align: center;">name</th>
+<th style="text-align: center;">new_hash</th>
+<th style="text-align: center;">处理最后一个比特后</th>
+<th style="text-align: center;">bucket</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: center;">5</td>
+<td style="text-align: center;">_Z4hahav</td>
+<td style="text-align: center;">0xb8f7d29a</td>
+<td style="text-align: center;">0xb8f7d29a</td>
+<td style="text-align: center;">0</td>
+</tr>
+<tr class="even">
+<td style="text-align: center;">6</td>
+<td style="text-align: center;">_Z4morev</td>
+<td style="text-align: center;">0xb95a257b</td>
+<td style="text-align: center;">0xb95a257a</td>
+<td style="text-align: center;">0</td>
+</tr>
+<tr class="odd">
+<td style="text-align: center;">7</td>
+<td style="text-align: center;">_Z4testv</td>
+<td style="text-align: center;">0xb9d35b68</td>
+<td style="text-align: center;"><strong>0xb9d35b69</strong></td>
+<td style="text-align: center;">0</td>
+</tr>
+<tr class="even">
+<td style="text-align: center;">8</td>
+<td style="text-align: center;">_Z3barv</td>
+<td style="text-align: center;">0x6a5ebc3c</td>
+<td style="text-align: center;">0x6a5ebc3c</td>
+<td style="text-align: center;">1</td>
+</tr>
+<tr class="odd">
+<td style="text-align: center;">9</td>
+<td style="text-align: center;">_Z3foov</td>
+<td style="text-align: center;">0x6a6128eb</td>
+<td style="text-align: center;"><strong>0x6a6128eb</strong></td>
+<td style="text-align: center;">1</td>
+</tr>
+</tbody>
+</table>
+<p>加粗部分是每个哈希桶的最后一个元素，最后一个比特需要置成 1 。</p>
+<ol type="1">
+<li>根据 <code>l_gnu_buckets</code> 找到哈希桶的第一个元素；</li>
+<li>顺序搜索哈希桶内的元素，直到找到相应的哈希值或者到达结尾。</li>
+</ol>
+<h3 id="symbias">symbias</h3>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><code class="hljs bash"><span class="hljs-comment"># readelf --dyn-syms libtest_gnu_hash.so</span><br>Symbol table <span class="hljs-string">&#x27;.dynsym&#x27;</span> contains 10 entries:<br>   Num:    Value          Size Type    Bind   Vis      Ndx Name<br>     0: 0000000000000000     0 NOTYPE  LOCAL  DEFAULT  UND<br>     1: 0000000000000000     0 FUNC    WEAK   DEFAULT  UND __cxa_finalize@GLIBC_2.2.5 (2)<br>     2: 0000000000000000     0 NOTYPE  WEAK   DEFAULT  UND _ITM_deregisterTMCloneTab<br>     3: 0000000000000000     0 NOTYPE  WEAK   DEFAULT  UND __gmon_start__<br>     4: 0000000000000000     0 NOTYPE  WEAK   DEFAULT  UND _ITM_registerTMCloneTable<br>     5: 000000000000110a     7 FUNC    GLOBAL DEFAULT   11 _Z4hahav<br>     6: 0000000000001111     7 FUNC    GLOBAL DEFAULT   11 _Z4morev<br>     7: 0000000000001103     7 FUNC    GLOBAL DEFAULT   11 _Z4testv<br>     8: 00000000000010fc     7 FUNC    GLOBAL DEFAULT   11 _Z3barv<br>     9: 00000000000010f5     7 FUNC    GLOBAL DEFAULT   11 _Z3foov<br></code></pre></td></tr></table></figure>
+<p><code>symbias</code> 表明第一个可以通过 .gnu.hash section 访问的符号（即可以提供给其它库访问的符号），在 <code>libtest_gnu_hash.so</code> 中这个符号是 <code>_Z4hahav</code> 。</p>
+<h2 id="布隆过滤器">布隆过滤器</h2>
+<p>布隆过滤器的原理可以参考文章<a target="_blank" rel="noopener" href="https://zhuanlan.zhihu.com/p/43263751">详解布隆过滤器的原理，使用场景和注意事项</a>，简而言之，将数据使用多个不同的哈希函数生成多个哈希值，并将对应比特位置为 1 ，就能判断某个数据肯定不存在。</p>
+<p>参考 <a target="_blank" rel="noopener" href="https://blogs.oracle.com/solaris/gnu-hash-elf-sections-v2">GNU Hash ELF Sections</a> ，构建布隆过滤器的伪代码如下：</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><code class="hljs cpp"><span class="hljs-type">const</span> <span class="hljs-type">uint_fast32_t</span> new_hash = <span class="hljs-built_in">dl_new_hash</span>(undef_name);<br><span class="hljs-type">uint32_t</span> H1 = new_hash;<br><span class="hljs-type">uint32_t</span> H2 = new_hash &gt;&gt; map-&gt;l_gnu_shift;<br><span class="hljs-type">uint32_t</span> N = (H1 / __ELF_NATIVE_CLASS) &amp; map-&gt;l_gnu_bitmask_idxbits;<br><span class="hljs-type">unsigned</span> <span class="hljs-type">int</span> hashbit1 = H1 % __ELF_NATIVE_CLASS;<br><span class="hljs-type">unsigned</span> <span class="hljs-type">int</span> hashbit2 = H2 % __ELF_NATIVE_CLASS;<br>bloom[N] |= (<span class="hljs-number">1</span> &lt;&lt; hashbit1);<br>bloom[N] |= (<span class="hljs-number">1</span> &lt;&lt; hashbit2);<br></code></pre></td></tr></table></figure>
+<p>构建布隆过滤器的 C++ 代码如下：</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br></pre></td><td class="code"><pre><code class="hljs cpp"><span class="hljs-comment">// bloom.cpp</span><br><span class="hljs-meta">#<span class="hljs-keyword">include</span> <span class="hljs-string">&lt;ios&gt;</span></span><br><span class="hljs-meta">#<span class="hljs-keyword">include</span> <span class="hljs-string">&lt;iostream&gt;</span></span><br><br><span class="hljs-function"><span class="hljs-type">uint32_t</span> <span class="hljs-title">dl_new_hash</span><span class="hljs-params">(<span class="hljs-type">const</span> <span class="hljs-type">char</span> *s)</span></span><br><span class="hljs-function"></span>&#123;<br>  <span class="hljs-type">uint32_t</span> h = <span class="hljs-number">5381</span>;<br>  <span class="hljs-keyword">for</span> (<span class="hljs-type">unsigned</span> <span class="hljs-type">char</span> c = *s; c != <span class="hljs-string">&#x27;\0&#x27;</span>; c = *++s)<br>    h = h * <span class="hljs-number">33</span> + c;<br>  <span class="hljs-keyword">return</span> h &amp; <span class="hljs-number">0xffffffff</span>;<br>&#125;<br><br><span class="hljs-type">const</span> <span class="hljs-type">int</span> __ELF_NATIVE_CLASS = <span class="hljs-number">64</span>;<br><span class="hljs-type">const</span> <span class="hljs-type">int</span> l_gnu_shift = <span class="hljs-number">6</span>;<br><span class="hljs-type">const</span> <span class="hljs-type">int</span> bitmask_nwords = <span class="hljs-number">1</span>;<br><span class="hljs-type">const</span> <span class="hljs-type">int</span> l_gnu_bitmask_idxbits = bitmask_nwords - <span class="hljs-number">1</span>;<br><br><span class="hljs-function"><span class="hljs-type">void</span> <span class="hljs-title">new_bitmask</span><span class="hljs-params">(<span class="hljs-type">const</span> <span class="hljs-type">char</span>* s, <span class="hljs-type">uint64_t</span>* bitmask_arr)</span></span><br><span class="hljs-function"></span>&#123;<br>  <span class="hljs-type">uint32_t</span> hash_value1 = <span class="hljs-built_in">dl_new_hash</span>(s);<br>  <span class="hljs-type">uint32_t</span> hash_value2 = hash_value1 &gt;&gt; l_gnu_shift;<br>  <span class="hljs-type">int</span> n = (hash_value1 / __ELF_NATIVE_CLASS) &amp; l_gnu_bitmask_idxbits;<br>  <span class="hljs-type">unsigned</span> <span class="hljs-type">int</span> hashbit1 = hash_value1 % __ELF_NATIVE_CLASS;<br>  <span class="hljs-type">unsigned</span> <span class="hljs-type">int</span> hashbit2 = hash_value2 % __ELF_NATIVE_CLASS;<br>  <span class="hljs-comment">// Please use 1L (64 bits) instead of 1 (32 bits).</span><br>  bitmask_arr[n] |= (<span class="hljs-number">1L</span> &lt;&lt; hashbit1);<br>  bitmask_arr[n] |= (<span class="hljs-number">1L</span> &lt;&lt; hashbit2);<br>&#125;<br><br><span class="hljs-function"><span class="hljs-type">int</span> <span class="hljs-title">main</span><span class="hljs-params">()</span></span><br><span class="hljs-function"></span>&#123;<br>  <span class="hljs-type">uint64_t</span> bitmask_arr[bitmask_nwords] = &#123;<span class="hljs-number">0</span>&#125;;<br>  <span class="hljs-built_in">new_bitmask</span>(<span class="hljs-string">&quot;_Z4hahav&quot;</span>, bitmask_arr);<br>  <span class="hljs-built_in">new_bitmask</span>(<span class="hljs-string">&quot;_Z4morev&quot;</span>, bitmask_arr);<br>  <span class="hljs-built_in">new_bitmask</span>(<span class="hljs-string">&quot;_Z4testv&quot;</span>, bitmask_arr);<br>  <span class="hljs-built_in">new_bitmask</span>(<span class="hljs-string">&quot;_Z3barv&quot;</span>, bitmask_arr);<br>  <span class="hljs-built_in">new_bitmask</span>(<span class="hljs-string">&quot;_Z3foov&quot;</span>, bitmask_arr);<br>  std::cout &lt;&lt; std::hex &lt;&lt; <span class="hljs-string">&quot;0x&quot;</span> &lt;&lt; bitmask_arr[<span class="hljs-number">0</span>] &lt;&lt; std::endl;<br>  <span class="hljs-comment">// 0x1801290804200400</span><br>&#125;<br></code></pre></td></tr></table></figure>
+<h1 id="more">More</h1>
+<p>编译器如何处理哈希冲突？</p>
+<h1 id="参考资料">参考资料</h1>
+<ul>
+<li><a target="_blank" rel="noopener" href="https://blogs.oracle.com/solaris/gnu-hash-elf-sections-v2">GNU Hash ELF Sections</a></li>
+<li><a target="_blank" rel="noopener" href="https://zhuanlan.zhihu.com/p/43263751">知乎：详解布隆过滤器的原理，使用场景和注意事项</a></li>
+<li><a target="_blank" rel="noopener" href="https://answerywj.com/2020/05/14/ld-hash-style/">AnSwEr's Blog ：--hash-style 兼容性问题</a></li>
+</ul>
+
+                
+              </div>
+            
+            <hr/>
+            <div>
+              <div class="post-metas my-3">
+  
+    <div class="post-meta mr-3 d-flex align-items-center">
+      <i class="iconfont icon-category"></i>
+      
+
+<span class="category-chains">
+  
+  
+    
+      <span class="category-chain">
+        
+  <a href="/categories/Computer-Science/" class="category-chain-item">Computer Science</a>
+  
+  
+    <span>></span>
+    
+  <a href="/categories/Computer-Science/Dynamic-Linking/" class="category-chain-item">Dynamic Linking</a>
+  
+  
+
+  
+
+      </span>
+    
+  
+</span>
+
+    </div>
+  
+  
+</div>
+
+
+              
+  
+
+  <div class="license-box my-3">
+    <div class="license-title">
+      <div>Search Symbols In One Binary</div>
+      <div>https://clcanny.github.io/2020/11/20/computer-science/dynamic-linking/search-symbols-in-one-binary/</div>
+    </div>
+    <div class="license-meta">
+      
+        <div class="license-meta-item">
+          <div>作者</div>
+          <div>JunBin</div>
+        </div>
+      
+      
+        <div class="license-meta-item license-meta-date">
+          <div>发布于</div>
+          <div>2020年11月20日</div>
+        </div>
+      
+      
+      
+        <div class="license-meta-item">
+          <div>许可协议</div>
+          <div>
+            
+              
+              
+                <a target="_blank" href="https://creativecommons.org/licenses/by/4.0/">
+                  <span class="hint--top hint--rounded" aria-label="BY - 署名">
+                    <i class="iconfont icon-by"></i>
+                  </span>
+                </a>
+              
+            
+          </div>
+        </div>
+      
+    </div>
+    <div class="license-icon iconfont"></div>
+  </div>
+
+
+
+              
+                <div class="post-prevnext my-3">
+                  <article class="post-prev col-6">
+                    
+                    
+                      <a href="/2020/11/21/computer-science/dynamic-linking/relocation-across-files/" title="Relocation Across Files">
+                        <i class="iconfont icon-arrowleft"></i>
+                        <span class="hidden-mobile">Relocation Across Files</span>
+                        <span class="visible-mobile">上一篇</span>
+                      </a>
+                    
+                  </article>
+                  <article class="post-next col-6">
+                    
+                    
+                      <a href="/2020/11/18/computer-science/dynamic-linking/symbol-search-order/" title="Symbol Search Order">
+                        <span class="hidden-mobile">Symbol Search Order</span>
+                        <span class="visible-mobile">下一篇</span>
+                        <i class="iconfont icon-arrowright"></i>
+                      </a>
+                    
+                  </article>
+                </div>
+              
+            </div>
+
+            
+          </article>
+        </div>
+      </div>
+    </div>
+
+    <div class="side-col d-none d-lg-block col-lg-2">
+      
+  <aside class="sidebar" style="margin-left: -1rem">
+    <div id="toc">
+  <p class="toc-header">
+    <i class="iconfont icon-list"></i>
+    <span>目录</span>
+  </p>
+  <div class="toc-body" id="toc-body"></div>
+</div>
+
+
+
+  </aside>
+
+
+    </div>
+  </div>
+</div>
+
+
+
+
+
+  
+
+
+
+  
+
+
+
+  
+
+
+
+  
+
+
+
+  
+
+
+
+  <script>
+  Fluid.utils.createScript('https://lib.baomitu.com/mermaid/8.14.0/mermaid.min.js', function() {
+    mermaid.initialize({"theme":"default"});
+
+    Fluid.events.registerRefreshCallback(function() {
+      if ('mermaid' in window) {
+        mermaid.init();
+      }
+    });
+  });
+</script>
+
+
+
+
+
+
+    
+
+    
+      <a id="scroll-top-button" aria-label="TOP" href="#" role="button">
+        <i class="iconfont icon-arrowup" aria-hidden="true"></i>
+      </a>
+    
+
+    
+      <div class="modal fade" id="modalSearch" tabindex="-1" role="dialog" aria-labelledby="ModalLabel"
+     aria-hidden="true">
+  <div class="modal-dialog modal-dialog-scrollable modal-lg" role="document">
+    <div class="modal-content">
+      <div class="modal-header text-center">
+        <h4 class="modal-title w-100 font-weight-bold">搜索</h4>
+        <button type="button" id="local-search-close" class="close" data-dismiss="modal" aria-label="Close">
+          <span aria-hidden="true">&times;</span>
+        </button>
+      </div>
+      <div class="modal-body mx-3">
+        <div class="md-form mb-5">
+          <input type="text" id="local-search-input" class="form-control validate">
+          <label data-error="x" data-success="v" for="local-search-input">关键词</label>
+        </div>
+        <div class="list-group" id="local-search-result"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+    
+
+    
+  </main>
+
+  <footer>
+    <div class="footer-inner">
+  
+    <div class="footer-content">
+       <a href="https://hexo.io" target="_blank" rel="nofollow noopener"><span>Hexo</span></a> <i class="iconfont icon-love"></i> <a href="https://github.com/fluid-dev/hexo-theme-fluid" target="_blank" rel="nofollow noopener"><span>Fluid</span></a> 
+    </div>
+  
+  
+  
+  
+</div>
+
+  </footer>
+
+  <!-- Scripts -->
+  
+  <script  src="https://lib.baomitu.com/nprogress/0.2.0/nprogress.min.js" ></script>
+  <link  rel="stylesheet" href="https://lib.baomitu.com/nprogress/0.2.0/nprogress.min.css" />
+
+  <script>
+    NProgress.configure({"showSpinner":false,"trickleSpeed":100})
+    NProgress.start()
+    window.addEventListener('load', function() {
+      NProgress.done();
+    })
+  </script>
+
+
+<script  src="https://lib.baomitu.com/jquery/3.6.0/jquery.min.js" ></script>
+<script  src="https://lib.baomitu.com/twitter-bootstrap/4.6.1/js/bootstrap.min.js" ></script>
+<script  src="/js/events.js" ></script>
+<script  src="/js/plugins.js" ></script>
+
+
+  <script  src="https://lib.baomitu.com/typed.js/2.0.12/typed.min.js" ></script>
+  <script>
+    (function (window, document) {
+      var typing = Fluid.plugins.typing;
+      var subtitle = document.getElementById('subtitle');
+      if (!subtitle || !typing) {
+        return;
+      }
+      var text = subtitle.getAttribute('data-typed-text');
+      
+        typing(text);
+      
+    })(window, document);
+  </script>
+
+
+
+
+  
+    <script  src="/js/img-lazyload.js" ></script>
+  
+
+
+
+
+  
+<script>
+  Fluid.utils.createScript('https://lib.baomitu.com/tocbot/4.18.2/tocbot.min.js', function() {
+    var toc = jQuery('#toc');
+    if (toc.length === 0 || !window.tocbot) { return; }
+    var boardCtn = jQuery('#board-ctn');
+    var boardTop = boardCtn.offset().top;
+
+    window.tocbot.init(Object.assign({
+      tocSelector     : '#toc-body',
+      contentSelector : '.markdown-body',
+      linkClass       : 'tocbot-link',
+      activeLinkClass : 'tocbot-active-link',
+      listClass       : 'tocbot-list',
+      isCollapsedClass: 'tocbot-is-collapsed',
+      collapsibleClass: 'tocbot-is-collapsible',
+      scrollSmooth    : true,
+      includeTitleTags: true,
+      headingsOffset  : -boardTop,
+    }, CONFIG.toc));
+    if (toc.find('.toc-list-item').length > 0) {
+      toc.css('visibility', 'visible');
+    }
+
+    Fluid.events.registerRefreshCallback(function() {
+      if ('tocbot' in window) {
+        tocbot.refresh();
+        var toc = jQuery('#toc');
+        if (toc.length === 0 || !tocbot) {
+          return;
+        }
+        if (toc.find('.toc-list-item').length > 0) {
+          toc.css('visibility', 'visible');
+        }
+      }
+    });
+  });
+</script>
+
+
+  <script src=https://lib.baomitu.com/clipboard.js/2.0.11/clipboard.min.js></script>
+
+  <script>Fluid.plugins.codeWidget();</script>
+
+
+  
+<script>
+  Fluid.utils.createScript('https://lib.baomitu.com/anchor-js/4.3.1/anchor.min.js', function() {
+    window.anchors.options = {
+      placement: CONFIG.anchorjs.placement,
+      visible  : CONFIG.anchorjs.visible
+    };
+    if (CONFIG.anchorjs.icon) {
+      window.anchors.options.icon = CONFIG.anchorjs.icon;
+    }
+    var el = (CONFIG.anchorjs.element || 'h1,h2,h3,h4,h5,h6').split(',');
+    var res = [];
+    for (var item of el) {
+      res.push('.markdown-body > ' + item.trim());
+    }
+    if (CONFIG.anchorjs.placement === 'left') {
+      window.anchors.options.class = 'anchorjs-link-left';
+    }
+    window.anchors.add(res.join(', '));
+
+    Fluid.events.registerRefreshCallback(function() {
+      if ('anchors' in window) {
+        anchors.removeAll();
+        var el = (CONFIG.anchorjs.element || 'h1,h2,h3,h4,h5,h6').split(',');
+        var res = [];
+        for (var item of el) {
+          res.push('.markdown-body > ' + item.trim());
+        }
+        if (CONFIG.anchorjs.placement === 'left') {
+          anchors.options.class = 'anchorjs-link-left';
+        }
+        anchors.add(res.join(', '));
+      }
+    });
+  });
+</script>
+
+
+  
+<script>
+  Fluid.utils.createScript('https://lib.baomitu.com/fancybox/3.5.7/jquery.fancybox.min.js', function() {
+    Fluid.plugins.fancyBox();
+  });
+</script>
+
+
+  <script>Fluid.plugins.imageCaption();</script>
+
+  <script  src="/js/local-search.js" ></script>
+
+
+
+
+
+<!-- 主题的启动项，将它保持在最底部 -->
+<!-- the boot of the theme, keep it at the bottom -->
+<script  src="/js/boot.js" ></script>
+
+
+  
+
+  <noscript>
+    <div class="noscript-warning">博客在允许 JavaScript 运行的环境下浏览效果更佳</div>
+  </noscript>
+</body>
+</html>
