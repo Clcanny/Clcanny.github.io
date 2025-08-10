@@ -79,7 +79,7 @@ Linearizability is guaranteed because:
 + This lock acquisition always occurs within the request's real-time bounds - after the client initiates the operation and before any response is returned.
 + The 2PL protocol enforces a consistent ordering of conflicting operations. Once a request acquires its locks, no conflicting request can proceed until those locks are released. This ensures a globally consistent total order that respects the partial orderings of conflicting requests.
 
-#### Atomicity
+#### Atomicity via Appropriate Protocols
 
 FalconFS handles atomicity based on operation scope:
 
